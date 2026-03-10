@@ -14,6 +14,7 @@ from app.generated import guidance_pb2_grpc
 from app.grpc_session_service import GuidanceSessionService
 from app.guidance_server import SessionManager
 from app.logging_config import configure_logging
+from app.step_definition_repository import StepDefinitionRepository
 
 
 def _get_free_port() -> int:
@@ -224,3 +225,53 @@ def test_grpc_fault_log_contains_correlation_id(capfd: pytest.CaptureFixture[str
     stderr = capfd.readouterr().err
     assert '"event": "grpc.client.fault"' in stderr
     assert '"correlation_id": "corr-123"' in stderr
+
+
+def test_grpc_step_completed_emits_next_step_from_repository() -> None:
+    port = _get_free_port()
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+
+    logger = configure_logging("INFO")
+    step_repository = StepDefinitionRepository(
+        step_definition_file=Path("shared/samples/step-definitions.yaml")
+    )
+    service = GuidanceSessionService(
+        session_manager=SessionManager(),
+        logger=logger,
+        step_repository=step_repository,
+        default_job_id="job-layer-example-001",
+    )
+    guidance_pb2_grpc.add_GuidanceSessionServiceServicer_to_server(service, server)
+    server.add_insecure_port(f"127.0.0.1:{port}")
+    server.start()
+
+    def request_stream() -> guidance_pb2.ClientMessage:
+        yield guidance_pb2.ClientMessage(
+            hello=guidance_pb2.HelloRequest(
+                device_id="device-next-step-1",
+                app_version="0.1.0",
+                capabilities="mock",
+            )
+        )
+        yield guidance_pb2.ClientMessage(
+            step_completed=guidance_pb2.StepCompleted(
+                job_id="job-layer-example-001",
+                step_id="10",
+                completed_at_unix_ms=1000,
+            )
+        )
+
+    with grpc.insecure_channel(f"127.0.0.1:{port}") as channel:
+        stub = guidance_pb2_grpc.GuidanceSessionServiceStub(channel)
+        responses = list(stub.Connect(request_stream()))
+
+    server.stop(grace=0)
+
+    assert len(responses) == 3
+    assert responses[0].HasField("hello_response")
+    assert responses[1].HasField("step_activated")
+    assert responses[1].step_activated.step_id == "10"
+    assert responses[1].step_activated.part_id == "PART_A"
+    assert responses[2].HasField("step_activated")
+    assert responses[2].step_activated.step_id == "20"
+    assert responses[2].step_activated.part_id == "PART_B"

@@ -26,16 +26,16 @@ Movement contract for each animated part:
 - after the animation window, the part remains visible to step `101`
 
 Example layer order:
-- Layer 1 animation: `PLATE_BOTTOM_01_001` (`1-10`)
-- Layer 2 target-position: `PLATE_BOTTOM_01_001`
-- Layer 3 animation: `CORE_ROW_00_002` (`11-30`)
-- Layer 4 target-position: `CORE_ROW_00_002`
-- Layer 5 animation: `LEFT_UNIT_PHASE_03_001` (`31-40`)
-- Layer 6 target-position: `LEFT_UNIT_PHASE_03_001`
-- Layer 7 animation: `RIGHT_UNIT_PHASE_03_001` (`41-50`)
-- Layer 8 target-position: `RIGHT_UNIT_PHASE_03_001`
-- Layer 9 animation: `PLATE_TOP_02_002` (`51-60`)
-- Layer 10 target-position: `PLATE_TOP_02_002`
+- Layer 1 animation: `PART_A` (`1-10`)
+- Layer 2 target-position: `PART_A`
+- Layer 3 animation: `PART_B` (`11-30`)
+- Layer 4 target-position: `PART_B`
+- Layer 5 animation: `PART_C` (`31-40`)
+- Layer 6 target-position: `PART_C`
+- Layer 7 animation: `PART_D` (`41-50`)
+- Layer 8 target-position: `PART_D`
+- Layer 9 animation: `PART_E` (`51-60`)
+- Layer 10 target-position: `PART_E`
 
 Runtime control logic:
 - Start with only the first animation layer active.
@@ -48,6 +48,7 @@ Runtime control logic:
 
 Implementation note:
 - The real scene should be read from the configured step-definition/layer metadata source, not inferred from these example identifiers.
+- The repository includes this reference fixture in `shared/samples/step-definitions.yaml` under job ID `job-layer-example-001`.
 
 ## Current Status
 - Repository skeleton created.

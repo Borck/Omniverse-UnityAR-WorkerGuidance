@@ -27,16 +27,16 @@ Per-part movement contract:
 - separate target-position layer exists at `(0, 0, 0)`
 
 ### Example layer sequence
-- Layer 1: animation `PLATE_BOTTOM_01_001`, active `1-10`, static-visible until `101`
-- Layer 2: target-position `PLATE_BOTTOM_01_001`, static `(0,0,0)`
-- Layer 3: animation `CORE_ROW_00_002`, active `11-30`, static-visible until `101`
-- Layer 4: target-position `CORE_ROW_00_002`, static `(0,0,0)`
-- Layer 5: animation `LEFT_UNIT_PHASE_03_001`, active `31-40`, static-visible until `101`
-- Layer 6: target-position `LEFT_UNIT_PHASE_03_001`, static `(0,0,0)`
-- Layer 7: animation `RIGHT_UNIT_PHASE_03_001`, active `41-50`, static-visible until `101`
-- Layer 8: target-position `RIGHT_UNIT_PHASE_03_001`, static `(0,0,0)`
-- Layer 9: animation `PLATE_TOP_02_002`, active `51-60`, static-visible until `101`
-- Layer 10: target-position `PLATE_TOP_02_002`, static `(0,0,0)`
+- Layer 1: animation `PART_A`, active `1-10`, static-visible until `101`
+- Layer 2: target-position `PART_A`, static `(0,0,0)`
+- Layer 3: animation `PART_B`, active `11-30`, static-visible until `101`
+- Layer 4: target-position `PART_B`, static `(0,0,0)`
+- Layer 5: animation `PART_C`, active `31-40`, static-visible until `101`
+- Layer 6: target-position `PART_C`, static `(0,0,0)`
+- Layer 7: animation `PART_D`, active `41-50`, static-visible until `101`
+- Layer 8: target-position `PART_D`, static `(0,0,0)`
+- Layer 9: animation `PART_E`, active `51-60`, static-visible until `101`
+- Layer 10: target-position `PART_E`, static `(0,0,0)`
 
 The runtime/resolver must treat this list as an example fixture. Actual production sequences are resolved from configured scene metadata.
 

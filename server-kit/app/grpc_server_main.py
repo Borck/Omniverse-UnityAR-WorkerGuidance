@@ -8,6 +8,7 @@ try:
     from .grpc_session_service import GuidanceSessionService
     from .guidance_server import SessionManager
     from .logging_config import configure_logging
+    from .step_definition_repository import StepDefinitionRepository
 except ImportError:
     from config import AppConfig
     from draco_codec import DracoCodec
@@ -18,6 +19,7 @@ except ImportError:
     from grpc_session_service import GuidanceSessionService
     from guidance_server import SessionManager
     from logging_config import configure_logging
+    from step_definition_repository import StepDefinitionRepository
 from pathlib import Path
 import grpc
 from concurrent import futures
@@ -37,10 +39,15 @@ def run_combined_grpc_server(config: AppConfig) -> None:
     )
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
+    step_repository = StepDefinitionRepository(
+        step_definition_file=repo_root / config.step_definition_file,
+    )
     guidance_pb2_grpc.add_GuidanceSessionServiceServicer_to_server(
         GuidanceSessionService(
             session_manager=SessionManager(store_file=repo_root / config.session_store_file),
             logger=logger,
+            step_repository=step_repository,
+            default_job_id="job-mock-001",
         ),
         server,
     )
