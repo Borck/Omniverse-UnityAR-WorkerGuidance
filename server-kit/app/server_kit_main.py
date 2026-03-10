@@ -154,6 +154,35 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     }
     return JSONResponse(content=payload)
 
+  @app.delete("/api/package-jobs/{run_id}")
+  def cancel_package_job(run_id: str) -> JSONResponse:
+    record = export_job_service.cancel(run_id)
+    if record is None:
+      raise HTTPException(status_code=404, detail="Package job not found")
+    if record.state != "canceled":
+      raise HTTPException(status_code=409, detail=f"Package job cannot be canceled in state '{record.state}'")
+
+    logger.info(
+      "package export canceled",
+      session_id="-",
+      step_id="-",
+      event="http.packages.cancel",
+      correlation_id=run_id,
+    )
+    return JSONResponse(
+      content={
+        "runId": record.run_id,
+        "jobId": record.job_id,
+        "state": record.state,
+      }
+    )
+
+  @app.post("/api/package-jobs:cleanup")
+  def cleanup_package_jobs(ttl_seconds: int | None = None) -> JSONResponse:
+    retention = ttl_seconds if ttl_seconds is not None else resolved_config.export_job_retention_seconds
+    removed = export_job_service.cleanup(retention)
+    return JSONResponse(content={"removed": removed, "ttlSeconds": retention})
+
   @app.get("/api/assets/{asset_version}/{file_name}")
   def get_asset(asset_version: str, file_name: str) -> FileResponse:
     file_path = asset_root / asset_version / file_name

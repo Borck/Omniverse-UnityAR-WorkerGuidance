@@ -58,6 +58,18 @@
         "cwd": "${workspaceFolder}/server-kit/app"
       },
       "group": "test"
+    },
+    {
+      "label": "Server: Run Export Worker",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "export_worker_main.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/server-kit/app"
+      },
+      "group": "test"
     }
   ]
 }

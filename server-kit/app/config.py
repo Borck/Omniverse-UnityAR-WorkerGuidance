@@ -17,6 +17,8 @@ class AppConfig:
     export_asset_root: Path = Path("shared/samples/assets")
     export_manifest_root: Path = Path("shared/samples/manifests")
     export_job_store_file: Path = Path("server-kit/runtime/export-jobs.json")
+    export_job_retention_seconds: int = 86400
+    export_worker_poll_seconds: float = 1.0
     step_definition_file: Path = Path("shared/samples/step-definitions.yaml")
     draco_enabled: bool = False
     draco_encoder_command_template: str = ""
@@ -43,6 +45,12 @@ class AppConfig:
             ),
             export_job_store_file=Path(
                 os.getenv("GUIDANCE_EXPORT_JOB_STORE_FILE", "server-kit/runtime/export-jobs.json")
+            ),
+            export_job_retention_seconds=int(
+                os.getenv("GUIDANCE_EXPORT_JOB_RETENTION_SECONDS", "86400")
+            ),
+            export_worker_poll_seconds=float(
+                os.getenv("GUIDANCE_EXPORT_WORKER_POLL_SECONDS", "1.0")
             ),
             step_definition_file=Path(
                 os.getenv("GUIDANCE_STEP_DEFINITION_FILE", "shared/samples/step-definitions.yaml")
