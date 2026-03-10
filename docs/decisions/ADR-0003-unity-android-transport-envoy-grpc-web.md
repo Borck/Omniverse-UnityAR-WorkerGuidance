@@ -1,10 +1,12 @@
 # ADR-0003: Unity Android Transport via Envoy gRPC-Web Gateway
 
 Date: 2026-03-10
-Status: Accepted
+Status: Superseded by ADR-0004
 
 ## Context
 Unity 6 on Android 10+ should avoid direct coupling to `Grpc.Core` runtime behavior when possible. The project already introduced a transport abstraction in the Unity client.
+
+Update: Direct HTTP bridge endpoints are now available in the main HTTP server and remove the requirement for a gateway container in default setups.
 
 ## Decision
 Use Envoy as the default development and deployment bridge for Unity session transport:

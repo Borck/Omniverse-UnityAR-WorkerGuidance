@@ -18,6 +18,7 @@ This repository contains the first implementation slice for an AR worker guidanc
 - Manifest and asset HTTP endpoints added with cache headers.
 - External YAML step-definition source added.
 - Asset transfer gRPC contract added for GLB chunk streaming.
+- Unity HTTP bridge transport now supports connect/heartbeat with periodic heartbeat and reconnect loop from `AppBootstrap`.
 
 ## Quick Start
 1. Open `Omniverse-UnityAR-WorkerGuidance.code-workspace` in VS Code.
@@ -31,21 +32,27 @@ This repository contains the first implementation slice for an AR worker guidanc
 	- `python -m uvicorn server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit/app`
 6. Run the mock gRPC session service:
 	- `python server-kit/app/grpc_server_main.py`
-7. Run Envoy gRPC-Web gateway (Docker):
+7. Connect Unity transport natively to gRPC server (no proxy):
+	- Unity gRPC target should be `<host-or-lan-ip>:50051`
+	- In `AppBootstrap`, keep `useNativeGrpcTransport=true`
+8. Optional HTTP bridge fallback (if native gRPC is not available in your runtime profile):
+	- Disable `useNativeGrpcTransport` in `AppBootstrap`
+	- Unity fallback base URL: `http://<host-or-lan-ip>:8080`
+	- Endpoints: `POST /session/connect`, `POST /session/heartbeat`
+9. Optional: run Envoy gRPC-Web gateway only for explicit experiments:
 	- `docker run --rm -it -p 8081:8081 -p 9901:9901 -v "${PWD}/tools/dev/envoy/envoy.yaml:/etc/envoy/envoy.yaml" envoyproxy/envoy:v1.31-latest`
-	- Unity transport should target `http://<host-or-lan-ip>:8081`
-8. Build runtime packages from source fixtures:
+10. Build runtime packages from source fixtures:
 	- `python tools/packaging/build_runtime_packages.py --job-id job-mock-001`
-9. Trigger runtime package build through HTTP:
+11. Trigger runtime package build through HTTP:
 	- `POST /api/jobs/{jobId}/packages:build`
 	- Response includes `runId` and `statusUrl`.
-10. Check package build job status:
+12. Check package build job status:
 	- `GET /api/package-jobs/{runId}`
-11. Cancel a queued package build job:
+13. Cancel a queued package build job:
 	- `DELETE /api/package-jobs/{runId}`
-12. Cleanup expired terminal jobs:
+14. Cleanup expired terminal jobs:
 	- `POST /api/package-jobs:cleanup?ttl_seconds=86400`
-13. Run dedicated export worker process:
+15. Run dedicated export worker process:
 	- `python server-kit/app/export_worker_main.py`
 
 ## Next
@@ -53,12 +60,17 @@ This repository contains the first implementation slice for an AR worker guidanc
 - Add Kit extension bootstrapping and stage-open service.
 - Connect export pipeline to Kit USD step resolver output.
 
+## Unity Runtime Notes
+- `AppBootstrap` defaults to native gRPC transport (`useNativeGrpcTransport=true`, `grpcTarget=localhost:50051`).
+- HTTP bridge remains available as fallback (`useNativeGrpcTransport=false`, `httpBridgeBaseUrl=http://localhost:8080`).
+- At runtime, Unity sends periodic heartbeats and attempts reconnect when connection is not in `Connected` state.
+
 ## Architecture Decisions (Applied)
 - Unity C# protobuf/gRPC generation workflow: `Grpc.Tools` build project under `tools/proto-csharp/`.
 - Canonical step-definition source: external YAML (`shared/samples/step-definitions.yaml`).
 - Structured logging schema: JSON log lines with fixed fields (`timestamp`, `level`, `event`, `message`, `session_id`, `step_id`, `correlation_id`).
 - Runtime glTF loader direction: `glTFast` (Unity integration to follow in client implementation).
-- Unity session transport direction for Android 10+ / Unity 6: transport abstraction with HTTP bridge (gRPC-Web-ready) as default runtime path.
+- Unity session transport direction for Android 10+ / Unity 6: native direct gRPC as default runtime path (no proxy container required), with HTTP bridge fallback.
 
 ## Draco Streaming Policy
 - Draco is applied only when both sides support it.

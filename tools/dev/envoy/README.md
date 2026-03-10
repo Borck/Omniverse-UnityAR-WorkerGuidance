@@ -6,6 +6,11 @@ This gateway bridges Unity clients using HTTP/gRPC-Web to the backend gRPC serve
 - Gateway listener: `8081`
 - Envoy admin: `9901`
 - Upstream gRPC server: `host.docker.internal:50051`
+- Upstream HTTP server: `host.docker.internal:8080` (session bridge)
+
+## Route split
+- `POST /session/connect` and `POST /session/heartbeat` are forwarded to the HTTP backend (`:8080`).
+- All other traffic is forwarded to the gRPC backend (`:50051`) with gRPC-Web support.
 
 ## Run (Docker)
 ```powershell

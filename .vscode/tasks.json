@@ -72,7 +72,7 @@
       "group": "test"
     },
     {
-      "label": "Gateway: Run Envoy gRPC-Web (Docker)",
+      "label": "Gateway (Optional): Run Envoy gRPC-Web (Docker)",
       "type": "shell",
       "command": "docker",
       "args": [

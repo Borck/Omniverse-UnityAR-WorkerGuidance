@@ -77,6 +77,8 @@ Source: `Plan.md` + implemented repository state
   - [x] Add connection lifecycle (`Disconnected`, `Connected`, `Faulted`)
   - [x] Model `StepActivated` receive path (DTO + event)
   - [x] Add reconnect error path
+  - [x] Add HTTP bridge session endpoints for Unity transport (`POST /session/connect`, `POST /session/heartbeat`)
+  - [x] Add runtime heartbeat + periodic reconnect loop in Unity bootstrap
   - Acceptance criterion: client updates local state when mock step event arrives.
 
 - [ ] Implement `StepCoordinator` as a state machine
@@ -188,7 +190,7 @@ Source: `Plan.md` + implemented repository state
 - [x] T1: Protobuf generation Python/C# + documentation
 - [x] T2: gRPC hello/heartbeat server + simple test client
 - [x] T3: Manifest fixture + HTTP manifest endpoint
-- [ ] T4: Unity `SessionClient` handles mock step event
+- [x] T4: Unity `SessionClient` handles mock step event
 - [ ] T5: `StepCoordinator` base state machine + tests
 
 ### Sprint B - First visible end-to-end
@@ -204,7 +206,7 @@ Source: `Plan.md` + implemented repository state
 - [x] Which structured logging schema should be standardized? (JSON structured logging)
 - [x] Which runtime glTF loader should be standard? (`glTFast`)
 - [x] Draco policy: use Draco only when conversion support exists, otherwise fallback to uncompressed transfer (implemented with configurable toolchain and runtime fallback)
-- [x] Which Unity mobile transport should be used for Android 10+ / Unity 6? (Envoy gRPC-Web gateway via transport abstraction)
+- [x] Which Unity mobile transport should be used for Android 10+ / Unity 6? (Native direct gRPC via transport abstraction; HTTP bridge fallback; Envoy optional for gRPC-Web experiments)
 
 ## 6. Tracking Rules
 - [ ] On each merge: update `Current Progress` and affected milestones.
