@@ -113,6 +113,7 @@ Source: `Plan.md` + implemented repository state
 - [x] Add package job cancellation endpoint (`DELETE /api/package-jobs/{runId}`)
 - [x] Add terminal-job TTL cleanup endpoint (`POST /api/package-jobs:cleanup`)
 - [x] Add dedicated export worker process (`server-kit/app/export_worker_main.py`)
+- [x] Add API processing ownership mode (`GUIDANCE_EXPORT_JOB_PROCESSING_MODE=inline|enqueue-only`)
 - Done when: each step produces a versioned reproducible package.
 
 ### M5 - Asset Service
@@ -145,7 +146,7 @@ Source: `Plan.md` + implemented repository state
 - Done when: step transitions replace models cleanly without memory leaks.
 
 ### M9 - Vuforia Integration
-- [ ] Implement image-target v1 pipeline
+- [ ] Implement 3DModel-target v1 pipeline
 - [ ] Implement target payload cache and per-step activation
 - [ ] Define pose smoothing and tracking-loss behavior
 - Done when: tracking acquire aligns active model reliably.

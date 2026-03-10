@@ -31,6 +31,10 @@ except ImportError:
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
   resolved_config = config or AppConfig.from_env()
+  if resolved_config.export_job_processing_mode not in {"inline", "enqueue-only"}:
+    raise ValueError(
+      "GUIDANCE_EXPORT_JOB_PROCESSING_MODE must be 'inline' or 'enqueue-only'"
+    )
   repo_root = Path(__file__).resolve().parents[2]
   manifests_root = repo_root / resolved_config.manifests_root
   asset_root = repo_root / resolved_config.asset_root
@@ -116,10 +120,11 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
       raise HTTPException(status_code=404, detail="Manifest not found") from exc
 
     queued = export_job_service.enqueue(job_id)
-    background_tasks.add_task(export_job_service.process, queued.run_id)
+    if resolved_config.export_job_processing_mode == "inline":
+      background_tasks.add_task(export_job_service.process, queued.run_id)
 
     logger.info(
-      "package export queued",
+      f"package export queued (mode={resolved_config.export_job_processing_mode})",
       session_id="-",
       step_id="-",
       event="http.packages.build",
@@ -132,6 +137,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         "jobId": job_id,
         "runId": queued.run_id,
         "state": queued.state,
+        "processingMode": resolved_config.export_job_processing_mode,
         "statusUrl": f"/api/package-jobs/{queued.run_id}",
       },
     )

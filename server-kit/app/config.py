@@ -17,6 +17,7 @@ class AppConfig:
     export_asset_root: Path = Path("shared/samples/assets")
     export_manifest_root: Path = Path("shared/samples/manifests")
     export_job_store_file: Path = Path("server-kit/runtime/export-jobs.json")
+    export_job_processing_mode: str = "inline"
     export_job_retention_seconds: int = 86400
     export_worker_poll_seconds: float = 1.0
     step_definition_file: Path = Path("shared/samples/step-definitions.yaml")
@@ -46,6 +47,7 @@ class AppConfig:
             export_job_store_file=Path(
                 os.getenv("GUIDANCE_EXPORT_JOB_STORE_FILE", "server-kit/runtime/export-jobs.json")
             ),
+            export_job_processing_mode=os.getenv("GUIDANCE_EXPORT_JOB_PROCESSING_MODE", "inline").lower(),
             export_job_retention_seconds=int(
                 os.getenv("GUIDANCE_EXPORT_JOB_RETENTION_SECONDS", "86400")
             ),

@@ -67,5 +67,8 @@ Example environment values:
 - `GUIDANCE_DRACO_TOOLCHAIN=gltf-transform`
 - `GUIDANCE_DRACO_ENCODER_CMD=<optional_override_command_with_{input}_and_{output}>`
 - `GUIDANCE_EXPORT_JOB_STORE_FILE=./server-kit/runtime/export-jobs.json`
+- `GUIDANCE_EXPORT_JOB_PROCESSING_MODE=inline` (`enqueue-only` when dedicated worker owns processing)
 - `GUIDANCE_EXPORT_JOB_RETENTION_SECONDS=86400`
 - `GUIDANCE_EXPORT_WORKER_POLL_SECONDS=1.0`
+
+When running the dedicated export worker in production-like setups, set `GUIDANCE_EXPORT_JOB_PROCESSING_MODE=enqueue-only` on the HTTP API process so it only enqueues jobs and the worker process is the single processor.
