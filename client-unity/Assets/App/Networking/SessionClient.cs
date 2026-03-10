@@ -70,6 +70,11 @@ namespace Guidance.Runtime
             _transport.SendHeartbeat(clientTimeUnixMs);
         }
 
+        public void SendStepCompleted(string jobId, string stepId, long completedAtUnixMs)
+        {
+            _transport.SendStepCompleted(jobId, stepId, completedAtUnixMs);
+        }
+
         public void TryReconnect()
         {
             if (ConnectionState == SessionConnectionState.Connected)

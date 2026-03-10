@@ -82,12 +82,13 @@ Source: `Plan.md` + implemented repository state
   - [x] Add ETag/Cache-Control for immutable artifacts
   - Acceptance criterion: versioned assets are retrievable with correct cache headers.
 
-- [ ] Upgrade Unity `SessionClient` from logging stub to real stream client
+- [x] Upgrade Unity `SessionClient` from logging stub to real stream client
   - [x] Add connection lifecycle (`Disconnected`, `Connected`, `Faulted`)
   - [x] Model `StepActivated` receive path (DTO + event)
   - [x] Add reconnect error path
   - [x] Add HTTP bridge session endpoints for Unity transport (`POST /session/connect`, `POST /session/heartbeat`)
   - [x] Add runtime heartbeat + periodic reconnect loop in Unity bootstrap
+  - [x] Add step completion uplink (`step_completed`) for sequence-based next-step activation
   - Acceptance criterion: client updates local state when mock step event arrives.
 
 - [ ] Implement `StepCoordinator` as a state machine
@@ -147,16 +148,16 @@ Source: `Plan.md` + implemented repository state
 
 
 ### M7 - Unity Client Skeleton Completion
-- [ ] Add `AssetCache`, `TargetManager`, `TelemetryClient` skeletons
+- [x] Add `AssetCache`, `TargetManager`, `TelemetryClient` skeletons
 - [ ] Finalize bootstrapping/DI approach
 - [ ] Add placeholder UI for session/step status
 - Done when: app boots, connects, and shows mock step status.
 
 ### M8 - Runtime GLB Loading
 - [ ] Select and integrate runtime glTF loader
-- [ ] Implement download -> cache -> load -> instantiate pipeline
-- [ ] Enforce one-active-model rule
-- [ ] Ensure model dispose/unload on step switch
+- [x] Implement download -> cache -> load -> instantiate pipeline (placeholder presenter path)
+- [x] Enforce one-active-model rule
+- [x] Ensure model dispose/unload on step switch
 - [ ] Add long-run memory growth test
 - Done when: step transitions replace models cleanly without memory leaks.
 

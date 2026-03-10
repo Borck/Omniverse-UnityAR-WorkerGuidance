@@ -13,5 +13,6 @@ namespace Guidance.Runtime
         void Connect();
         void Disconnect();
         void SendHeartbeat(long clientTimeUnixMs);
+        void SendStepCompleted(string jobId, string stepId, long completedAtUnixMs);
     }
 }
