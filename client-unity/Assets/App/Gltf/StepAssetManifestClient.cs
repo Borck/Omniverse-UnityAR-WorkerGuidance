@@ -20,6 +20,36 @@ namespace Guidance.Runtime
             Action<ResolvedStepAsset> onResolved,
             Action<string> onError)
         {
+            ResolvedStepAssetBundle bundle = null;
+            string error = null;
+            yield return ResolveStepAssetWithNext(
+                jobId,
+                stepId,
+                onResolved: value => bundle = value,
+                onError: value => error = value
+            );
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                onError?.Invoke(error);
+                yield break;
+            }
+
+            if (bundle == null || bundle.Current == null)
+            {
+                onError?.Invoke($"Step {stepId} not found in manifest for job {jobId}");
+                yield break;
+            }
+
+            onResolved?.Invoke(bundle.Current);
+        }
+
+        public IEnumerator ResolveStepAssetWithNext(
+            string jobId,
+            string stepId,
+            Action<ResolvedStepAssetBundle> onResolved,
+            Action<string> onError)
+        {
             var manifestUrl = $"{_httpBaseUrl}/api/jobs/{jobId}/manifest";
             using var request = UnityWebRequest.Get(manifestUrl);
             yield return request.SendWebRequest();
@@ -37,22 +67,36 @@ namespace Guidance.Runtime
                 yield break;
             }
 
-            foreach (var step in payload.steps)
+            for (var i = 0; i < payload.steps.Length; i++)
             {
+                var step = payload.steps[i];
                 if (step.stepId != stepId)
                 {
                     continue;
                 }
 
-                onResolved?.Invoke(
-                    new ResolvedStepAsset(
-                        step.assetVersion,
-                        ResolveUrl(step.glbUrl),
-                        ResolveUrl(step.stepJsonUrl),
-                        step.targetVersion,
-                        ResolveUrl(step.targetUrl)
-                    )
+                var current = new ResolvedStepAsset(
+                    step.assetVersion,
+                    ResolveUrl(step.glbUrl),
+                    ResolveUrl(step.stepJsonUrl),
+                    step.targetVersion,
+                    ResolveUrl(step.targetUrl)
                 );
+
+                ResolvedStepAsset next = null;
+                if (i + 1 < payload.steps.Length)
+                {
+                    var nextStep = payload.steps[i + 1];
+                    next = new ResolvedStepAsset(
+                        nextStep.assetVersion,
+                        ResolveUrl(nextStep.glbUrl),
+                        ResolveUrl(nextStep.stepJsonUrl),
+                        nextStep.targetVersion,
+                        ResolveUrl(nextStep.targetUrl)
+                    );
+                }
+
+                onResolved?.Invoke(new ResolvedStepAssetBundle(current, next));
                 yield break;
             }
 
@@ -117,6 +161,18 @@ namespace Guidance.Runtime
             StepJsonUrl = stepJsonUrl;
             TargetVersion = targetVersion;
             TargetUrl = targetUrl;
+        }
+    }
+
+    public sealed class ResolvedStepAssetBundle
+    {
+        public ResolvedStepAsset Current { get; }
+        public ResolvedStepAsset Next { get; }
+
+        public ResolvedStepAssetBundle(ResolvedStepAsset current, ResolvedStepAsset next)
+        {
+            Current = current;
+            Next = next;
         }
     }
 }

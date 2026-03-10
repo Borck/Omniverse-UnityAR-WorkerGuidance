@@ -8,8 +8,10 @@ namespace Guidance.Runtime
         public SessionClient SessionClient { get; }
         public StepCoordinator StepCoordinator { get; }
         public AssetCache AssetCache { get; }
+        public TargetPayloadCache TargetPayloadCache { get; }
         public TargetManager TargetManager { get; }
         public TelemetryClient TelemetryClient { get; }
+        public DiagnosticsBundleExporter DiagnosticsExporter { get; }
         public StepAssetManifestClient ManifestClient { get; }
         public ModelPresenter ModelPresenter { get; }
 
@@ -17,16 +19,20 @@ namespace Guidance.Runtime
             SessionClient sessionClient,
             StepCoordinator stepCoordinator,
             AssetCache assetCache,
+            TargetPayloadCache targetPayloadCache,
             TargetManager targetManager,
             TelemetryClient telemetryClient,
+            DiagnosticsBundleExporter diagnosticsExporter,
             StepAssetManifestClient manifestClient,
             ModelPresenter modelPresenter)
         {
             SessionClient = sessionClient;
             StepCoordinator = stepCoordinator;
             AssetCache = assetCache;
+            TargetPayloadCache = targetPayloadCache;
             TargetManager = targetManager;
             TelemetryClient = telemetryClient;
+            DiagnosticsExporter = diagnosticsExporter;
             ManifestClient = manifestClient;
             ModelPresenter = modelPresenter;
         }
@@ -53,8 +59,10 @@ namespace Guidance.Runtime
                 sessionClient: new SessionClient(supportsDraco: supportsDraco, transport: transport),
                 stepCoordinator: new StepCoordinator(),
                 assetCache: new AssetCache(),
+                targetPayloadCache: new TargetPayloadCache(),
                 targetManager: new TargetManager(),
                 telemetryClient: new TelemetryClient(),
+                diagnosticsExporter: new DiagnosticsBundleExporter(),
                 manifestClient: new StepAssetManifestClient(httpBridgeBaseUrl),
                 modelPresenter: new ModelPresenter()
             );
