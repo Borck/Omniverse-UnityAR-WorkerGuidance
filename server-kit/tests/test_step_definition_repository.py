@@ -17,9 +17,13 @@ def test_step_definition_repository_parses_layer_timeline_metadata() -> None:
     first = steps[0]
     assert first.part_id == "PART_A"
     assert first.sequence_index == 1
+    assert first.timeline_start_step == 1
+    assert first.timeline_end_step == 101
+    assert first.timeline_fps == 30
     assert first.animation_start_step == 1
     assert first.animation_end_step == 10
     assert first.keep_visible_until_step == 101
+    assert first.active_prim_path == "/Assembly/PART_A"
     assert first.animation_layer_role == "animation"
     assert first.target_layer_role == "target-position"
     assert first.start_offset_xyz == (0.0, 0.1, 0.0)
@@ -61,9 +65,13 @@ jobs:
     assert len(steps) == 1
     parsed = steps[0]
     assert parsed.sequence_index == 1
+    assert parsed.timeline_start_step == 0
+    assert parsed.timeline_end_step == 0
+    assert parsed.timeline_fps == 0
     assert parsed.animation_start_step == 0
     assert parsed.animation_end_step == 0
     assert parsed.keep_visible_until_step == 0
+    assert parsed.active_prim_path == "/Assembly/PART_X"
     assert parsed.animation_layer_role == "animation"
     assert parsed.target_layer_role == "target-position"
     assert parsed.start_offset_xyz == (0.0, 0.1, 0.0)

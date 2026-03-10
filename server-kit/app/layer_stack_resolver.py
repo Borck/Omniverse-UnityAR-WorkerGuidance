@@ -25,14 +25,22 @@ class ResolvedStep:
     part_id: str
     display_name: str
     source_prim_path: str
+    active_prim_path: str
     animation_name: str
+    animation_layer_role: str
+    target_layer_role: str
     animation_layer_id: str
     target_layer_id: str
     animation_layer_index: int
     target_layer_index: int
+    timeline_start_step: int
+    timeline_end_step: int
+    timeline_fps: int
     animation_start_step: int
     animation_end_step: int
     keep_visible_until_step: int
+    handover_target_layer_id: str
+    handover_next_animation_layer_id: str
     visible_layer_ids: tuple[str, ...]
     muted_layer_ids: tuple[str, ...]
     cache_key: str
@@ -79,6 +87,7 @@ class LayerStackResolver:
         resolved: list[ResolvedStep] = []
         for step in steps:
             pair = self._pair_for_sequence(pairs, step.sequence_index)
+            next_pair = self._pair_for_sequence(pairs, step.sequence_index + 1)
             visible_layer_ids = self._visible_layers_for_completed_step(
                 sequence_index=step.sequence_index,
                 pairs=pairs,
@@ -98,14 +107,22 @@ class LayerStackResolver:
                     part_id=step.part_id,
                     display_name=step.display_name,
                     source_prim_path=step.source_prim_path,
+                    active_prim_path=step.active_prim_path,
                     animation_name=step.animation_name,
+                    animation_layer_role=step.animation_layer_role,
+                    target_layer_role=step.target_layer_role,
                     animation_layer_id=pair.animation_layer_id,
                     target_layer_id=pair.target_layer_id,
                     animation_layer_index=pair.animation_layer_index,
                     target_layer_index=pair.target_layer_index,
+                    timeline_start_step=step.timeline_start_step,
+                    timeline_end_step=step.timeline_end_step,
+                    timeline_fps=step.timeline_fps,
                     animation_start_step=step.animation_start_step,
                     animation_end_step=step.animation_end_step,
                     keep_visible_until_step=step.keep_visible_until_step,
+                    handover_target_layer_id=pair.target_layer_id,
+                    handover_next_animation_layer_id=next_pair.animation_layer_id,
                     visible_layer_ids=visible_layer_ids,
                     muted_layer_ids=muted_layer_ids,
                     cache_key=cache_key,

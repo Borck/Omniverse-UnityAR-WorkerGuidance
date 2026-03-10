@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "proto-csharp", "proto-csharp", "{D719ACC2-D1BF-ED24-09F9-649A638C2963}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtoCSharpGen", "tools\proto-csharp\ProtoCSharpGen.csproj", "{72414494-295D-F4B2-25F7-4D9F8D619820}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{72414494-295D-F4B2-25F7-4D9F8D619820}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72414494-295D-F4B2-25F7-4D9F8D619820}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72414494-295D-F4B2-25F7-4D9F8D619820}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72414494-295D-F4B2-25F7-4D9F8D619820}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D719ACC2-D1BF-ED24-09F9-649A638C2963} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+		{72414494-295D-F4B2-25F7-4D9F8D619820} = {D719ACC2-D1BF-ED24-09F9-649A638C2963}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {11E8D722-D96F-4EAD-9B6C-B8E387D331A3}
+	EndGlobalSection
+EndGlobal
