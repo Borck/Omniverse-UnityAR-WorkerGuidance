@@ -19,6 +19,11 @@ static_resources:
                       domains: ["*"]
                       routes:
                         - match:
+                            prefix: "/session/"
+                          route:
+                            cluster: guidance_http_backend
+                            timeout: 15s
+                        - match:
                             prefix: "/"
                           route:
                             cluster: guidance_grpc_backend
@@ -44,6 +49,19 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
+    - name: guidance_http_backend
+      connect_timeout: 2s
+      type: LOGICAL_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: guidance_http_backend
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: host.docker.internal
+                      port_value: 8080
     - name: guidance_grpc_backend
       connect_timeout: 2s
       type: LOGICAL_DNS

@@ -17,10 +17,22 @@ namespace Guidance.Runtime
         public SessionClient(bool supportsDraco)
             : this(
                 supportsDraco,
-                new HttpBridgeSessionTransport(
-                    baseUrl: "http://localhost:8081",
+                new GrpcSessionTransport(
+                    target: "localhost:50051",
                     deviceId: SystemInfo.deviceUniqueIdentifier,
                     appVersion: Application.version
+                )
+            )
+        {
+        }
+
+        public SessionClient(bool supportsDraco, string target, string deviceId, string appVersion)
+            : this(
+                supportsDraco,
+                new GrpcSessionTransport(
+                    target: target,
+                    deviceId: deviceId,
+                    appVersion: appVersion
                 )
             )
         {

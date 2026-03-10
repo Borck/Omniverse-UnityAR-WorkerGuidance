@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import BackgroundTasks
 from fastapi import HTTPException
+from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
 from fastapi import status
@@ -25,9 +26,30 @@ except ImportError:
 try:
   from .manifest_service import ManifestService
   from .step_definition_repository import StepDefinitionRepository
+  from .guidance_server import SessionManager, SessionState
 except ImportError:
   from manifest_service import ManifestService
   from step_definition_repository import StepDefinitionRepository
+  from guidance_server import SessionManager, SessionState
+
+
+class HelloRequestPayload(BaseModel):
+  device_id: str
+  app_version: str
+  capabilities: str
+
+
+class HeartbeatPayload(BaseModel):
+  session_id: str
+  client_time_unix_ms: int
+
+
+class ConnectEnvelope(BaseModel):
+  hello: HelloRequestPayload
+
+
+class HeartbeatEnvelope(BaseModel):
+  heartbeat: HeartbeatPayload
 
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
@@ -43,6 +65,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   export_manifest_root = repo_root / resolved_config.export_manifest_root
   export_asset_root = repo_root / resolved_config.export_asset_root
   export_job_store_file = repo_root / resolved_config.export_job_store_file
+  session_store_file = repo_root / resolved_config.session_store_file
   step_definition_file = repo_root / resolved_config.step_definition_file
 
   manifest_service = ManifestService(manifests_root=manifests_root)
@@ -62,6 +85,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     draco_codec=draco_codec,
   )
   export_job_service = ExportJobService(package_exporter, store_file=export_job_store_file)
+  session_manager = SessionManager(store_file=session_store_file)
   logger = configure_logging(resolved_config.log_level)
 
   @asynccontextmanager
@@ -82,6 +106,58 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   def health() -> dict[str, str]:
     logger.info("health check", session_id="-", step_id="-", event="http.health")
     return {"status": "ok"}
+
+  @app.post("/session/connect")
+  def session_connect(payload: ConnectEnvelope) -> JSONResponse:
+    session_id, resumed = session_manager.register_or_resume_session(payload.hello.device_id)
+    session_manager.set_state(session_id, SessionState.STEP_READY)
+
+    logger.info(
+      f"session connected over http bridge ({'resumed' if resumed else 'new'})",
+      session_id=session_id,
+      step_id="-",
+      event="http.session.connect",
+    )
+
+    return JSONResponse(
+      content={
+        "hello_response": {
+          "session_id": session_id,
+          "protocol_version": "v1",
+          "server_time_unix_ms": 0,
+        },
+        "step_activated": {
+          "job_id": "job-mock-001",
+          "step_id": "17",
+          "part_id": "Bracket_12",
+          "display_name": "Install bracket",
+        },
+      }
+    )
+
+  @app.post("/session/heartbeat")
+  def session_heartbeat(payload: HeartbeatEnvelope) -> JSONResponse:
+    session = session_manager.get(payload.heartbeat.session_id)
+    if session is None:
+      return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+          "fault": {
+            "code": "SESSION_NOT_FOUND",
+            "message": "Session not found",
+            "correlation_id": payload.heartbeat.session_id,
+            "recoverable": True,
+          }
+        },
+      )
+
+    logger.info(
+      "heartbeat over http bridge",
+      session_id=payload.heartbeat.session_id,
+      step_id="-",
+      event="http.session.heartbeat",
+    )
+    return JSONResponse(content={"ping": {"nonce": f"hb-{payload.heartbeat.client_time_unix_ms}"}})
 
   @app.get("/api/jobs/{job_id}/manifest")
   def get_manifest(job_id: str) -> JSONResponse:

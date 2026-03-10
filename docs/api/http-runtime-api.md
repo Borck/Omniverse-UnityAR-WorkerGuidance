@@ -5,6 +5,7 @@ Status: Implemented endpoints
 
 ## Base
 - Local default base URL: `http://localhost:8080`
+- Optional Envoy gateway URL: `http://localhost:8081` (not required for HTTP bridge session flow)
 
 ## Endpoints
 
@@ -14,6 +15,63 @@ Returns service health.
 Response `200`:
 ```json
 {"status":"ok"}
+```
+
+### `POST /session/connect`
+HTTP bridge endpoint used by Unity transport handshake.
+
+Request body:
+```json
+{
+  "hello": {
+    "device_id": "device-123",
+    "app_version": "0.1.0",
+    "capabilities": "unity-ar"
+  }
+}
+```
+
+Response `200` fields:
+- `hello_response.session_id`
+- `hello_response.protocol_version`
+- `hello_response.server_time_unix_ms`
+- `step_activated.job_id`
+- `step_activated.step_id`
+- `step_activated.part_id`
+- `step_activated.display_name`
+
+### `POST /session/heartbeat`
+HTTP bridge endpoint used by Unity keepalive.
+
+Request body:
+```json
+{
+  "heartbeat": {
+    "session_id": "session-1",
+    "client_time_unix_ms": 1234567890
+  }
+}
+```
+
+Response `200`:
+```json
+{
+  "ping": {
+    "nonce": "hb-1234567890"
+  }
+}
+```
+
+Response `404` for unknown session:
+```json
+{
+  "fault": {
+    "code": "SESSION_NOT_FOUND",
+    "message": "Session not found",
+    "correlation_id": "session-does-not-exist",
+    "recoverable": true
+  }
+}
 ```
 
 ### `GET /api/jobs/{jobId}/manifest`
