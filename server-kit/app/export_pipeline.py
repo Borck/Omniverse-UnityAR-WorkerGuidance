@@ -6,8 +6,10 @@ from tempfile import TemporaryDirectory
 from typing import Protocol
 
 try:
+    from .glb_exporter import GlbExportBackend, PassthroughGlbExporter
     from .manifest_service import ManifestService
 except ImportError:
+    from glb_exporter import GlbExportBackend, PassthroughGlbExporter
     from manifest_service import ManifestService
 
 
@@ -30,12 +32,14 @@ class StepPackageExporter:
         output_asset_root: Path,
         output_manifest_root: Path,
         draco_codec: CompressionCodec,
+        glb_exporter: GlbExportBackend | None = None,
     ) -> None:
         self._manifest_service = manifest_service
         self._source_asset_root = source_asset_root
         self._output_asset_root = output_asset_root
         self._output_manifest_root = output_manifest_root
         self._draco_codec = draco_codec
+        self._glb_exporter = glb_exporter or PassthroughGlbExporter()
 
     def build_job_packages(self, job_id: str) -> ExportResult:
         source_manifest = self._manifest_service.get_manifest(job_id)
@@ -97,10 +101,14 @@ class StepPackageExporter:
 
     def _materialize_glb(self, source_glb: Path) -> tuple[bytes, str]:
         with TemporaryDirectory(prefix="guidance-export-") as temp_dir:
-            encoded_glb = Path(temp_dir) / source_glb.name
-            if self._draco_codec.encode_to_draco(source_glb, encoded_glb):
+            exported_glb = Path(temp_dir) / f"exported_{source_glb.name}"
+            if not self._glb_exporter.export_glb(source_glb, exported_glb):
+                raise RuntimeError(f"GLB export backend failed for {source_glb}")
+
+            encoded_glb = Path(temp_dir) / f"draco_{source_glb.name}"
+            if self._draco_codec.encode_to_draco(exported_glb, encoded_glb):
                 return encoded_glb.read_bytes(), "DRACO"
-        return source_glb.read_bytes(), "NONE"
+            return exported_glb.read_bytes(), "NONE"
 
     @staticmethod
     def _hash_payload(glb_bytes: bytes, step_json_bytes: bytes) -> str:
