@@ -8,6 +8,47 @@ This repository contains the first implementation slice for an AR worker guidanc
 - `proto/`: Shared protobuf contracts used by server and client.
 - `shared/`: Shared schemas, sample payloads, and fixtures.
 
+## Omniverse Assembly Scene (Reference Example)
+The current section documents an example layer-stack pattern to demonstrate runtime behavior.
+Part names and timing windows shown below are examples, not hard-coded product constraints.
+
+Timeline:
+- time steps `1-101`
+- `30 FPS`
+
+Per part, two layers exist:
+1. animation layer
+2. target-position layer
+
+Movement contract for each animated part:
+- start offset: `(0, 0.1, 0)`
+- end position: `(0, 0, 0)`
+- after the animation window, the part remains visible to step `101`
+
+Example layer order:
+- Layer 1 animation: `PLATE_BOTTOM_01_001` (`1-10`)
+- Layer 2 target-position: `PLATE_BOTTOM_01_001`
+- Layer 3 animation: `CORE_ROW_00_002` (`11-30`)
+- Layer 4 target-position: `CORE_ROW_00_002`
+- Layer 5 animation: `LEFT_UNIT_PHASE_03_001` (`31-40`)
+- Layer 6 target-position: `LEFT_UNIT_PHASE_03_001`
+- Layer 7 animation: `RIGHT_UNIT_PHASE_03_001` (`41-50`)
+- Layer 8 target-position: `RIGHT_UNIT_PHASE_03_001`
+- Layer 9 animation: `PLATE_TOP_02_002` (`51-60`)
+- Layer 10 target-position: `PLATE_TOP_02_002`
+
+Runtime control logic:
+- Start with only the first animation layer active.
+- On placement confirmation for current part:
+	- unmute target-position layer for that part
+	- target-position layer overrides animated visualization
+	- keep placed part fixed at final position
+	- activate next animation layer automatically
+- Repeat until all parts are completed.
+
+Implementation note:
+- The real scene should be read from the configured step-definition/layer metadata source, not inferred from these example identifiers.
+
 ## Current Status
 - Repository skeleton created.
 - Initial protobuf contract drafted.
@@ -59,6 +100,7 @@ This repository contains the first implementation slice for an AR worker guidanc
 - Integrate Unity `SessionClient` with gRPC stream + GLB asset stream.
 - Add Kit extension bootstrapping and stage-open service.
 - Connect export pipeline to Kit USD step resolver output.
+- Implement deterministic layer-pair handover in runtime (`confirm -> target-position override -> next animation`).
 
 ## Unity Runtime Notes
 - `AppBootstrap` defaults to native gRPC transport (`useNativeGrpcTransport=true`, `grpcTarget=localhost:50051`).
