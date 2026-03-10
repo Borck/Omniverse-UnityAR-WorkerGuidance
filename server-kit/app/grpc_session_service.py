@@ -34,6 +34,18 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
         self._step_repository = step_repository
         self._default_job_id = default_job_id
 
+    def _set_session_state_with_log(self, session_id: str, next_state: SessionState, reason: str, step_id: str = "-") -> None:
+        previous = self._session_manager.get(session_id)
+        previous_state = previous.state.value if previous is not None else "Unknown"
+        self._session_manager.set_state(session_id, next_state)
+        self._logger.info(
+            f"session state transition {previous_state} -> {next_state.value} ({reason})",
+            session_id=session_id,
+            step_id=step_id,
+            event="grpc.session.state.transition",
+            correlation_id=reason,
+        )
+
     def Connect(
         self,
         request_iterator: Iterator[guidance_pb2.ClientMessage],
@@ -58,7 +70,7 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
 
                 device_id = message.hello.device_id or "unknown-device"
                 session_id, resumed = self._session_manager.register_or_resume_session(device_id)
-                self._session_manager.set_state(session_id, SessionState.IDLE)
+                self._set_session_state_with_log(session_id, SessionState.IDLE, reason="hello")
                 handshake_done = True
                 self._logger.info(
                     f"session connected ({'resumed' if resumed else 'new'})",
@@ -76,11 +88,16 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
 
                 first_step = self._get_first_step(active_job_id)
                 if first_step is not None:
-                    self._session_manager.set_state(session_id, SessionState.STEP_READY)
+                    self._set_session_state_with_log(
+                        session_id,
+                        SessionState.STEP_READY,
+                        reason="first-step-activated",
+                        step_id=first_step.step_id,
+                    )
                     yield guidance_pb2.ServerMessage(step_activated=self._to_step_activated(first_step, active_job_id))
                 else:
                     # Backward-compatible fallback for tests/flows without configured step repository.
-                    self._session_manager.set_state(session_id, SessionState.STEP_READY)
+                    self._set_session_state_with_log(session_id, SessionState.STEP_READY, reason="mock-step-activated", step_id="17")
                     yield guidance_pb2.ServerMessage(step_activated=self._mock_step_activated())
 
             elif payload_name == "heartbeat" and handshake_done:
@@ -103,7 +120,12 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                     continue
 
                 processed_step_completions.add(completed_key)
-                self._session_manager.set_state(session_id, SessionState.IDLE)
+                self._set_session_state_with_log(
+                    session_id,
+                    SessionState.IDLE,
+                    reason="step-completed",
+                    step_id=message.step_completed.step_id,
+                )
                 self._logger.info(
                     "step completed",
                     session_id=session_id,
@@ -114,7 +136,12 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                 next_step = self._get_next_step(completed_job_id, message.step_completed.step_id)
                 if next_step is not None:
                     active_job_id = completed_job_id
-                    self._session_manager.set_state(session_id, SessionState.STEP_READY)
+                    self._set_session_state_with_log(
+                        session_id,
+                        SessionState.STEP_READY,
+                        reason="next-step-activated",
+                        step_id=next_step.step_id,
+                    )
                     yield guidance_pb2.ServerMessage(
                         step_activated=self._to_step_activated(next_step, completed_job_id)
                     )

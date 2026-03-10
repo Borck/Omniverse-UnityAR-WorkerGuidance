@@ -130,8 +130,40 @@ namespace Guidance.Runtime
                 return;
             }
 
-            // HTTP bridge fallback currently does not expose a completion endpoint.
-            Debug.Log($"[HttpBridgeSessionTransport] StepCompleted ignored in HTTP fallback: {jobId}/{stepId} at {completedAtUnixMs}");
+            var payload = new ClientEnvelope
+            {
+                step_completed = new StepCompletedPayload
+                {
+                    session_id = _sessionId,
+                    job_id = jobId,
+                    step_id = stepId,
+                    completed_at_unix_ms = completedAtUnixMs,
+                }
+            };
+
+            var json = JsonUtility.ToJson(payload);
+            var url = _baseUrl + "/session/step-completed";
+
+            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
+            {
+                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)),
+                downloadHandler = new DownloadHandlerBuffer()
+            };
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            var asyncOp = request.SendWebRequest();
+            asyncOp.completed += _ =>
+            {
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    Faulted?.Invoke($"Step completion failed: {request.error}");
+                    request.Dispose();
+                    return;
+                }
+
+                ProcessStepCompletedResponse(request.downloadHandler.text, jobId, stepId);
+                request.Dispose();
+            };
         }
 
         private void ProcessConnectResponse(string responseJson)
@@ -213,11 +245,52 @@ namespace Guidance.Runtime
             }
         }
 
+        private void ProcessStepCompletedResponse(string responseJson, string jobId, string stepId)
+        {
+            if (string.IsNullOrWhiteSpace(responseJson))
+            {
+                Debug.Log($"[HttpBridgeSessionTransport] Step completion acknowledged for {jobId}/{stepId}");
+                return;
+            }
+
+            var message = JsonUtility.FromJson<ServerEnvelope>(responseJson);
+            if (message == null)
+            {
+                Faulted?.Invoke("Step completion response could not be parsed");
+                return;
+            }
+
+            if (message.fault != null && !string.IsNullOrEmpty(message.fault.message))
+            {
+                Faulted?.Invoke($"Server fault: {message.fault.code} {message.fault.message}");
+                return;
+            }
+
+            if (message.step_activated != null)
+            {
+                StepActivated?.Invoke(
+                    new StepActivationDto(
+                        message.step_activated.job_id,
+                        message.step_activated.step_id,
+                        message.step_activated.part_id,
+                        message.step_activated.display_name,
+                        message.step_activated.asset_version,
+                        message.step_activated.target_id,
+                        message.step_activated.target_version
+                    )
+                );
+                return;
+            }
+
+            Debug.Log($"[HttpBridgeSessionTransport] Step completion acknowledged for {jobId}/{stepId}");
+        }
+
         [Serializable]
         private sealed class ClientEnvelope
         {
             public HelloRequestPayload hello;
             public HeartbeatPayload heartbeat;
+            public StepCompletedPayload step_completed;
         }
 
         [Serializable]
@@ -233,6 +306,15 @@ namespace Guidance.Runtime
         {
             public string session_id;
             public long client_time_unix_ms;
+        }
+
+        [Serializable]
+        private sealed class StepCompletedPayload
+        {
+            public string session_id;
+            public string job_id;
+            public string step_id;
+            public long completed_at_unix_ms;
         }
 
         [Serializable]
