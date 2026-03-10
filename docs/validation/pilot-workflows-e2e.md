@@ -4,6 +4,11 @@ Updated: 2026-03-10
 
 This checklist captures 3-5 representative workflows that must pass before pilot rollout.
 
+## Status
+- Automated server-side validation: Passed (43/43 tests via `tools/scripts/run-validation-matrix.ps1`).
+- Device workflow evidence folders and run sheets: Prepared.
+- Final M12 closure: Pending manual target-device execution for `PW-01`..`PW-05`.
+
 ## Workflow Set
 
 | Workflow ID | Description | Steps | Required Transport | Result |
@@ -40,3 +45,10 @@ This checklist captures 3-5 representative workflows that must pass before pilot
 - Diagnostics JSON from `DiagnosticsBundleExporter`.
 - Screen recording for each workflow.
 - Server log extract with `session_id` and `step_id` transitions.
+
+## Completion Gate
+- [ ] PW-01 pass recorded in `shared/fixtures/pilot-evidence/PW-01/run-sheet.md`.
+- [ ] PW-02 pass recorded in `shared/fixtures/pilot-evidence/PW-02/run-sheet.md`.
+- [ ] PW-03 pass recorded in `shared/fixtures/pilot-evidence/PW-03/run-sheet.md`.
+- [ ] PW-04 pass recorded in `shared/fixtures/pilot-evidence/PW-04/run-sheet.md`.
+- [ ] PW-05 pass recorded in `shared/fixtures/pilot-evidence/PW-05/run-sheet.md`.

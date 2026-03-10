@@ -2,6 +2,10 @@
 
 Updated: 2026-03-10
 
+## Status
+- Automated backend prechecks: Passed (see `docs/validation/m12-validation-report.md`).
+- Target-device thermal/performance run: Pending (requires physical Android pilot device).
+
 ## Objective
 Validate that guidance sessions stay responsive and thermally stable on pilot target devices.
 
@@ -44,3 +48,10 @@ Validate that guidance sessions stay responsive and thermally stable on pilot ta
 - Lower rendering quality preset and reduce expensive post-processing.
 - Reconnect lag:
 - Tune reconnect backoff bounds in `AppBootstrap`.
+
+## Run Record (Fill Per Device)
+| Run ID | Device | Build | Median ms | p95 ms | Memory delta | Thermal events | Reconnect recovery | Result | Evidence Path |
+|---|---|---|---:|---:|---:|---:|---:|---|---|
+| PTB-001 | Pending | Pending |  |  |  |  |  | Pending | `shared/fixtures/pilot-evidence/PW-01/` |
+| PTB-002 | Pending | Pending |  |  |  |  |  | Pending | `shared/fixtures/pilot-evidence/PW-03/` |
+| PTB-003 | Pending | Pending |  |  |  |  |  | Pending | `shared/fixtures/pilot-evidence/PW-05/` |
