@@ -38,6 +38,15 @@ Source: `Plan.md` + implemented repository state
 
 ## 2. Active Priorities
 
+### P0.1 - Omniverse Assembly Scene Adaptation
+- [ ] Lock timeline profile from configured scene metadata (reference example: `1-101` at `30 FPS`)
+- [ ] Encode layer-pair schema (`animation`, `target-position`) for each part
+- [ ] Register example reference sequence fixture (PLATE/CORE/LEFT/RIGHT/TOP) for integration tests
+- [ ] Ensure runtime accepts scene-specific part IDs and windows from configuration (not hard-coded values)
+- [ ] Implement confirm handover: unmute target-position layer and activate next animation layer
+- [ ] Validate that placed parts remain fixed/visible through step `101`
+- Acceptance criterion: full five-part sequence runs deterministically with correct layer switching.
+
 ### P0 - Immediate (Vertical Slice blockers)
 - [ ] Stabilize protobuf generation (Python + C#)
   - [x] Python stub output directory created: `server-kit/app/generated/`
@@ -100,7 +109,9 @@ Source: `Plan.md` + implemented repository state
 - [ ] Define `ResolvedStep` data model
 - [ ] Define step-definition source (JSON/YAML/USD metadata)
 - [ ] Build layer-stack analyzer
+- [ ] Add layer-pair classification (`animation` vs `target-position`) per part
 - [ ] Implement active prim path resolution
+- [ ] Encode and validate step windows from active scene configuration (example fixture: `1-10`, `11-30`, `31-40`, `41-50`, `51-60`)
 - [ ] Compute deterministic cache key hash
 - [ ] Add resolver unit tests with fixed fixtures
 - Done when: same inputs always produce same `ResolvedStep` and hash.
@@ -159,6 +170,7 @@ Source: `Plan.md` + implemented repository state
 - [ ] Implement HUD for step name, short instructions, warnings
 - [ ] Implement actions `replay`, `next`, `previous`, `confirm`, `help`
 - [ ] Support animation replay without reloading assets
+- [ ] Implement runtime layer handover (`confirm -> target-position override -> next animation`)
 - Done when: complete guidance loop is usable on mock workflow.
 
 ### M11 - Robustness / Offline

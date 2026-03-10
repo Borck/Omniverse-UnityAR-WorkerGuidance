@@ -7,6 +7,48 @@ The Omniverse scene currently follows a layered USD structure:
 - One layer contains the full hierarchical master geometry.
 - Additional layers add animations and visibility changes that are applied to the master geometry.
 
+## Omniverse Assembly Scene Profile
+This plan includes a reference assembly scene profile to illustrate layer-stack behavior.
+Part identifiers and timing windows in this section are examples.
+
+### Timeline baseline
+- Playback range: time steps `1-101`
+- Frame rate: `30 FPS`
+
+### Layer pair contract
+Each assembly part is represented by two layers:
+1. animation layer
+2. target-position layer
+
+Per-part movement contract:
+- start offset: `(0, 0.1, 0)`
+- final target position: `(0, 0, 0)`
+- animated layer becomes static-visible until step `101`
+- separate target-position layer exists at `(0, 0, 0)`
+
+### Example layer sequence
+- Layer 1: animation `PLATE_BOTTOM_01_001`, active `1-10`, static-visible until `101`
+- Layer 2: target-position `PLATE_BOTTOM_01_001`, static `(0,0,0)`
+- Layer 3: animation `CORE_ROW_00_002`, active `11-30`, static-visible until `101`
+- Layer 4: target-position `CORE_ROW_00_002`, static `(0,0,0)`
+- Layer 5: animation `LEFT_UNIT_PHASE_03_001`, active `31-40`, static-visible until `101`
+- Layer 6: target-position `LEFT_UNIT_PHASE_03_001`, static `(0,0,0)`
+- Layer 7: animation `RIGHT_UNIT_PHASE_03_001`, active `41-50`, static-visible until `101`
+- Layer 8: target-position `RIGHT_UNIT_PHASE_03_001`, static `(0,0,0)`
+- Layer 9: animation `PLATE_TOP_02_002`, active `51-60`, static-visible until `101`
+- Layer 10: target-position `PLATE_TOP_02_002`, static `(0,0,0)`
+
+The runtime/resolver must treat this list as an example fixture. Actual production sequences are resolved from configured scene metadata.
+
+### Runtime handover logic
+- Start with only the first animation layer active.
+- On part placement confirmation:
+  - unmute the corresponding target-position layer
+  - treat target-position layer as visual override of the animated layer
+  - keep placed part fixed at target position
+  - automatically activate next animation layer
+- Repeat for all parts.
+
 This plan is optimized for implementation in a single VS Code workspace with GitHub Copilot Agent support.
 
 ## Product Scope
@@ -30,33 +72,15 @@ This plan is optimized for implementation in a single VS Code workspace with Git
 - ERP/MES integration beyond placeholder adapters.
 
 ## Target Architecture
-### Core principle
-Use USD in Omniverse for authoring and orchestration, but convert each active step into a runtime-friendly package for Unity.
-
-### Runtime package per step
-Each active step should produce:
-- `part.glb` or `part_<partId>_<version>.glb`
-- `step.json`
 - `target/` payload for Vuforia
 - optional `thumbnail.png`
 
-### Control plane
-Use gRPC for:
-- session handshake
 - job assignment
 - step activation
-- client status
-- confirmations
-- telemetry
-- error reporting
-
 ### Data plane
 Use HTTP file serving or signed local URLs for:
 - GLB asset download
 - Vuforia target download
-- optional thumbnails and metadata bundles
-
-### Why this architecture
 - Omniverse remains the source of truth.
 - Unity runtime stays lightweight.
 - Only one part is loaded and rendered at a time.
@@ -70,18 +94,6 @@ Assume the USD stage is structured like this:
 - Animation layers: add time-sampled transforms or animation clips.
 - Visibility layers: turn subcomponents on or off for a specific assembly state.
 
-### Server-side interpretation
-The Kit server must:
-1. Open the composed stage.
-2. Determine the current assembly step.
-3. Resolve which sub-tree or prim represents the active part.
-4. Apply the relevant animation and visibility layers for that step.
-5. Extract only the runtime-relevant geometry and animation.
-6. Export a step-specific GLB.
-7. Emit step metadata for the Unity runtime.
-
-### Step semantics
-Each step should at minimum define:
 - `stepId`
 - `workflowVersion`
 - `partId`
@@ -145,39 +157,17 @@ ar-worker-guidance/
     ProjectSettings/
   shared/
     schemas/
-    samples/
-    fixtures/
-  Plan.md
-  README.md
-  ar-worker-guidance.code-workspace
-```
 
 ## VS Code Workspace Setup
-### Recommended workspace folders
-- repository root
-- `server-kit`
-- `client-unity`
 - `proto`
 - `docs`
-
-### Recommended VS Code extensions
-- GitHub Copilot
 - GitHub Copilot Chat
 - C# Dev Kit
 - ms-python.python
 - protobuf support extension
 - EditorConfig
-- YAML
-- markdownlint
-
-### Workspace conventions
-- Keep all generated code committed only if deterministic and reviewed.
-- Keep protobuf-generated C# in controlled output folders.
 - Use tasks for common workflows.
 - Use a single root `.env.example` for local endpoints.
-
-## Milestones
-## M0 - Foundation
 Goal: create repository, workspace, standards, and working local builds.
 
 Deliverables:
@@ -250,12 +240,13 @@ Acceptance criteria:
 Goal: convert the layered USD scene into a deterministic step model.
 
 Tasks:
-- define a step configuration source
-- map USD layers to step semantics
+- define a step configuration source for layer pairs (`animation`, `target-position`)
+- map USD layers to part semantics and sequence order
 - resolve active prim path for a step
 - compute visibility set for the step
-- compute animation layer stack for the step
+- compute animation layer stack and time window for each step
 - produce a canonical internal `ResolvedStep`
+- encode transition policy: `confirm -> target-position unmute -> next animation active`
 
 Implementation notes:
 - treat the full geometry layer as immutable source geometry
@@ -266,6 +257,7 @@ Implementation notes:
 Acceptance criteria:
 - given a sample scene, the resolver returns the same result on repeated runs
 - the resolver identifies the correct prim subtree and animation source
+- resolver returns expected windows for the active configured profile (example fixture windows: `1-10`, `11-30`, `31-40`, `41-50`, `51-60`)
 - cache key changes when source layers change
 
 ## M4 - GLB Export Pipeline
@@ -419,6 +411,7 @@ Tasks:
 - display one step at a time
 - show part name and short instruction
 - animate insertion path locally
+- apply layer-pair handover after confirmation (target-position override)
 - support replay animation
 - support next, previous, confirm, and help actions
 - support visual states: idle, tracking, active, warning, blocked
@@ -427,6 +420,7 @@ Acceptance criteria:
 - worker can complete a full mocked workflow hands-free or with minimal input
 - animation replay does not require asset reload
 - UI remains readable on the target Vuzix device
+- confirmation of a part fixes it at target-position and activates the next animation step automatically
 
 ## M11 - Robustness and Offline Behavior
 Goal: tolerate real shopfloor conditions.
