@@ -154,11 +154,11 @@ Source: `Plan.md` + implemented repository state
 - Done when: app boots, connects, and shows mock step status.
 
 ### M8 - Runtime GLB Loading
-- [ ] Select and integrate runtime glTF loader
+- [x] Select and integrate runtime glTF loader (glTFast pinned in `Packages/manifest.json`, runtime fallback retained)
 - [x] Implement download -> cache -> load -> instantiate pipeline (placeholder presenter path)
 - [x] Enforce one-active-model rule
 - [x] Ensure model dispose/unload on step switch
-- [ ] Add long-run memory growth test
+- [x] Add long-run memory growth test (`ModelMemoryProbe` JSON report + editor report schema test)
 - Done when: step transitions replace models cleanly without memory leaks.
 
 ### M9 - Vuforia Integration
