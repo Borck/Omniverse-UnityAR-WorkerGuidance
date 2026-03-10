@@ -19,6 +19,14 @@ class StepDefinition:
     instructions_short: str
     safety_notes: list[str]
     expected_duration_sec: int
+    sequence_index: int
+    animation_start_step: int
+    animation_end_step: int
+    keep_visible_until_step: int
+    animation_layer_role: str
+    target_layer_role: str
+    start_offset_xyz: tuple[float, float, float]
+    target_position_xyz: tuple[float, float, float]
 
 
 class StepDefinitionRepository:
@@ -47,7 +55,21 @@ class StepDefinitionRepository:
                     instructions_short=item["instructionsShort"],
                     safety_notes=item.get("safetyNotes", []),
                     expected_duration_sec=int(item.get("expectedDurationSec", 0)),
+                    sequence_index=int(item.get("sequenceIndex", idx + 1)),
+                    animation_start_step=int(item.get("animationStartStep", 0)),
+                    animation_end_step=int(item.get("animationEndStep", 0)),
+                    keep_visible_until_step=int(item.get("keepVisibleUntilStep", 0)),
+                    animation_layer_role=str(item.get("animationLayerRole", "animation")),
+                    target_layer_role=str(item.get("targetLayerRole", "target-position")),
+                    start_offset_xyz=self._parse_vector3(item.get("startOffset", [0.0, 0.1, 0.0])),
+                    target_position_xyz=self._parse_vector3(item.get("targetPosition", [0.0, 0.0, 0.0])),
                 )
-                for item in job.get("steps", [])
+                for idx, item in enumerate(job.get("steps", []))
             ]
         return []
+
+    @staticmethod
+    def _parse_vector3(raw: list[float] | tuple[float, ...]) -> tuple[float, float, float]:
+        if not isinstance(raw, (list, tuple)) or len(raw) != 3:
+            return (0.0, 0.0, 0.0)
+        return (float(raw[0]), float(raw[1]), float(raw[2]))

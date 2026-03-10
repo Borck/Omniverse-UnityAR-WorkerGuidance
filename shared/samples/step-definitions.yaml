@@ -3,10 +3,18 @@ jobs:
   - jobId: job-mock-001
     steps:
       - stepId: "17"
+        sequenceIndex: 1
         partId: Bracket_12
         displayName: Install bracket
         sourcePrimPath: /Assembly/Bracket_12
         animationName: Insert_17
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        animationStartStep: 1
+        animationEndStep: 10
+        keepVisibleUntilStep: 101
+        startOffset: [0.0, 0.1, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
         anchorType: ImageTarget
         targetId: AssemblyMarker_A
         targetVersion: "2026-03-10.1"
@@ -15,3 +23,115 @@ jobs:
         safetyNotes:
           - Check cable clearance.
         expectedDurationSec: 45
+
+  - jobId: job-layer-example-001
+    steps:
+      - stepId: "10"
+        sequenceIndex: 1
+        partId: PART_A
+        displayName: Place part A
+        sourcePrimPath: /Assembly/PART_A
+        animationName: Insert_PART_A
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        animationStartStep: 1
+        animationEndStep: 10
+        keepVisibleUntilStep: 101
+        startOffset: [0.0, 0.1, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+        anchorType: ImageTarget
+        targetId: AssemblyMarker_A
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_part_a
+        instructionsShort: Place part A.
+        safetyNotes:
+          - Keep hands clear.
+        expectedDurationSec: 30
+
+      - stepId: "20"
+        sequenceIndex: 2
+        partId: PART_B
+        displayName: Place part B
+        sourcePrimPath: /Assembly/PART_B
+        animationName: Insert_PART_B
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        animationStartStep: 11
+        animationEndStep: 30
+        keepVisibleUntilStep: 101
+        startOffset: [0.0, 0.1, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+        anchorType: ImageTarget
+        targetId: AssemblyMarker_A
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_part_b
+        instructionsShort: Place part B.
+        safetyNotes:
+          - Keep hands clear.
+        expectedDurationSec: 30
+
+      - stepId: "30"
+        sequenceIndex: 3
+        partId: PART_C
+        displayName: Place part C
+        sourcePrimPath: /Assembly/PART_C
+        animationName: Insert_PART_C
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        animationStartStep: 31
+        animationEndStep: 40
+        keepVisibleUntilStep: 101
+        startOffset: [0.0, 0.1, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+        anchorType: ImageTarget
+        targetId: AssemblyMarker_A
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_part_c
+        instructionsShort: Place part C.
+        safetyNotes:
+          - Keep hands clear.
+        expectedDurationSec: 30
+
+      - stepId: "40"
+        sequenceIndex: 4
+        partId: PART_D
+        displayName: Place part D
+        sourcePrimPath: /Assembly/PART_D
+        animationName: Insert_PART_D
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        animationStartStep: 41
+        animationEndStep: 50
+        keepVisibleUntilStep: 101
+        startOffset: [0.0, 0.1, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+        anchorType: ImageTarget
+        targetId: AssemblyMarker_A
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_part_d
+        instructionsShort: Place part D.
+        safetyNotes:
+          - Keep hands clear.
+        expectedDurationSec: 30
+
+      - stepId: "50"
+        sequenceIndex: 5
+        partId: PART_E
+        displayName: Place part E
+        sourcePrimPath: /Assembly/PART_E
+        animationName: Insert_PART_E
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        animationStartStep: 51
+        animationEndStep: 60
+        keepVisibleUntilStep: 101
+        startOffset: [0.0, 0.1, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+        anchorType: ImageTarget
+        targetId: AssemblyMarker_A
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_part_e
+        instructionsShort: Place part E.
+        safetyNotes:
+          - Keep hands clear.
+        expectedDurationSec: 30
