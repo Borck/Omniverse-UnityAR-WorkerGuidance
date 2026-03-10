@@ -1,0 +1,64 @@
+{
+  "jobs": [
+    {
+      "runId": "884a6799-af99-4689-92c0-758f4f0cd511",
+      "jobId": "job-http-001",
+      "state": "succeeded",
+      "createdAt": "2026-03-10T12:00:40.346776+00:00",
+      "updatedAt": "2026-03-10T12:00:40.359403+00:00",
+      "generatedSteps": 1,
+      "manifestPath": "C:\\Users\\Borck\\AppData\\Local\\Temp\\pytest-of-Borck\\pytest-8\\test_package_build_endpoint_ge0\\out\\manifests\\job-http-001.manifest.json",
+      "error": null
+    },
+    {
+      "runId": "3c38049a-bc36-4a73-995d-2ec38604c2a2",
+      "jobId": "job-http-001",
+      "state": "succeeded",
+      "createdAt": "2026-03-10T12:00:41.959312+00:00",
+      "updatedAt": "2026-03-10T12:00:41.967519+00:00",
+      "generatedSteps": 1,
+      "manifestPath": "C:\\Users\\Borck\\AppData\\Local\\Temp\\pytest-of-Borck\\pytest-9\\test_package_build_endpoint_ge0\\out\\manifests\\job-http-001.manifest.json",
+      "error": null
+    },
+    {
+      "runId": "b089852b-6a42-47b9-b0ad-8ca7a6cc9e80",
+      "jobId": "job-http-001",
+      "state": "succeeded",
+      "createdAt": "2026-03-10T12:03:52.968915+00:00",
+      "updatedAt": "2026-03-10T12:03:52.975572+00:00",
+      "generatedSteps": 1,
+      "manifestPath": "C:\\Users\\Borck\\AppData\\Local\\Temp\\pytest-of-Borck\\pytest-10\\test_package_build_endpoint_ge0\\out\\manifests\\job-http-001.manifest.json",
+      "error": null
+    },
+    {
+      "runId": "7b67c549-b68b-4818-952c-36759884f5c6",
+      "jobId": "job-http-001",
+      "state": "succeeded",
+      "createdAt": "2026-03-10T12:04:02.769442+00:00",
+      "updatedAt": "2026-03-10T12:04:02.777455+00:00",
+      "generatedSteps": 1,
+      "manifestPath": "C:\\Users\\Borck\\AppData\\Local\\Temp\\pytest-of-Borck\\pytest-11\\test_package_build_endpoint_ge0\\out\\manifests\\job-http-001.manifest.json",
+      "error": null
+    },
+    {
+      "runId": "3461dab3-58b1-4684-95a3-314fd2a6a646",
+      "jobId": "job-http-001",
+      "state": "succeeded",
+      "createdAt": "2026-03-10T12:07:23.489903+00:00",
+      "updatedAt": "2026-03-10T12:07:23.516236+00:00",
+      "generatedSteps": 1,
+      "manifestPath": "C:\\Users\\Borck\\AppData\\Local\\Temp\\pytest-of-Borck\\pytest-13\\test_package_build_endpoint_ge0\\out\\manifests\\job-http-001.manifest.json",
+      "error": null
+    },
+    {
+      "runId": "d06beb71-942d-45be-879c-4a245eb3ad7a",
+      "jobId": "job-http-001",
+      "state": "succeeded",
+      "createdAt": "2026-03-10T12:07:48.256653+00:00",
+      "updatedAt": "2026-03-10T12:07:48.282620+00:00",
+      "generatedSteps": 1,
+      "manifestPath": "C:\\Users\\Borck\\AppData\\Local\\Temp\\pytest-of-Borck\\pytest-15\\test_package_build_endpoint_ge0\\out\\manifests\\job-http-001.manifest.json",
+      "error": null
+    }
+  ]
+}

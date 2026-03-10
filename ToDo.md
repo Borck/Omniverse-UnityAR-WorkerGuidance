@@ -109,6 +109,10 @@ Source: `Plan.md` + implemented repository state
 - [x] Add content hashing and asset versioning
 - [x] Add reproducibility test (same input -> same output)
 - [x] Wire server-triggered package build endpoint (`POST /api/jobs/{jobId}/packages:build`)
+- [x] Persist export job queue/status to disk (`GUIDANCE_EXPORT_JOB_STORE_FILE`)
+- [x] Add package job cancellation endpoint (`DELETE /api/package-jobs/{runId}`)
+- [x] Add terminal-job TTL cleanup endpoint (`POST /api/package-jobs:cleanup`)
+- [x] Add dedicated export worker process (`server-kit/app/export_worker_main.py`)
 - Done when: each step produces a versioned reproducible package.
 
 ### M5 - Asset Service

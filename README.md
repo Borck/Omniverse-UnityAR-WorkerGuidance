@@ -38,6 +38,12 @@ This repository contains the first implementation slice for an AR worker guidanc
 	- Response includes `runId` and `statusUrl`.
 9. Check package build job status:
 	- `GET /api/package-jobs/{runId}`
+10. Cancel a queued package build job:
+	- `DELETE /api/package-jobs/{runId}`
+11. Cleanup expired terminal jobs:
+	- `POST /api/package-jobs:cleanup?ttl_seconds=86400`
+12. Run dedicated export worker process:
+	- `python server-kit/app/export_worker_main.py`
 
 ## Next
 - Integrate Unity `SessionClient` with gRPC stream + GLB asset stream.
@@ -60,3 +66,6 @@ Example environment values:
 - `GUIDANCE_DRACO_ENABLED=true`
 - `GUIDANCE_DRACO_TOOLCHAIN=gltf-transform`
 - `GUIDANCE_DRACO_ENCODER_CMD=<optional_override_command_with_{input}_and_{output}>`
+- `GUIDANCE_EXPORT_JOB_STORE_FILE=./server-kit/runtime/export-jobs.json`
+- `GUIDANCE_EXPORT_JOB_RETENTION_SECONDS=86400`
+- `GUIDANCE_EXPORT_WORKER_POLL_SECONDS=1.0`
