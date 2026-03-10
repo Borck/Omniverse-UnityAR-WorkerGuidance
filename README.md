@@ -1,5 +1,14 @@
 # Omniverse Unity AR Worker Guidance
 
+## Core Features
+- Cross-runtime architecture with an Omniverse server and a Unity 6 AR client.
+- Step-driven worker guidance with deterministic progression (`confirm -> next step`) and reconnect-safe session flow.
+- BTU-style layer handover model (`target-position` override plus next animation activation) with deterministic resolver output.
+- Dual transport support for Unity session connectivity: native gRPC by default plus HTTP bridge fallback.
+- Runtime asset delivery pipeline with immutable manifests, versioned artifacts, local caching, and one-active-model lifecycle.
+- Export pipeline with reproducible package generation, queue/worker processing mode, cancel/cleanup endpoints, and job status tracking.
+- Structured observability with JSON logging, diagnostics export, and validation artifacts for pilot readiness.
+
 This repository contains the first implementation slice for an AR worker guidance system.
 
 ## Components
