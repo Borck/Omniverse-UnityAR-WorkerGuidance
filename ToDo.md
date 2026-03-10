@@ -95,26 +95,28 @@ Source: `Plan.md` + implemented repository state
   - [x] Model base states from plan (`Idle`, `StepReady`, `Tracking`, `Playing`, ...)
   - [x] Add guards for invalid transitions
   - [x] Keep transition logic unit-testable and decoupled from MonoBehaviour
+  - [x] Add editor unit tests for transition flow/guards/fault recovery (`StepCoordinatorTests`)
   - Acceptance criterion: transition tests run reliably.
 
 ## 3. Remaining Tasks by Milestone
 
 ### M2 - Kit Server Skeleton
 - [x] Document extension dependency graph (`docs/architecture/`)
-- [ ] Add stage-open configuration path (`GUIDANCE_STAGE_URI`)
-- [ ] Extend session lifecycle logging
-- [ ] Add stage-open smoke test (mock/fixture first)
+- [x] Add stage-open configuration path (`GUIDANCE_STAGE_URI`)
+- [x] Extend session lifecycle logging
+- [x] Add stage-open smoke test (mock/fixture first)
 - Done when: local Kit-oriented server structure runs with health + base config.
 
 ### M3 - USD Step Resolver
-- [ ] Define `ResolvedStep` data model
-- [ ] Define step-definition source (JSON/YAML/USD metadata)
-- [ ] Build layer-stack analyzer
-- [ ] Add layer-pair classification (`animation` vs `target-position`) per part
+- [x] Define `ResolvedStep` data model
+- [x] Define step-definition source (JSON/YAML/USD metadata)
+- [x] Build layer-stack analyzer
+- [x] Add layer-pair classification (`animation` vs `target-position`) per part
 - [ ] Implement active prim path resolution
 - [x] Encode and validate step windows from active scene configuration (example fixture: `1-10`, `11-30`, `31-40`, `41-50`, `51-60`)
-- [ ] Compute deterministic cache key hash
-- [ ] Add resolver unit tests with fixed fixtures
+- [x] Compute deterministic cache key hash
+- [x] Add resolver unit tests with fixed fixtures
+- [x] Add resolver preview API (`POST /api/jobs/{jobId}/layers:resolve`) for BTU-style layer-state projection
 - Done when: same inputs always produce same `ResolvedStep` and hash.
 
 ### M4 - GLB Export Pipeline

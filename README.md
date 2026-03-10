@@ -62,6 +62,8 @@ Implementation note:
 - Asset transfer gRPC contract added for GLB chunk streaming.
 - Unity HTTP bridge transport now supports connect/heartbeat with periodic heartbeat and reconnect loop from `AppBootstrap`.
 - Native gRPC session transport now sends `step_completed` for sequence-driven step progression.
+- HTTP bridge transport now also sends `step_completed` to `/session/step-completed` and can receive next `step_activated` payloads.
+- Server-side `LayerStackResolver` now mirrors BTU `switch_step_layers_ui` behavior for pairwise layer muteness (`completed end-position layers + next animation layer`) and deterministic cache-key generation.
 - Unity runtime includes skeleton modules for `AssetCache`, `TargetManager`, and `TelemetryClient`.
 - Runtime asset path now resolves manifest step entry, caches GLB locally, and enforces one-active-model lifecycle via presenter.
 
@@ -99,6 +101,13 @@ Implementation note:
 	- `POST /api/package-jobs:cleanup?ttl_seconds=86400`
 15. Run dedicated export worker process:
 	- `python server-kit/app/export_worker_main.py`
+16. Run mocked stage-open smoke check (no Kit runtime required):
+	- `POST /api/stage:open-smoke`
+	- Uses `GUIDANCE_STAGE_URI` and validates URI contract/scheme.
+17. Preview BTU-style layer muteness resolution for a job:
+	- `POST /api/jobs/{jobId}/layers:resolve`
+	- Body: `{"sublayer_paths_bottom_to_top": ["...", "..."]}`
+	- Returns per-step visible/muted layer sets and deterministic cache keys.
 
 ## Next
 - Integrate Unity `SessionClient` with gRPC stream + GLB asset stream.
@@ -134,5 +143,6 @@ Example environment values:
 - `GUIDANCE_EXPORT_JOB_RETENTION_SECONDS=86400`
 - `GUIDANCE_EXPORT_WORKER_POLL_SECONDS=1.0`
 - `GUIDANCE_SESSION_STORE_FILE=./server-kit/runtime/sessions.json`
+- `GUIDANCE_STAGE_URI=omniverse://localhost/Projects/Assembly.usd`
 
 When running the dedicated export worker in production-like setups, set `GUIDANCE_EXPORT_JOB_PROCESSING_MODE=enqueue-only` on the HTTP API process so it only enqueues jobs and the worker process is the single processor.
