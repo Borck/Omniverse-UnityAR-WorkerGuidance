@@ -70,6 +70,24 @@
         "cwd": "${workspaceFolder}/server-kit/app"
       },
       "group": "test"
+    },
+    {
+      "label": "Gateway: Run Envoy gRPC-Web (Docker)",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-it",
+        "-p",
+        "8081:8081",
+        "-p",
+        "9901:9901",
+        "-v",
+        "${workspaceFolder}/tools/dev/envoy/envoy.yaml:/etc/envoy/envoy.yaml",
+        "envoyproxy/envoy:v1.31-latest"
+      ],
+      "group": "test"
     }
   ]
 }

@@ -31,18 +31,21 @@ This repository contains the first implementation slice for an AR worker guidanc
 	- `python -m uvicorn server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit/app`
 6. Run the mock gRPC session service:
 	- `python server-kit/app/grpc_server_main.py`
-7. Build runtime packages from source fixtures:
+7. Run Envoy gRPC-Web gateway (Docker):
+	- `docker run --rm -it -p 8081:8081 -p 9901:9901 -v "${PWD}/tools/dev/envoy/envoy.yaml:/etc/envoy/envoy.yaml" envoyproxy/envoy:v1.31-latest`
+	- Unity transport should target `http://<host-or-lan-ip>:8081`
+8. Build runtime packages from source fixtures:
 	- `python tools/packaging/build_runtime_packages.py --job-id job-mock-001`
-8. Trigger runtime package build through HTTP:
+9. Trigger runtime package build through HTTP:
 	- `POST /api/jobs/{jobId}/packages:build`
 	- Response includes `runId` and `statusUrl`.
-9. Check package build job status:
+10. Check package build job status:
 	- `GET /api/package-jobs/{runId}`
-10. Cancel a queued package build job:
+11. Cancel a queued package build job:
 	- `DELETE /api/package-jobs/{runId}`
-11. Cleanup expired terminal jobs:
+12. Cleanup expired terminal jobs:
 	- `POST /api/package-jobs:cleanup?ttl_seconds=86400`
-12. Run dedicated export worker process:
+13. Run dedicated export worker process:
 	- `python server-kit/app/export_worker_main.py`
 
 ## Next
@@ -55,6 +58,7 @@ This repository contains the first implementation slice for an AR worker guidanc
 - Canonical step-definition source: external YAML (`shared/samples/step-definitions.yaml`).
 - Structured logging schema: JSON log lines with fixed fields (`timestamp`, `level`, `event`, `message`, `session_id`, `step_id`, `correlation_id`).
 - Runtime glTF loader direction: `glTFast` (Unity integration to follow in client implementation).
+- Unity session transport direction for Android 10+ / Unity 6: transport abstraction with HTTP bridge (gRPC-Web-ready) as default runtime path.
 
 ## Draco Streaming Policy
 - Draco is applied only when both sides support it.
@@ -70,5 +74,6 @@ Example environment values:
 - `GUIDANCE_EXPORT_JOB_PROCESSING_MODE=inline` (`enqueue-only` when dedicated worker owns processing)
 - `GUIDANCE_EXPORT_JOB_RETENTION_SECONDS=86400`
 - `GUIDANCE_EXPORT_WORKER_POLL_SECONDS=1.0`
+- `GUIDANCE_SESSION_STORE_FILE=./server-kit/runtime/sessions.json`
 
 When running the dedicated export worker in production-like setups, set `GUIDANCE_EXPORT_JOB_PROCESSING_MODE=enqueue-only` on the HTTP API process so it only enqueues jobs and the worker process is the single processor.

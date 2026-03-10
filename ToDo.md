@@ -24,6 +24,7 @@ Source: `Plan.md` + implemented repository state
 - [x] Server app refactored to app factory (`create_app()`)
 - [x] Environment-driven config loader added (`server-kit/app/config.py`)
 - [x] Structured logging adapter with `session_id` and `step_id` added (`server-kit/app/logging_config.py`)
+- [x] FastAPI lifecycle migrated to lifespan handlers (`server-kit/app/server_kit_main.py`)
 - [x] Mock gRPC `Connect` stream service implemented (`server-kit/app/grpc_session_service.py`)
 - [x] `HelloRequest -> HelloResponse` handshake implemented
 - [x] Heartbeat -> Ping roundtrip implemented
@@ -73,21 +74,21 @@ Source: `Plan.md` + implemented repository state
   - Acceptance criterion: versioned assets are retrievable with correct cache headers.
 
 - [ ] Upgrade Unity `SessionClient` from logging stub to real stream client
-  - [ ] Add connection lifecycle (`Disconnected`, `Connected`, `Faulted`)
-  - [ ] Model `StepActivated` receive path (DTO + event)
-  - [ ] Add reconnect error path
+  - [x] Add connection lifecycle (`Disconnected`, `Connected`, `Faulted`)
+  - [x] Model `StepActivated` receive path (DTO + event)
+  - [x] Add reconnect error path
   - Acceptance criterion: client updates local state when mock step event arrives.
 
 - [ ] Implement `StepCoordinator` as a state machine
-  - [ ] Model base states from plan (`Idle`, `StepReady`, `Tracking`, `Playing`, ...)
-  - [ ] Add guards for invalid transitions
-  - [ ] Keep transition logic unit-testable and decoupled from MonoBehaviour
+  - [x] Model base states from plan (`Idle`, `StepReady`, `Tracking`, `Playing`, ...)
+  - [x] Add guards for invalid transitions
+  - [x] Keep transition logic unit-testable and decoupled from MonoBehaviour
   - Acceptance criterion: transition tests run reliably.
 
 ## 3. Remaining Tasks by Milestone
 
 ### M2 - Kit Server Skeleton
-- [ ] Document extension dependency graph (`docs/architecture/`)
+- [x] Document extension dependency graph (`docs/architecture/`)
 - [ ] Add stage-open configuration path (`GUIDANCE_STAGE_URI`)
 - [ ] Extend session lifecycle logging
 - [ ] Add stage-open smoke test (mock/fixture first)
@@ -118,18 +119,19 @@ Source: `Plan.md` + implemented repository state
 
 ### M5 - Asset Service
 - [x] Implement `ManifestService` with immutable index (fixture-based initial version)
-- [ ] Define filesystem layout for asset cache
-- [ ] Specify retry-safe/range-safe download behavior
-- [ ] Expand API docs in `docs/api/`
+- [x] Define filesystem layout for asset cache
+- [x] Specify retry-safe/range-safe download behavior
+- [x] Expand API docs in `docs/api/`
 - Done when: manifest and assets are delivered as immutable versions.
 
 ### M6 - gRPC Session Service Hardening
-- [ ] Add idempotency for duplicate client messages
-- [ ] Add reconnect/session resume logic
-- [ ] Carry `correlation_id` end-to-end in fault handling
-- [ ] Define lightweight persistent session-state storage
-- [ ] Test stream resilience under temporary network loss
+- [x] Add idempotency for duplicate client messages
+- [x] Add reconnect/session resume logic
+- [x] Carry `correlation_id` end-to-end in fault handling
+- [x] Define lightweight persistent session-state storage
+- [x] Test stream resilience under temporary network loss
 - Done when: short network drops do not lose session state.
+
 
 ### M7 - Unity Client Skeleton Completion
 - [ ] Add `AssetCache`, `TargetManager`, `TelemetryClient` skeletons
@@ -193,6 +195,7 @@ Source: `Plan.md` + implemented repository state
 - [x] Which structured logging schema should be standardized? (JSON structured logging)
 - [x] Which runtime glTF loader should be standard? (`glTFast`)
 - [x] Draco policy: use Draco only when conversion support exists, otherwise fallback to uncompressed transfer (implemented with configurable toolchain and runtime fallback)
+- [x] Which Unity mobile transport should be used for Android 10+ / Unity 6? (Envoy gRPC-Web gateway via transport abstraction)
 
 ## 6. Tracking Rules
 - [ ] On each merge: update `Current Progress` and affected milestones.

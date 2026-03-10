@@ -31,15 +31,29 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
     ) -> Iterator[guidance_pb2.ServerMessage]:
         session_id = ""
         handshake_done = False
+        processed_step_completions: set[tuple[str, str, int]] = set()
 
         for message in request_iterator:
             payload_name = message.WhichOneof("payload")
 
             if payload_name == "hello":
-                session_id = self._session_manager.register_session()
+                if handshake_done:
+                    self._logger.info(
+                        "duplicate hello ignored",
+                        session_id=session_id or "-",
+                        step_id="-",
+                    )
+                    continue
+
+                device_id = message.hello.device_id or "unknown-device"
+                session_id, resumed = self._session_manager.register_or_resume_session(device_id)
                 self._session_manager.set_state(session_id, SessionState.IDLE)
                 handshake_done = True
-                self._logger.info("session connected", session_id=session_id, step_id="-")
+                self._logger.info(
+                    f"session connected ({'resumed' if resumed else 'new'})",
+                    session_id=session_id,
+                    step_id="-",
+                )
 
                 yield guidance_pb2.ServerMessage(
                     hello_response=guidance_pb2.HelloResponse(
@@ -74,6 +88,20 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                 yield guidance_pb2.ServerMessage(ping=guidance_pb2.Ping(nonce=nonce))
 
             elif payload_name == "step_completed" and handshake_done:
+                completed_key = (
+                    message.step_completed.job_id,
+                    message.step_completed.step_id,
+                    message.step_completed.completed_at_unix_ms,
+                )
+                if completed_key in processed_step_completions:
+                    self._logger.info(
+                        "duplicate step completion ignored",
+                        session_id=session_id,
+                        step_id=message.step_completed.step_id,
+                    )
+                    continue
+
+                processed_step_completions.add(completed_key)
                 self._session_manager.set_state(session_id, SessionState.IDLE)
                 self._logger.info(
                     "step completed",
@@ -88,6 +116,8 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                     message.fault.message,
                     session_id=session_id or "-",
                     step_id="-",
+                    event="grpc.client.fault",
+                    correlation_id=message.fault.correlation_id or "-",
                 )
 
         self._logger.info("session stream closed", session_id=session_id or "-", step_id="-")

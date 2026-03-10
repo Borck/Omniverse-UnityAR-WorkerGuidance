@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import BackgroundTasks
 from fastapi import HTTPException
@@ -63,18 +64,19 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   export_job_service = ExportJobService(package_exporter, store_file=export_job_store_file)
   logger = configure_logging(resolved_config.log_level)
 
-  app = FastAPI(title="Guidance Server", version="0.2.0")
-  app.state.config = resolved_config
-  app.state.logger = logger
-
-  @app.on_event("startup")
-  async def startup_event() -> None:
+  @asynccontextmanager
+  async def lifespan(_: FastAPI):
     logger.info(
       "http service started",
       session_id="-",
       step_id="-",
       event="server.start",
     )
+    yield
+
+  app = FastAPI(title="Guidance Server", version="0.2.0", lifespan=lifespan)
+  app.state.config = resolved_config
+  app.state.logger = logger
 
   @app.get("/health")
   def health() -> dict[str, str]:
