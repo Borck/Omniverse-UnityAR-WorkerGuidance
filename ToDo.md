@@ -173,6 +173,15 @@ Source: `Plan.md` + implemented repository state
 - [ ] Finalize release checklist and failure playbooks
 - Done when: pilot-ready release quality is reached.
 
+### M13 - Documentation
+- [ ] Add a concept graphic of how this system is working and communicating
+- [ ] Add a comprehensive guide of how to
+  - [ ] integrate the software in Unity 6
+  - [ ] integrate the App into Omniverse
+  - [ ] setup everything in between
+- [ ] Add a comprehensive documentation to each Kit App class
+- [ ] Add a comprehensive documentation to each Unity script/class
+
 ## 4. Next 2 Sprint Ticket Cut
 
 ### Sprint A - Close technical vertical slice
