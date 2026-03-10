@@ -23,7 +23,7 @@ jobs:
         anchorType: ImageTarget
         targetId: AssemblyMarker_A
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_mock-asset
+        assetVersion: sha256_18c7dd53a481165d
         instructionsShort: Align and insert along highlighted path.
         safetyNotes:
           - Check cable clearance.
