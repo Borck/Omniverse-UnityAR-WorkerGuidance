@@ -191,8 +191,8 @@ Source: `Plan.md` + implemented repository state
 - Done when: pilot-ready release quality is reached.
 
 ### M13 - Project cleanup
-- [ ] Remove unnecessary assets
-- [ ] Cleanup code
+- [x] Remove unnecessary assets
+- [x] Cleanup code
 
 ### M14 - Documentation
 - [x] Add a concept graphic of how this system is working and communicating

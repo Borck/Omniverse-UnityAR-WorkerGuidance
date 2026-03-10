@@ -35,15 +35,6 @@
 			"/^pwsh tools/scripts/run-validation-matrix\\.ps1$/": {
 				"approve": true,
 				"matchCommandLine": true
-			},
-			"pytest": true,
-			"/^python -m pytest -c server-kit/pytest\\.ini server-kit/tests/test_step_definition_repository\\.py server-kit/tests/test_layer_stack_resolver\\.py server-kit/tests/test_layer_resolve_http\\.py$/": {
-				"approve": true,
-				"matchCommandLine": true
-			},
-			"/^python -m pytest -c pytest\\.ini tests/test_step_definition_repository\\.py tests/test_layer_stack_resolver\\.py tests/test_layer_resolve_http\\.py$/": {
-				"approve": true,
-				"matchCommandLine": true
 			}
 		}
 	}
