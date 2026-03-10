@@ -12,6 +12,10 @@ service AssetQueryService {
   rpc GetManifest(ManifestRequest) returns (AssetManifest);
 }
 
+service AssetTransferService {
+  rpc StreamStepAsset(StepAssetStreamRequest) returns (stream StepAssetChunk);
+}
+
 message ClientMessage {
   oneof payload {
     HelloRequest hello = 1;
@@ -129,6 +133,23 @@ message Fault {
   bool recoverable = 4;
 }
 
+message StepAssetStreamRequest {
+  string job_id = 1;
+  string step_id = 2;
+  AssetCompression preferred_compression = 3;
+}
+
+message StepAssetChunk {
+  string job_id = 1;
+  string step_id = 2;
+  string asset_version = 3;
+  string file_name = 4;
+  AssetCompression applied_compression = 5;
+  int32 chunk_index = 6;
+  bytes data = 7;
+  bool is_last = 8;
+}
+
 enum TrackingStatus {
   TRACKING_STATUS_UNSPECIFIED = 0;
   TRACKING_STATUS_LOST = 1;
@@ -143,4 +164,10 @@ enum UserActionType {
   USER_ACTION_TYPE_NEXT = 3;
   USER_ACTION_TYPE_PREVIOUS = 4;
   USER_ACTION_TYPE_HELP = 5;
+}
+
+enum AssetCompression {
+  ASSET_COMPRESSION_UNSPECIFIED = 0;
+  ASSET_COMPRESSION_NONE = 1;
+  ASSET_COMPRESSION_DRACO = 2;
 }

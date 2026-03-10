@@ -1,0 +1,17 @@
+workflowVersion: 1.0.0
+jobs:
+  - jobId: job-mock-001
+    steps:
+      - stepId: "17"
+        partId: Bracket_12
+        displayName: Install bracket
+        sourcePrimPath: /Assembly/Bracket_12
+        animationName: Insert_17
+        anchorType: ImageTarget
+        targetId: AssemblyMarker_A
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_mock-asset
+        instructionsShort: Align and insert along highlighted path.
+        safetyNotes:
+          - Check cable clearance.
+        expectedDurationSec: 45
