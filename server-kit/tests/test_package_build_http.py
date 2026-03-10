@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import sys
+import pytest
 
 from fastapi.testclient import TestClient
 
@@ -158,3 +159,8 @@ def test_package_build_endpoint_enqueue_only_mode_leaves_job_queued(tmp_path: Pa
 
     output_manifest = output_manifest_root / "job-http-002.manifest.json"
     assert not output_manifest.exists()
+
+
+def test_create_app_rejects_invalid_export_processing_mode() -> None:
+    with pytest.raises(ValueError, match="GUIDANCE_EXPORT_JOB_PROCESSING_MODE"):
+      create_app(AppConfig(export_job_processing_mode="invalid-mode"))

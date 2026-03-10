@@ -38,7 +38,11 @@ def run_combined_grpc_server(config: AppConfig) -> None:
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     guidance_pb2_grpc.add_GuidanceSessionServiceServicer_to_server(
-        GuidanceSessionService(session_manager=SessionManager(), logger=logger), server
+        GuidanceSessionService(
+            session_manager=SessionManager(store_file=repo_root / config.session_store_file),
+            logger=logger,
+        ),
+        server,
     )
     guidance_pb2_grpc.add_AssetTransferServiceServicer_to_server(
         AssetTransferService(
