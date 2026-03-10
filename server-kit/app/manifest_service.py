@@ -1,3 +1,5 @@
+"""Manifest loading service for immutable per-job runtime asset indexes."""
+
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -23,6 +25,8 @@ class ManifestModel:
 
 
 class ManifestService:
+    """Provides parsed manifest models for a given job id."""
+
     def __init__(self, manifests_root: Path) -> None:
         self._manifests_root = manifests_root
 

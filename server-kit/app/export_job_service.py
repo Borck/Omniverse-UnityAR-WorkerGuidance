@@ -1,3 +1,5 @@
+"""Persistent export-job queue and processing state management."""
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -9,11 +11,15 @@ import uuid
 
 
 class ExportJobRunner(Protocol):
+    """Protocol implemented by package exporters consumed by queued jobs."""
+
     def build_job_packages(self, job_id: str):
         ...
 
 
 class ExportJobState(str, Enum):
+    """Lifecycle states for queued and processed export jobs."""
+
     QUEUED = "queued"
     RUNNING = "running"
     SUCCEEDED = "succeeded"
@@ -42,6 +48,8 @@ def _parse_iso(ts: str) -> datetime:
 
 
 class ExportJobService:
+    """Queues, processes, persists, and cleans up export jobs."""
+
     def __init__(self, exporter: ExportJobRunner, store_file: Path | None = None) -> None:
         self._exporter = exporter
         self._records: dict[str, ExportJobRecord] = {}

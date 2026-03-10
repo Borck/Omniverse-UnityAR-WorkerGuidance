@@ -1,3 +1,5 @@
+"""Loads canonical step definitions from YAML into typed runtime records."""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,10 +32,13 @@ class StepDefinition:
 
 
 class StepDefinitionRepository:
+    """Provides job-scoped step definitions used by session and resolver services."""
+
     def __init__(self, step_definition_file: Path) -> None:
         self._step_definition_file = step_definition_file
 
     def get_steps(self, job_id: str) -> list[StepDefinition]:
+        """Returns ordered raw step definitions for one job id."""
         payload = yaml.safe_load(self._step_definition_file.read_text(encoding="utf-8"))
         jobs = payload.get("jobs", [])
 

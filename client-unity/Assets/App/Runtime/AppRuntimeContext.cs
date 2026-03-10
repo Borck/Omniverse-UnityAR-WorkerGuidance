@@ -2,7 +2,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
-    // Lightweight composition root for runtime modules until a full DI container is introduced.
+    /// <summary>
+    /// Lightweight composition root that wires runtime modules for the guidance app.
+    /// </summary>
     public sealed class AppRuntimeContext
     {
         public SessionClient SessionClient { get; }
@@ -37,6 +39,9 @@ namespace Guidance.Runtime
             ModelPresenter = modelPresenter;
         }
 
+        /// <summary>
+        /// Creates a default runtime graph with either native gRPC or HTTP bridge transport.
+        /// </summary>
         public static AppRuntimeContext CreateDefault(
             bool useNativeGrpcTransport,
             string grpcTarget,

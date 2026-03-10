@@ -3,6 +3,9 @@ using System;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Client-side session facade for connect, heartbeat, progression, and asset stream assembly.
+    /// </summary>
     public sealed class SessionClient
     {
         public bool SupportsDraco { get; }
@@ -45,6 +48,9 @@ namespace Guidance.Runtime
             _transport = transport;
         }
 
+        /// <summary>
+        /// Subscribes to transport events and prepares the session client for use.
+        /// </summary>
         public void Initialize()
         {
             var compressionMode = SupportsDraco ? "draco-enabled" : "draco-disabled";
@@ -54,6 +60,9 @@ namespace Guidance.Runtime
             Debug.Log($"[SessionClient] Initialized ({compressionMode}, transport={_transport.GetType().Name}).");
         }
 
+        /// <summary>
+        /// Initiates a transport connection.
+        /// </summary>
         public void Connect()
         {
             _transport.Connect();
@@ -70,6 +79,9 @@ namespace Guidance.Runtime
             _transport.SendHeartbeat(clientTimeUnixMs);
         }
 
+        /// <summary>
+        /// Sends step completion to the active transport.
+        /// </summary>
         public void SendStepCompleted(string jobId, string stepId, long completedAtUnixMs)
         {
             _transport.SendStepCompleted(jobId, stepId, completedAtUnixMs);

@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Minimal telemetry sink for runtime milestones and fault breadcrumbs.
+    /// </summary>
     public sealed class TelemetryClient
     {
         public void TrackStepActivated(string jobId, string stepId, string partId)

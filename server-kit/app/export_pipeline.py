@@ -1,3 +1,5 @@
+"""Step package export pipeline that emits deterministic runtime assets."""
+
 from dataclasses import dataclass
 import hashlib
 import json
@@ -25,6 +27,8 @@ class ExportResult:
 
 
 class StepPackageExporter:
+    """Builds versioned per-step package outputs from source manifests and assets."""
+
     def __init__(
         self,
         manifest_service: ManifestService,
@@ -42,6 +46,7 @@ class StepPackageExporter:
         self._glb_exporter = glb_exporter or PassthroughGlbExporter()
 
     def build_job_packages(self, job_id: str) -> ExportResult:
+        """Exports all steps for one job and writes a generated manifest."""
         source_manifest = self._manifest_service.get_manifest(job_id)
 
         generated_steps: list[dict[str, str]] = []

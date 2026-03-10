@@ -5,6 +5,9 @@ using UnityEngine;
 namespace Guidance.Runtime
 {
     [Serializable]
+    /// <summary>
+    /// Snapshot payload exported for runtime diagnostics and pilot evidence.
+    /// </summary>
     public sealed class RuntimeDiagnosticsSnapshot
     {
         public string generatedAtUtc;
@@ -20,6 +23,9 @@ namespace Guidance.Runtime
         public bool trackingAcquired;
     }
 
+    /// <summary>
+    /// Writes runtime diagnostics snapshots as JSON files under persistent storage.
+    /// </summary>
     public sealed class DiagnosticsBundleExporter
     {
         public string Export(RuntimeDiagnosticsSnapshot snapshot)

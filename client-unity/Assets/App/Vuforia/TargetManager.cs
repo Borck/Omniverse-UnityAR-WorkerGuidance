@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Tracks active target metadata and smooths observed tracking poses.
+    /// </summary>
     public sealed class TargetManager
     {
         private readonly float _positionSmoothing;

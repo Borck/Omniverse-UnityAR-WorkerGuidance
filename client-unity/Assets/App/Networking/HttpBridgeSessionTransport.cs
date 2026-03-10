@@ -5,7 +5,9 @@ using UnityEngine.Networking;
 
 namespace Guidance.Runtime
 {
-    // Android-safe transport path via HTTP bridge/gRPC-Web gateway.
+    /// <summary>
+    /// HTTP bridge transport used when native gRPC transport is unavailable.
+    /// </summary>
     public sealed class HttpBridgeSessionTransport : ISessionTransport
     {
         private readonly string _baseUrl;

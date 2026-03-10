@@ -1,9 +1,13 @@
+"""Structured JSON logging adapter used by HTTP and gRPC services."""
+
 import logging
 import json
 from typing import Any
 
 
 class ContextAdapter(logging.LoggerAdapter):
+    """Injects session/step/correlation context fields into log records."""
+
     def process(self, msg: str, kwargs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         session_id = kwargs.pop("session_id", "-")
         step_id = kwargs.pop("step_id", "-")
@@ -22,6 +26,8 @@ class ContextAdapter(logging.LoggerAdapter):
 
 
 class JsonFormatter(logging.Formatter):
+    """Formats log records into stable JSON payloads."""
+
     def format(self, record: logging.LogRecord) -> str:
         payload = {
             "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),

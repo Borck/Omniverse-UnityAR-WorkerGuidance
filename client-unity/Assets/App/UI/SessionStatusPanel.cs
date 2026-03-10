@@ -2,7 +2,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
-    // Placeholder status UI for milestone M7. Replace with final canvas-based HUD later.
+    /// <summary>
+    /// Lightweight immediate-mode HUD showing session/step status and operator actions.
+    /// </summary>
     public sealed class SessionStatusPanel : MonoBehaviour
     {
         [SerializeField] private bool visible = true;

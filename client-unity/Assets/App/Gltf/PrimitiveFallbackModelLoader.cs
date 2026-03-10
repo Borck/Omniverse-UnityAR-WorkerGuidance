@@ -3,7 +3,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
-    // Safe fallback loader used when no runtime glTF loader is installed.
+    /// <summary>
+    /// Safe fallback loader that spawns a primitive when glTF runtime loading is unavailable.
+    /// </summary>
     public sealed class PrimitiveFallbackModelLoader : IModelLoader
     {
         public bool CanLoad(string modelFilePath)

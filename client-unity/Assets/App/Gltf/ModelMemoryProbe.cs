@@ -5,7 +5,9 @@ using UnityEngine.Profiling;
 
 namespace Guidance.Runtime
 {
-    // Utility probe for M8 long-run memory checks in editor/device builds.
+    /// <summary>
+    /// Utility probe for repeated present/clear cycles to monitor memory growth.
+    /// </summary>
     public sealed class ModelMemoryProbe : MonoBehaviour
     {
         [SerializeField] private bool autoRunOnStart = false;

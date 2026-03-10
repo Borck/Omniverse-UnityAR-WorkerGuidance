@@ -6,7 +6,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
-    // Optional glTFast path without compile-time dependency. Uses reflection if glTFast is present.
+    /// <summary>
+    /// Optional glTFast-backed loader resolved through reflection at runtime.
+    /// </summary>
     public sealed class GltfFastModelLoader : IModelLoader
     {
         private readonly Type _gltfImportType;

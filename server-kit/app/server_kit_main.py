@@ -1,3 +1,5 @@
+"""FastAPI entrypoint for guidance runtime HTTP and bridge endpoints."""
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import BackgroundTasks
@@ -72,6 +74,7 @@ class LayerResolvePayload(BaseModel):
 
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
+  """Creates the configured FastAPI application and wires runtime services."""
   resolved_config = config or AppConfig.from_env()
   if resolved_config.export_job_processing_mode not in {"inline", "enqueue-only"}:
     raise ValueError(
