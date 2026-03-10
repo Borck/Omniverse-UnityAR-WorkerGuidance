@@ -164,23 +164,23 @@ Source: `Plan.md` + implemented repository state
 - Done when: step transitions replace models cleanly without memory leaks.
 
 ### M9 - Vuforia Integration
-- [ ] Implement 3DModel-target v1 pipeline
-- [ ] Implement target payload cache and per-step activation
-- [ ] Define pose smoothing and tracking-loss behavior
+- [x] Implement 3DModel-target v1 pipeline (runtime hook + target payload resolution path)
+- [x] Implement target payload cache and per-step activation
+- [x] Define pose smoothing and tracking-loss behavior (baseline directional hint)
 - Done when: tracking acquire aligns active model reliably.
 
 ### M10 - Step Playback + UX
-- [ ] Implement HUD for step name, short instructions, warnings
-- [ ] Implement actions `replay`, `next`, `previous`, `confirm`, `help`
-- [ ] Support animation replay without reloading assets
+- [x] Implement HUD for step name, short instructions, warnings
+- [x] Implement actions `replay`, `next`, `previous`, `confirm`, `help`
+- [x] Support animation replay without reloading assets
 - [ ] Implement runtime layer handover (`confirm -> target-position override -> next animation`)
 - Done when: complete guidance loop is usable on mock workflow.
 
 ### M11 - Robustness / Offline
-- [ ] Implement reconnect backoff strategy
-- [ ] Implement frozen-step mode during network loss
-- [ ] Implement active+next prefetch
-- [ ] Add local diagnostics bundle export
+- [x] Implement reconnect backoff strategy
+- [x] Implement frozen-step mode during network loss
+- [x] Implement active+next prefetch
+- [x] Add local diagnostics bundle export
 - Done when: temporary network loss does not break the workflow.
 
 ### M12 - Validation / Hardening
