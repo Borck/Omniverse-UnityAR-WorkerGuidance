@@ -185,8 +185,8 @@ Source: `Plan.md` + implemented repository state
 
 ### M12 - Validation / Hardening
 - [x] Build and run integration test matrix
-- [ ] Validate performance and thermal budget on target device
-- [ ] Validate 3-5 pilot workflows end-to-end
+- [ ] Validate performance and thermal budget on target device (execution package prepared: `docs/validation/performance-thermal-budget.md`)
+- [ ] Validate 3-5 pilot workflows end-to-end (run sheets prepared under `shared/fixtures/pilot-evidence/PW-01..PW-05/`)
 - [x] Finalize release checklist and failure playbooks
 - Done when: pilot-ready release quality is reached.
 
