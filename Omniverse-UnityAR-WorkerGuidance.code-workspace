@@ -27,6 +27,10 @@
 			"/^dotnet --version$/": {
 				"approve": true,
 				"matchCommandLine": true
+			},
+			"/^python -m pytest -c server-kit/pytest\\.ini server-kit/tests/test_grpc_session_stub\\.py -q$/": {
+				"approve": true,
+				"matchCommandLine": true
 			}
 		}
 	}

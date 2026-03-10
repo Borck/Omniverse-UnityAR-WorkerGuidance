@@ -73,6 +73,17 @@ namespace Guidance.Runtime
             _ = WriteHeartbeatAsync(clientTimeUnixMs);
         }
 
+        public void SendStepCompleted(string jobId, string stepId, long completedAtUnixMs)
+        {
+            if (_call == null)
+            {
+                Faulted?.Invoke("Cannot send step completion while disconnected");
+                return;
+            }
+
+            _ = WriteStepCompletedAsync(jobId, stepId, completedAtUnixMs);
+        }
+
         private async Task WriteHelloAsync()
         {
             try
@@ -118,6 +129,29 @@ namespace Guidance.Runtime
             }
         }
 
+        private async Task WriteStepCompletedAsync(string jobId, string stepId, long completedAtUnixMs)
+        {
+            try
+            {
+                await _call.RequestStream.WriteAsync(
+                    new ClientMessage
+                    {
+                        StepCompleted = new StepCompleted
+                        {
+                            JobId = jobId,
+                            StepId = stepId,
+                            CompletedAtUnixMs = completedAtUnixMs,
+                        }
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                Faulted?.Invoke($"gRPC step_completed failed: {ex.Message}");
+                CleanupConnection();
+            }
+        }
+
         private async Task ReadLoopAsync()
         {
             try
@@ -148,7 +182,10 @@ namespace Guidance.Runtime
                                     message.StepActivated.JobId,
                                     message.StepActivated.StepId,
                                     message.StepActivated.PartId,
-                                    message.StepActivated.DisplayName
+                                    message.StepActivated.DisplayName,
+                                    message.StepActivated.AssetVersion,
+                                    message.StepActivated.TargetId,
+                                    message.StepActivated.TargetVersion
                                 )
                             );
                             break;

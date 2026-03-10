@@ -275,3 +275,81 @@ def test_grpc_step_completed_emits_next_step_from_repository() -> None:
     assert responses[2].HasField("step_activated")
     assert responses[2].step_activated.step_id == "20"
     assert responses[2].step_activated.part_id == "PART_B"
+
+
+def test_grpc_step_progression_stops_after_last_sequence_step() -> None:
+    port = _get_free_port()
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+
+    logger = configure_logging("INFO")
+    step_repository = StepDefinitionRepository(
+        step_definition_file=Path("shared/samples/step-definitions.yaml")
+    )
+    service = GuidanceSessionService(
+        session_manager=SessionManager(),
+        logger=logger,
+        step_repository=step_repository,
+        default_job_id="job-layer-example-001",
+    )
+    guidance_pb2_grpc.add_GuidanceSessionServiceServicer_to_server(service, server)
+    server.add_insecure_port(f"127.0.0.1:{port}")
+    server.start()
+
+    def request_stream() -> guidance_pb2.ClientMessage:
+        yield guidance_pb2.ClientMessage(
+            hello=guidance_pb2.HelloRequest(
+                device_id="device-sequence-end-1",
+                app_version="0.1.0",
+                capabilities="mock",
+            )
+        )
+        yield guidance_pb2.ClientMessage(
+            step_completed=guidance_pb2.StepCompleted(
+                job_id="job-layer-example-001",
+                step_id="10",
+                completed_at_unix_ms=1000,
+            )
+        )
+        yield guidance_pb2.ClientMessage(
+            step_completed=guidance_pb2.StepCompleted(
+                job_id="job-layer-example-001",
+                step_id="20",
+                completed_at_unix_ms=2000,
+            )
+        )
+        yield guidance_pb2.ClientMessage(
+            step_completed=guidance_pb2.StepCompleted(
+                job_id="job-layer-example-001",
+                step_id="30",
+                completed_at_unix_ms=3000,
+            )
+        )
+        yield guidance_pb2.ClientMessage(
+            step_completed=guidance_pb2.StepCompleted(
+                job_id="job-layer-example-001",
+                step_id="40",
+                completed_at_unix_ms=4000,
+            )
+        )
+        # No step should be emitted after the final sequence item is completed.
+        yield guidance_pb2.ClientMessage(
+            step_completed=guidance_pb2.StepCompleted(
+                job_id="job-layer-example-001",
+                step_id="50",
+                completed_at_unix_ms=5000,
+            )
+        )
+
+    with grpc.insecure_channel(f"127.0.0.1:{port}") as channel:
+        stub = guidance_pb2_grpc.GuidanceSessionServiceStub(channel)
+        responses = list(stub.Connect(request_stream()))
+
+    server.stop(grace=0)
+
+    assert responses[0].HasField("hello_response")
+    activated_steps = [
+        message.step_activated.step_id
+        for message in responses
+        if message.HasField("step_activated")
+    ]
+    assert activated_steps == ["10", "20", "30", "40", "50"]

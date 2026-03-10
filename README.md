@@ -61,6 +61,9 @@ Implementation note:
 - External YAML step-definition source added.
 - Asset transfer gRPC contract added for GLB chunk streaming.
 - Unity HTTP bridge transport now supports connect/heartbeat with periodic heartbeat and reconnect loop from `AppBootstrap`.
+- Native gRPC session transport now sends `step_completed` for sequence-driven step progression.
+- Unity runtime includes skeleton modules for `AssetCache`, `TargetManager`, and `TelemetryClient`.
+- Runtime asset path now resolves manifest step entry, caches GLB locally, and enforces one-active-model lifecycle via presenter.
 
 ## Quick Start
 1. Open `Omniverse-UnityAR-WorkerGuidance.code-workspace` in VS Code.
@@ -107,6 +110,7 @@ Implementation note:
 - `AppBootstrap` defaults to native gRPC transport (`useNativeGrpcTransport=true`, `grpcTarget=localhost:50051`).
 - HTTP bridge remains available as fallback (`useNativeGrpcTransport=false`, `httpBridgeBaseUrl=http://localhost:8080`).
 - At runtime, Unity sends periodic heartbeats and attempts reconnect when connection is not in `Connected` state.
+- Step activation triggers manifest lookup and local cached GLB resolution before presenting a single active model.
 
 ## Architecture Decisions (Applied)
 - Unity C# protobuf/gRPC generation workflow: `Grpc.Tools` build project under `tools/proto-csharp/`.
