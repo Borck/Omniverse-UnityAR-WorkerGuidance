@@ -1,3 +1,5 @@
+"""Environment-driven configuration for the guidance server runtime."""
+
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -5,6 +7,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class AppConfig:
+    """Holds all runtime configuration used by HTTP/gRPC and packaging services."""
     http_host: str = "0.0.0.0"
     http_port: int = 8080
     grpc_host: str = "0.0.0.0"
@@ -30,6 +33,7 @@ class AppConfig:
 
     @classmethod
     def from_env(cls) -> "AppConfig":
+        """Builds configuration from process environment variables."""
         return cls(
             http_host=os.getenv("GUIDANCE_HTTP_HOST", "0.0.0.0"),
             http_port=int(os.getenv("GUIDANCE_HTTP_PORT", "8080")),

@@ -109,6 +109,22 @@ Implementation note:
 	- `POST /api/jobs/{jobId}/layers:resolve`
 	- Body: `{"sublayer_paths_bottom_to_top": ["...", "..."]}`
 	- Returns per-step visible/muted layer sets and deterministic cache keys.
+18. Run automated M12 validation matrix (backend checks):
+	- `pwsh tools/scripts/run-validation-matrix.ps1`
+
+## Validation And Deployment Docs
+- Integration matrix: `docs/validation/integration-test-matrix.md`
+- Performance and thermal budget: `docs/validation/performance-thermal-budget.md`
+- Pilot E2E workflows: `docs/validation/pilot-workflows-e2e.md`
+- Pilot run sheet template: `docs/validation/pilot-run-sheet-template.md`
+- Pilot evidence structure: `docs/validation/evidence-folder-structure.md`
+- Release checklist and failure playbooks: `docs/validation/release-checklist-and-playbooks.md`
+
+## Integration Guides
+- System concept graphic: `docs/architecture/system-concept-graphic.md`
+- Unity 6 integration: `docs/guides/unity6-integration-guide.md`
+- Omniverse integration: `docs/guides/omniverse-integration-guide.md`
+- End-to-end setup: `docs/guides/end-to-end-setup-guide.md`
 
 ## Next
 - Integrate Unity `SessionClient` with gRPC stream + GLB asset stream.

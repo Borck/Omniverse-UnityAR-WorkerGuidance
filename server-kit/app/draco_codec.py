@@ -1,3 +1,5 @@
+"""Draco encoding capability wrapper with toolchain auto-resolution."""
+
 from dataclasses import dataclass
 from pathlib import Path
 import shlex
@@ -7,12 +9,16 @@ import subprocess
 
 @dataclass(frozen=True)
 class DracoCodecConfig:
+    """Configuration for optional GLB-to-Draco encoding."""
+
     enabled: bool
     encoder_command_template: str = ""
     toolchain: str = "gltf-transform"
 
 
 class DracoCodec:
+    """Encodes GLB files with configured external encoder when available."""
+
     _TOOLCHAIN_COMMANDS: dict[str, str] = {
         "gltf-transform": (
             "gltf-transform draco \"{input}\" \"{output}\" "

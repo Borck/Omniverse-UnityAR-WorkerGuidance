@@ -1,3 +1,5 @@
+"""gRPC guidance session service with handshake, heartbeat, and step progression."""
+
 from collections.abc import Iterator
 from concurrent import futures
 from pathlib import Path
@@ -22,6 +24,8 @@ except ImportError:
 
 
 class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
+    """Server implementation for session duplex stream handling."""
+
     def __init__(
         self,
         session_manager: SessionManager,

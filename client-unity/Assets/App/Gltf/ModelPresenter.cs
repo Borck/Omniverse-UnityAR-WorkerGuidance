@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Owns one-active-model lifecycle and dispatches model loading to available loaders.
+    /// </summary>
     public sealed class ModelPresenter
     {
         private GameObject _activeModelRoot;

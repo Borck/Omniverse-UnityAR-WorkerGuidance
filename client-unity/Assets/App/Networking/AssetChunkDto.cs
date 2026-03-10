@@ -1,5 +1,8 @@
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Represents one chunk in a streamed step asset transfer.
+    /// </summary>
     public sealed class AssetChunkDto
     {
         public string JobId { get; init; } = string.Empty;

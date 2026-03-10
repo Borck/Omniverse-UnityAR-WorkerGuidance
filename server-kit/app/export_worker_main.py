@@ -1,3 +1,5 @@
+"""Background export worker that processes queued packaging jobs."""
+
 from pathlib import Path
 import time
 

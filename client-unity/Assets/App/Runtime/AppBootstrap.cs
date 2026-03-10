@@ -5,6 +5,9 @@ using System.IO;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Main runtime orchestrator that wires session flow, asset presentation, tracking, and HUD actions.
+    /// </summary>
     public sealed class AppBootstrap : MonoBehaviour
     {
         [SerializeField] private bool useNativeGrpcTransport = true;
@@ -169,6 +172,9 @@ namespace Guidance.Runtime
             }
         }
 
+        /// <summary>
+        /// Confirms the active step and notifies server progression when connected.
+        /// </summary>
         public void ConfirmActiveStep()
         {
             if (_lastActivation == null)
@@ -202,6 +208,9 @@ namespace Guidance.Runtime
             _isFrozenStepMode = false;
         }
 
+        /// <summary>
+        /// Replays currently active assets without forcing a fresh manifest resolve when possible.
+        /// </summary>
         public void ReplayActiveStep()
         {
             if (_lastActivation == null)
@@ -400,6 +409,9 @@ namespace Guidance.Runtime
         }
 
         // Hook for future Vuforia target callbacks (3DModel-target v1).
+        /// <summary>
+        /// Updates runtime tracking state from Vuforia or test injection callbacks.
+        /// </summary>
         public void OnTargetTrackingUpdated(Vector3 observedPosition, Quaternion observedRotation, bool trackingAcquired)
         {
             _runtime.TargetManager.UpdateTrackingPose(observedPosition, observedRotation, trackingAcquired);

@@ -7,7 +7,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
-    // Native gRPC transport without proxy. Uses direct duplex stream to server.
+    /// <summary>
+    /// Native gRPC duplex-stream transport used as the default runtime path.
+    /// </summary>
     public sealed class GrpcSessionTransport : ISessionTransport
     {
         private readonly string _target;

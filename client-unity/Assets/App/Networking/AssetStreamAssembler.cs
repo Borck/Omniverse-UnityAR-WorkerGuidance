@@ -5,6 +5,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Reassembles streamed asset chunks and persists completed payloads to disk.
+    /// </summary>
     public sealed class AssetStreamAssembler
     {
         private readonly bool _supportsDraco;

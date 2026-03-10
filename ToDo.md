@@ -152,7 +152,7 @@ Source: `Plan.md` + implemented repository state
 ### M7 - Unity Client Skeleton Completion
 - [x] Add `AssetCache`, `TargetManager`, `TelemetryClient` skeletons
 - [ ] Finalize bootstrapping/DI approach
-- [ ] Add placeholder UI for session/step status
+- [x] Add placeholder UI for session/step status
 - Done when: app boots, connects, and shows mock step status.
 
 ### M8 - Runtime GLB Loading
@@ -184,20 +184,20 @@ Source: `Plan.md` + implemented repository state
 - Done when: temporary network loss does not break the workflow.
 
 ### M12 - Validation / Hardening
-- [ ] Build and run integration test matrix
+- [x] Build and run integration test matrix
 - [ ] Validate performance and thermal budget on target device
 - [ ] Validate 3-5 pilot workflows end-to-end
-- [ ] Finalize release checklist and failure playbooks
+- [x] Finalize release checklist and failure playbooks
 - Done when: pilot-ready release quality is reached.
 
 ### M13 - Documentation
-- [ ] Add a concept graphic of how this system is working and communicating
-- [ ] Add a comprehensive guide of how to
-  - [ ] integrate the software in Unity 6
-  - [ ] integrate the App into Omniverse
-  - [ ] setup everything in between
-- [ ] Add a comprehensive documentation to each Kit App class
-- [ ] Add a comprehensive documentation to each Unity script/class
+- [x] Add a concept graphic of how this system is working and communicating
+- [x] Add a comprehensive guide of how to
+  - [x] integrate the software in Unity 6
+  - [x] integrate the App into Omniverse
+  - [x] setup everything in between
+- [x] Add a comprehensive documentation to each Kit App class
+- [x] Add a comprehensive documentation to each Unity script/class
 
 ## 4. Next 2 Sprint Ticket Cut
 

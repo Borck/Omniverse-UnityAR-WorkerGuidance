@@ -6,7 +6,9 @@ using Vuforia;
 
 namespace Guidance.Runtime
 {
-    // Bridges tracking updates from Vuforia observer callbacks into AppBootstrap runtime state.
+    /// <summary>
+    /// Bridges Vuforia observer status events into runtime tracking callbacks.
+    /// </summary>
     public sealed class VuforiaTrackingBridge : MonoBehaviour
     {
         [SerializeField] private AppBootstrap appBootstrap;

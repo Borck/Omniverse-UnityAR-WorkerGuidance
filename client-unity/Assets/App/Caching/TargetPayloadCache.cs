@@ -6,6 +6,9 @@ using UnityEngine.Networking;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Downloads and caches target payload files by immutable target version.
+    /// </summary>
     public sealed class TargetPayloadCache
     {
         private readonly string _cacheRoot;

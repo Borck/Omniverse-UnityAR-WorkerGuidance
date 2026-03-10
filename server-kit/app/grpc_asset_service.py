@@ -1,3 +1,5 @@
+"""gRPC asset streaming service with optional per-request Draco encoding."""
+
 from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -19,6 +21,8 @@ except ImportError:
 
 
 class AssetTransferService(guidance_pb2_grpc.AssetTransferServiceServicer):
+    """Streams step GLB payloads in chunks to runtime clients."""
+
     def __init__(
         self,
         manifest_service: ManifestService,

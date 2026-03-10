@@ -3,6 +3,9 @@ using System;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Runtime states used by the guidance step coordinator.
+    /// </summary>
     public enum StepCoordinatorState
     {
         Idle,
@@ -12,6 +15,9 @@ namespace Guidance.Runtime
         Faulted
     }
 
+    /// <summary>
+    /// Handles deterministic state transitions for one active guidance step lifecycle.
+    /// </summary>
     public sealed class StepCoordinator
     {
         public StepCoordinatorState CurrentState { get; private set; } = StepCoordinatorState.Idle;
@@ -21,6 +27,9 @@ namespace Guidance.Runtime
 
         public event Action<StepCoordinatorState, StepCoordinatorState, string> StateChanged;
 
+        /// <summary>
+        /// Resets state to idle and clears active job/step fields.
+        /// </summary>
         public void Initialize()
         {
             CurrentState = StepCoordinatorState.Idle;
@@ -58,6 +67,9 @@ namespace Guidance.Runtime
             return TryTransition(StepCoordinatorState.Tracking, "playback-finish");
         }
 
+        /// <summary>
+        /// Marks the active step completed and transitions back to idle when valid.
+        /// </summary>
         public bool ConfirmStepCompleted()
         {
             if (!CanTransition(CurrentState, StepCoordinatorState.Idle))

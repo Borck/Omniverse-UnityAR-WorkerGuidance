@@ -1,3 +1,5 @@
+"""Mock stage-open contract validator used by smoke endpoint checks."""
+
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -11,6 +13,8 @@ class StageOpenResult:
 
 
 class StageOpenService:
+    """Validates configured stage URI shape without requiring Kit runtime."""
+
     def __init__(self, stage_uri: str) -> None:
         self._stage_uri = (stage_uri or "").strip()
 

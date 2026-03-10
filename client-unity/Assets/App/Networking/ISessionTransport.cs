@@ -2,6 +2,9 @@ using System;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Transport abstraction used by session client for gRPC/HTTP interchangeability.
+    /// </summary>
     public interface ISessionTransport
     {
         event Action Connected;

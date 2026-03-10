@@ -1,5 +1,8 @@
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Lightweight activation payload projected from server events for runtime use.
+    /// </summary>
     public sealed class StepActivationDto
     {
         public string JobId { get; }

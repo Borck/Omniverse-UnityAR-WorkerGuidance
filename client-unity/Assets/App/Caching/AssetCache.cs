@@ -6,6 +6,9 @@ using UnityEngine.Networking;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Downloads and caches immutable step assets by asset version.
+    /// </summary>
     public sealed class AssetCache
     {
         private readonly string _cacheRoot;

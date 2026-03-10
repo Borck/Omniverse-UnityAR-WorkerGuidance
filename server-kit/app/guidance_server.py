@@ -1,3 +1,5 @@
+"""Shared server-side session primitives for HTTP and gRPC entry points."""
+
 from dataclasses import dataclass
 from enum import Enum
 import json
@@ -26,6 +28,8 @@ class SessionContext:
 
 
 class SessionManager:
+    """Manages session registration, resume, state transitions, and persistence."""
+
     def __init__(self, store_file: Path | None = None) -> None:
         self._store_file = store_file
         self._session_count = 0
@@ -74,6 +78,7 @@ class SessionManager:
         )
 
     def register_or_resume_session(self, device_id: str) -> tuple[str, bool]:
+        """Returns existing session for device or creates a new one."""
         known_session_id = self._device_index.get(device_id)
         if known_session_id is not None and known_session_id in self._sessions:
             return known_session_id, True
@@ -94,6 +99,7 @@ class SessionManager:
         return session_id
 
     def set_state(self, session_id: str, state: SessionState) -> None:
+        """Updates persisted state for the given session identifier."""
         previous = self._sessions[session_id]
         self._sessions[session_id] = SessionContext(
             session_id=session_id,

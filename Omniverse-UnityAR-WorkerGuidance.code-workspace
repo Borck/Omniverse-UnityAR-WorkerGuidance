@@ -31,6 +31,10 @@
 			"/^python -m pytest -c server-kit/pytest\\.ini server-kit/tests/test_grpc_session_stub\\.py -q$/": {
 				"approve": true,
 				"matchCommandLine": true
+			},
+			"/^pwsh tools/scripts/run-validation-matrix\\.ps1$/": {
+				"approve": true,
+				"matchCommandLine": true
 			}
 		}
 	}

@@ -1,3 +1,5 @@
+"""Combined gRPC server bootstrap for session and asset transfer services."""
+
 try:
     from .config import AppConfig
     from .draco_codec import DracoCodec

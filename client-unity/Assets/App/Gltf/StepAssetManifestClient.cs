@@ -5,6 +5,9 @@ using UnityEngine.Networking;
 
 namespace Guidance.Runtime
 {
+    /// <summary>
+    /// Resolves step asset URLs from HTTP manifest endpoints for current and next step prefetch.
+    /// </summary>
     public sealed class StepAssetManifestClient
     {
         private readonly string _httpBaseUrl;
@@ -146,6 +149,9 @@ namespace Guidance.Runtime
         }
     }
 
+    /// <summary>
+    /// Immutable resolved asset descriptor for one step.
+    /// </summary>
     public sealed class ResolvedStepAsset
     {
         public string AssetVersion { get; }
@@ -164,6 +170,9 @@ namespace Guidance.Runtime
         }
     }
 
+    /// <summary>
+    /// Holds resolved current and next step assets from one manifest query.
+    /// </summary>
     public sealed class ResolvedStepAssetBundle
     {
         public ResolvedStepAsset Current { get; }

@@ -2,7 +2,9 @@ using UnityEngine;
 
 namespace Guidance.Runtime
 {
-    // Lightweight directional hint for tracking loss. Shows which direction to look.
+    /// <summary>
+    /// Displays a directional hint while tracking is lost.
+    /// </summary>
     public sealed class TrackingDirectionHint : MonoBehaviour
     {
         [SerializeField] private bool visible = true;
