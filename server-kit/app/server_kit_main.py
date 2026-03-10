@@ -15,6 +15,8 @@ try:
   from .export_job_service import ExportJobService
   from .export_pipeline import StepPackageExporter
   from .logging_config import configure_logging
+  from .stage_open_service import StageOpenService
+  from .layer_stack_resolver import LayerStackResolver
 except ImportError:
   from config import AppConfig
   from draco_codec import DracoCodec
@@ -22,6 +24,8 @@ except ImportError:
   from export_job_service import ExportJobService
   from export_pipeline import StepPackageExporter
   from logging_config import configure_logging
+  from stage_open_service import StageOpenService
+  from layer_stack_resolver import LayerStackResolver
 
 try:
   from .manifest_service import ManifestService
@@ -52,6 +56,21 @@ class HeartbeatEnvelope(BaseModel):
   heartbeat: HeartbeatPayload
 
 
+class StepCompletedPayload(BaseModel):
+  session_id: str
+  job_id: str
+  step_id: str
+  completed_at_unix_ms: int
+
+
+class StepCompletedEnvelope(BaseModel):
+  step_completed: StepCompletedPayload
+
+
+class LayerResolvePayload(BaseModel):
+  sublayer_paths_bottom_to_top: list[str]
+
+
 def create_app(config: AppConfig | None = None) -> FastAPI:
   resolved_config = config or AppConfig.from_env()
   if resolved_config.export_job_processing_mode not in {"inline", "enqueue-only"}:
@@ -70,6 +89,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
 
   manifest_service = ManifestService(manifests_root=manifests_root)
   step_repo = StepDefinitionRepository(step_definition_file=step_definition_file)
+  layer_stack_resolver = LayerStackResolver(step_repository=step_repo)
   draco_codec = DracoCodec(
     DracoCodecConfig(
       enabled=resolved_config.draco_enabled,
@@ -87,6 +107,60 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   export_job_service = ExportJobService(package_exporter, store_file=export_job_store_file)
   session_manager = SessionManager(store_file=session_store_file)
   logger = configure_logging(resolved_config.log_level)
+  stage_open_service = StageOpenService(stage_uri=resolved_config.stage_uri)
+  processed_step_completions: dict[str, set[tuple[str, str, int]]] = {}
+  default_job_id = "job-mock-001"
+
+  def _sorted_steps_for_job(job_id: str):
+    steps = step_repo.get_steps(job_id)
+    return sorted(
+      steps,
+      key=lambda s: (
+        s.sequence_index,
+        int(s.step_id) if s.step_id.isdigit() else 0,
+        s.step_id,
+      ),
+    )
+
+  def _next_step(job_id: str, completed_step_id: str):
+    steps = _sorted_steps_for_job(job_id)
+    if not steps:
+      return None
+
+    for index, step in enumerate(steps):
+      if step.step_id == completed_step_id:
+        if index + 1 < len(steps):
+          return steps[index + 1]
+        return None
+
+    return None
+
+  def _first_step(job_id: str):
+    steps = _sorted_steps_for_job(job_id)
+    return steps[0] if steps else None
+
+  def _to_step_payload(step, job_id: str):
+    return {
+      "job_id": job_id,
+      "step_id": step.step_id,
+      "part_id": step.part_id,
+      "display_name": step.display_name,
+      "asset_version": step.asset_version,
+      "target_id": step.target_id,
+      "target_version": step.target_version,
+    }
+
+  def _set_session_state_with_log(session_id: str, next_state: SessionState, reason: str, step_id: str = "-") -> None:
+    previous = session_manager.get(session_id)
+    previous_state = previous.state.value if previous is not None else "Unknown"
+    session_manager.set_state(session_id, next_state)
+    logger.info(
+      f"session state transition {previous_state} -> {next_state.value} ({reason})",
+      session_id=session_id,
+      step_id=step_id,
+      event="http.session.state.transition",
+      correlation_id=reason,
+    )
 
   @asynccontextmanager
   async def lifespan(_: FastAPI):
@@ -107,10 +181,33 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     logger.info("health check", session_id="-", step_id="-", event="http.health")
     return {"status": "ok"}
 
+  @app.post("/api/stage:open-smoke")
+  def stage_open_smoke() -> JSONResponse:
+    result = stage_open_service.smoke_open()
+    status_code = status.HTTP_200_OK
+    if result.code == "STAGE_URI_NOT_CONFIGURED":
+      status_code = status.HTTP_409_CONFLICT
+    elif result.code == "STAGE_URI_INVALID":
+      status_code = status.HTTP_400_BAD_REQUEST
+
+    return JSONResponse(
+      status_code=status_code,
+      content={
+        "success": result.success,
+        "code": result.code,
+        "message": result.message,
+        "stageUri": result.stage_uri,
+      },
+    )
+
   @app.post("/session/connect")
   def session_connect(payload: ConnectEnvelope) -> JSONResponse:
     session_id, resumed = session_manager.register_or_resume_session(payload.hello.device_id)
-    session_manager.set_state(session_id, SessionState.STEP_READY)
+    _set_session_state_with_log(
+      session_id=session_id,
+      next_state=SessionState.STEP_READY,
+      reason="connect",
+    )
 
     logger.info(
       f"session connected over http bridge ({'resumed' if resumed else 'new'})",
@@ -119,6 +216,17 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
       event="http.session.connect",
     )
 
+    first_step = _first_step(default_job_id)
+    if first_step is not None:
+      step_payload = _to_step_payload(first_step, default_job_id)
+    else:
+      step_payload = {
+        "job_id": "job-mock-001",
+        "step_id": "17",
+        "part_id": "Bracket_12",
+        "display_name": "Install bracket",
+      }
+
     return JSONResponse(
       content={
         "hello_response": {
@@ -126,12 +234,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
           "protocol_version": "v1",
           "server_time_unix_ms": 0,
         },
-        "step_activated": {
-          "job_id": "job-mock-001",
-          "step_id": "17",
-          "part_id": "Bracket_12",
-          "display_name": "Install bracket",
-        },
+        "step_activated": step_payload,
       }
     )
 
@@ -158,6 +261,64 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
       event="http.session.heartbeat",
     )
     return JSONResponse(content={"ping": {"nonce": f"hb-{payload.heartbeat.client_time_unix_ms}"}})
+
+  @app.post("/session/step-completed")
+  def session_step_completed(payload: StepCompletedEnvelope) -> JSONResponse:
+    completion = payload.step_completed
+    session = session_manager.get(completion.session_id)
+    if session is None:
+      return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+          "fault": {
+            "code": "SESSION_NOT_FOUND",
+            "message": "Session not found",
+            "correlation_id": completion.session_id,
+            "recoverable": True,
+          }
+        },
+      )
+
+    completion_key = (completion.job_id, completion.step_id, completion.completed_at_unix_ms)
+    session_completions = processed_step_completions.setdefault(completion.session_id, set())
+    if completion_key in session_completions:
+      logger.info(
+        "duplicate step completion ignored over http bridge",
+        session_id=completion.session_id,
+        step_id=completion.step_id,
+        event="http.session.step_completed.duplicate",
+      )
+      return JSONResponse(content={"ack": {"duplicate": True}})
+
+    session_completions.add(completion_key)
+    _set_session_state_with_log(
+      session_id=completion.session_id,
+      next_state=SessionState.IDLE,
+      reason="step-completed",
+      step_id=completion.step_id,
+    )
+    logger.info(
+      "step completed over http bridge",
+      session_id=completion.session_id,
+      step_id=completion.step_id,
+      event="http.session.step_completed",
+    )
+
+    next_step = _next_step(completion.job_id, completion.step_id)
+    if next_step is None:
+      return JSONResponse(content={"ack": {"duplicate": False}})
+
+    _set_session_state_with_log(
+      session_id=completion.session_id,
+      next_state=SessionState.STEP_READY,
+      reason="next-step-activated",
+      step_id=next_step.step_id,
+    )
+    return JSONResponse(
+      content={
+        "step_activated": _to_step_payload(next_step, completion.job_id)
+      }
+    )
 
   @app.get("/api/jobs/{job_id}/manifest")
   def get_manifest(job_id: str) -> JSONResponse:
@@ -312,6 +473,39 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     }
     logger.info("steps served", session_id="-", step_id="-", event="http.steps")
     return JSONResponse(content=payload)
+
+  @app.post("/api/jobs/{job_id}/layers:resolve")
+  def resolve_layers(job_id: str, payload: LayerResolvePayload) -> JSONResponse:
+    resolved_steps = layer_stack_resolver.resolve_steps(
+      job_id=job_id,
+      sublayer_paths_bottom_to_top=payload.sublayer_paths_bottom_to_top,
+    )
+    response = {
+      "jobId": job_id,
+      "resolvedSteps": [
+        {
+          "stepId": item.step_id,
+          "sequenceIndex": item.sequence_index,
+          "partId": item.part_id,
+          "displayName": item.display_name,
+          "sourcePrimPath": item.source_prim_path,
+          "animationName": item.animation_name,
+          "animationLayerId": item.animation_layer_id,
+          "targetLayerId": item.target_layer_id,
+          "animationLayerIndex": item.animation_layer_index,
+          "targetLayerIndex": item.target_layer_index,
+          "animationStartStep": item.animation_start_step,
+          "animationEndStep": item.animation_end_step,
+          "keepVisibleUntilStep": item.keep_visible_until_step,
+          "visibleLayerIds": list(item.visible_layer_ids),
+          "mutedLayerIds": list(item.muted_layer_ids),
+          "cacheKey": item.cache_key,
+        }
+        for item in resolved_steps
+      ],
+    }
+    logger.info("layers resolved", session_id="-", step_id="-", event="http.layers.resolve")
+    return JSONResponse(content=response)
 
   return app
 

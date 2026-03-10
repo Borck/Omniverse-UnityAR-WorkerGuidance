@@ -25,6 +25,7 @@ class AppConfig:
     draco_enabled: bool = False
     draco_encoder_command_template: str = ""
     draco_toolchain: str = "gltf-transform"
+    stage_uri: str = ""
 
 
     @classmethod
@@ -64,4 +65,5 @@ class AppConfig:
             draco_enabled=os.getenv("GUIDANCE_DRACO_ENABLED", "false").lower() == "true",
             draco_encoder_command_template=os.getenv("GUIDANCE_DRACO_ENCODER_CMD", ""),
             draco_toolchain=os.getenv("GUIDANCE_DRACO_TOOLCHAIN", "gltf-transform"),
+            stage_uri=os.getenv("GUIDANCE_STAGE_URI", ""),
         )
