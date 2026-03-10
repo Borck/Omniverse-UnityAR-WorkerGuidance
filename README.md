@@ -64,6 +64,7 @@ Implementation note:
 - Native gRPC session transport now sends `step_completed` for sequence-driven step progression.
 - HTTP bridge transport now also sends `step_completed` to `/session/step-completed` and can receive next `step_activated` payloads.
 - Server-side `LayerStackResolver` now mirrors BTU `switch_step_layers_ui` behavior for pairwise layer muteness (`completed end-position layers + next animation layer`) and deterministic cache-key generation.
+- Export pipeline now supports a pluggable GLB exporter backend (`PassthroughGlbExporter` default) and includes an Omniverse-adapted stage exporter (`OmniverseStageGlbExporter`) modeled after the tested extension flow (flatten stage + asset converter settings).
 - Unity runtime includes skeleton modules for `AssetCache`, `TargetManager`, and `TelemetryClient`.
 - Runtime asset path now resolves manifest step entry, caches GLB locally, and enforces one-active-model lifecycle via presenter.
 

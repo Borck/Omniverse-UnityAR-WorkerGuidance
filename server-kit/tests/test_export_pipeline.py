@@ -5,6 +5,7 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.export_pipeline import StepPackageExporter
+from app.glb_exporter import OmniverseStageGlbExporter
 from app.manifest_service import ManifestService
 
 
@@ -16,6 +17,15 @@ class FakeDracoCodec:
         if not self._enabled:
             return False
         target_glb.write_bytes(b"DRACO" + source_glb.read_bytes())
+        return True
+
+
+class PrefixGlbExporter:
+    def __init__(self, prefix: bytes) -> None:
+        self._prefix = prefix
+
+    def export_glb(self, source_glb: Path, output_glb: Path) -> bool:
+        output_glb.write_bytes(self._prefix + source_glb.read_bytes())
         return True
 
 
@@ -121,3 +131,33 @@ def test_export_pipeline_is_reproducible_for_identical_inputs(tmp_path: Path) ->
 
     assert first_manifest["steps"][0]["assetVersion"] == second_manifest["steps"][0]["assetVersion"]
     assert first_manifest["steps"][0]["glbFile"] == second_manifest["steps"][0]["glbFile"]
+
+
+def test_export_pipeline_uses_glb_export_backend_before_draco(tmp_path: Path) -> None:
+    manifest_root, source_asset_root = _write_source_fixture(tmp_path / "source")
+    output_manifest_root = tmp_path / "output" / "manifests"
+    output_asset_root = tmp_path / "output" / "assets"
+
+    exporter = StepPackageExporter(
+        manifest_service=ManifestService(manifest_root),
+        source_asset_root=source_asset_root,
+        output_asset_root=output_asset_root,
+        output_manifest_root=output_manifest_root,
+        draco_codec=FakeDracoCodec(enabled=False),
+        glb_exporter=PrefixGlbExporter(prefix=b"EXPORTED_"),
+    )
+
+    result = exporter.build_job_packages("job-mock-001")
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    version_dir = output_asset_root / manifest["steps"][0]["assetVersion"]
+    glb_path = version_dir / manifest["steps"][0]["glbFile"]
+
+    assert glb_path.read_bytes() == b"EXPORTED_GLB_BYTES"
+
+
+def test_omniverse_glb_exporter_default_output_path_for_stage_url() -> None:
+    output = OmniverseStageGlbExporter.derive_default_output_path(
+        "omniverse://localhost/Projects/Assembly.usd",
+        step_number=3,
+    )
+    assert output == "omniverse://localhost/Projects/Export_GLB/Assembly_step3.glb"
