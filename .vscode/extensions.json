@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "github.copilot",
+    "github.copilot-chat",
+    "ms-dotnettools.csdevkit",
+    "ms-python.python",
+    "zxh404.vscode-proto3",
+    "editorconfig.editorconfig",
+    "redhat.vscode-yaml",
+    "davidanson.vscode-markdownlint"
+  ]
+}

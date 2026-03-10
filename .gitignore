@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# VS Code
+.vscode/.ropeproject/
+
+# Build and temp
+bin/
+obj/
+*.log
+*.tmp
+*.cache/
+
+# Unity generated
+client-unity/Library/
+client-unity/Logs/
+client-unity/Temp/
+client-unity/Obj/
+client-unity/UserSettings/
+client-unity/Build/
+
+# OS
+.DS_Store
+Thumbs.db

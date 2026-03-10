@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package guidance.v1;
+
+option csharp_namespace = "Guidance.V1";
+
+service GuidanceSessionService {
+  rpc Connect(stream ClientMessage) returns (stream ServerMessage);
+}
+
+service AssetQueryService {
+  rpc GetManifest(ManifestRequest) returns (AssetManifest);
+}
+
+message ClientMessage {
+  oneof payload {
+    HelloRequest hello = 1;
+    Heartbeat heartbeat = 2;
+    TrackingState tracking_state = 3;
+    UserAction user_action = 4;
+    StepCompleted step_completed = 5;
+    Fault fault = 6;
+  }
+}
+
+message ServerMessage {
+  oneof payload {
+    HelloResponse hello_response = 1;
+    AssignJob assign_job = 2;
+    StepActivated step_activated = 3;
+    CancelStep cancel_step = 4;
+    Ping ping = 5;
+    Fault fault = 6;
+  }
+}
+
+message HelloRequest {
+  string device_id = 1;
+  string app_version = 2;
+  string capabilities = 3;
+}
+
+message HelloResponse {
+  string session_id = 1;
+  string protocol_version = 2;
+  int64 server_time_unix_ms = 3;
+}
+
+message AssignJob {
+  string job_id = 1;
+  string workflow_version = 2;
+  string manifest_url = 3;
+}
+
+message StepActivated {
+  string job_id = 1;
+  string step_id = 2;
+  string part_id = 3;
+  string display_name = 4;
+  string instructions_short = 5;
+  repeated string safety_notes = 6;
+  string asset_version = 7;
+  string target_id = 8;
+  string target_version = 9;
+  string anchor_type = 10;
+  string animation_name = 11;
+  string prefetch_next_step_id = 12;
+}
+
+message StepCompleted {
+  string job_id = 1;
+  string step_id = 2;
+  int64 completed_at_unix_ms = 3;
+}
+
+message TrackingState {
+  string job_id = 1;
+  string step_id = 2;
+  TrackingStatus status = 3;
+  float confidence = 4;
+}
+
+message UserAction {
+  string job_id = 1;
+  string step_id = 2;
+  UserActionType action = 3;
+}
+
+message Heartbeat {
+  string session_id = 1;
+  int64 client_time_unix_ms = 2;
+}
+
+message Ping {
+  string nonce = 1;
+}
+
+message CancelStep {
+  string job_id = 1;
+  string step_id = 2;
+  string reason = 3;
+}
+
+message ManifestRequest {
+  string job_id = 1;
+  string workflow_version = 2;
+}
+
+message AssetManifest {
+  string job_id = 1;
+  string workflow_version = 2;
+  repeated StepAssetRef steps = 3;
+}
+
+message StepAssetRef {
+  string step_id = 1;
+  string part_id = 2;
+  string asset_version = 3;
+  string glb_url = 4;
+  string step_json_url = 5;
+  string target_version = 6;
+  string target_url = 7;
+}
+
+message Fault {
+  string code = 1;
+  string message = 2;
+  string correlation_id = 3;
+  bool recoverable = 4;
+}
+
+enum TrackingStatus {
+  TRACKING_STATUS_UNSPECIFIED = 0;
+  TRACKING_STATUS_LOST = 1;
+  TRACKING_STATUS_SEARCHING = 2;
+  TRACKING_STATUS_ACQUIRED = 3;
+}
+
+enum UserActionType {
+  USER_ACTION_TYPE_UNSPECIFIED = 0;
+  USER_ACTION_TYPE_CONFIRM = 1;
+  USER_ACTION_TYPE_REPLAY = 2;
+  USER_ACTION_TYPE_NEXT = 3;
+  USER_ACTION_TYPE_PREVIOUS = 4;
+  USER_ACTION_TYPE_HELP = 5;
+}

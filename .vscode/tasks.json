@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Proto: Generate Python Stubs",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "grpc_tools.protoc",
+        "-I",
+        "proto",
+        "--python_out=server-kit/app/generated",
+        "--grpc_python_out=server-kit/app/generated",
+        "proto/guidance.proto"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Server: Run Health Endpoint",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "uvicorn",
+        "server_kit_main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/server-kit/app"
+      },
+      "group": "test"
+    }
+  ]
+}
