@@ -39,16 +39,16 @@ Source: `Plan.md` + implemented repository state
 ## 2. Active Priorities
 
 ### P0.1 - Omniverse Assembly Scene Adaptation
-- [ ] Lock timeline profile from configured scene metadata (reference example: `1-101` at `30 FPS`)
-- [ ] Encode layer-pair schema (`animation`, `target-position`) for each part
+- [x] Lock timeline profile from configured scene metadata (reference example: `1-101` at `30 FPS`)
+- [x] Encode layer-pair schema (`animation`, `target-position`) for each part
 - [x] Register example reference sequence fixture (`PART_A`..`PART_E`) for integration tests
 - [x] Ensure runtime accepts scene-specific part IDs and windows from configuration (not hard-coded values)
-- [ ] Implement confirm handover: unmute target-position layer and activate next animation layer
+- [x] Implement confirm handover: unmute target-position layer and activate next animation layer
 - [ ] Validate that placed parts remain fixed/visible through step `101`
 - Acceptance criterion: full five-part sequence runs deterministically with correct layer switching.
 
 ### P0 - Immediate (Vertical Slice blockers)
-- [ ] Stabilize protobuf generation (Python + C#)
+- [x] Stabilize protobuf generation (Python + C#)
   - [x] Python stub output directory created: `server-kit/app/generated/`
   - [x] C# output directory created: `client-unity/Assets/App/Generated/`
   - [x] README updated with concrete codegen commands and prerequisites
@@ -91,7 +91,7 @@ Source: `Plan.md` + implemented repository state
   - [x] Add step completion uplink (`step_completed`) for sequence-based next-step activation
   - Acceptance criterion: client updates local state when mock step event arrives.
 
-- [ ] Implement `StepCoordinator` as a state machine
+- [x] Implement `StepCoordinator` as a state machine
   - [x] Model base states from plan (`Idle`, `StepReady`, `Tracking`, `Playing`, ...)
   - [x] Add guards for invalid transitions
   - [x] Keep transition logic unit-testable and decoupled from MonoBehaviour
@@ -112,7 +112,7 @@ Source: `Plan.md` + implemented repository state
 - [x] Define step-definition source (JSON/YAML/USD metadata)
 - [x] Build layer-stack analyzer
 - [x] Add layer-pair classification (`animation` vs `target-position`) per part
-- [ ] Implement active prim path resolution
+- [x] Implement active prim path resolution
 - [x] Encode and validate step windows from active scene configuration (example fixture: `1-10`, `11-30`, `31-40`, `41-50`, `51-60`)
 - [x] Compute deterministic cache key hash
 - [x] Add resolver unit tests with fixed fixtures
@@ -151,7 +151,7 @@ Source: `Plan.md` + implemented repository state
 
 ### M7 - Unity Client Skeleton Completion
 - [x] Add `AssetCache`, `TargetManager`, `TelemetryClient` skeletons
-- [ ] Finalize bootstrapping/DI approach
+- [x] Finalize bootstrapping/DI approach
 - [x] Add placeholder UI for session/step status
 - Done when: app boots, connects, and shows mock step status.
 
@@ -173,7 +173,7 @@ Source: `Plan.md` + implemented repository state
 - [x] Implement HUD for step name, short instructions, warnings
 - [x] Implement actions `replay`, `next`, `previous`, `confirm`, `help`
 - [x] Support animation replay without reloading assets
-- [ ] Implement runtime layer handover (`confirm -> target-position override -> next animation`)
+- [x] Implement runtime layer handover (`confirm -> target-position override -> next animation`)
 - Done when: complete guidance loop is usable on mock workflow.
 
 ### M11 - Robustness / Offline
@@ -190,7 +190,11 @@ Source: `Plan.md` + implemented repository state
 - [x] Finalize release checklist and failure playbooks
 - Done when: pilot-ready release quality is reached.
 
-### M13 - Documentation
+### M13 - Project cleanup
+- [ ] Remove unnecessary assets
+- [ ] Cleanup code
+
+### M14 - Documentation
 - [x] Add a concept graphic of how this system is working and communicating
 - [x] Add a comprehensive guide of how to
   - [x] integrate the software in Unity 6
@@ -206,14 +210,14 @@ Source: `Plan.md` + implemented repository state
 - [x] T2: gRPC hello/heartbeat server + simple test client
 - [x] T3: Manifest fixture + HTTP manifest endpoint
 - [x] T4: Unity `SessionClient` handles mock step event
-- [ ] T5: `StepCoordinator` base state machine + tests
+- [x] T5: `StepCoordinator` base state machine + tests
 
 ### Sprint B - First visible end-to-end
-- [ ] T6: Runtime GLB loading (local sample)
-- [ ] T7: One-active-model lifecycle + unload
-- [ ] T8: Image target activation (base)
-- [ ] T9: HUD + confirm/replay flow
-- [ ] T10: End-to-end demo script documentation
+- [x] T6: Runtime GLB loading (local sample)
+- [x] T7: One-active-model lifecycle + unload
+- [x] T8: Image target activation (base)
+- [x] T9: HUD + confirm/replay flow
+- [x] T10: End-to-end demo script documentation
 
 ## 5. Open Decisions (Need user input)
 - [x] Which C# protobuf/gRPC generation path is official for this repo? (`Grpc.Tools` project workflow)

@@ -1,12 +1,17 @@
 workflowVersion: 1.0.0
 jobs:
   - jobId: job-mock-001
+    timelineProfile:
+      startStep: 1
+      endStep: 101
+      fps: 30
     steps:
       - stepId: "17"
         sequenceIndex: 1
         partId: Bracket_12
         displayName: Install bracket
         sourcePrimPath: /Assembly/Bracket_12
+        activePrimPath: /Assembly/Bracket_12
         animationName: Insert_17
         animationLayerRole: animation
         targetLayerRole: target-position
@@ -25,12 +30,17 @@ jobs:
         expectedDurationSec: 45
 
   - jobId: job-layer-example-001
+    timelineProfile:
+      startStep: 1
+      endStep: 101
+      fps: 30
     steps:
       - stepId: "10"
         sequenceIndex: 1
         partId: PART_A
         displayName: Place part A
         sourcePrimPath: /Assembly/PART_A
+        activePrimPath: /Assembly/PART_A
         animationName: Insert_PART_A
         animationLayerRole: animation
         targetLayerRole: target-position
@@ -53,6 +63,7 @@ jobs:
         partId: PART_B
         displayName: Place part B
         sourcePrimPath: /Assembly/PART_B
+        activePrimPath: /Assembly/PART_B
         animationName: Insert_PART_B
         animationLayerRole: animation
         targetLayerRole: target-position
@@ -75,6 +86,7 @@ jobs:
         partId: PART_C
         displayName: Place part C
         sourcePrimPath: /Assembly/PART_C
+        activePrimPath: /Assembly/PART_C
         animationName: Insert_PART_C
         animationLayerRole: animation
         targetLayerRole: target-position
@@ -97,6 +109,7 @@ jobs:
         partId: PART_D
         displayName: Place part D
         sourcePrimPath: /Assembly/PART_D
+        activePrimPath: /Assembly/PART_D
         animationName: Insert_PART_D
         animationLayerRole: animation
         targetLayerRole: target-position
@@ -119,6 +132,7 @@ jobs:
         partId: PART_E
         displayName: Place part E
         sourcePrimPath: /Assembly/PART_E
+        activePrimPath: /Assembly/PART_E
         animationName: Insert_PART_E
         animationLayerRole: animation
         targetLayerRole: target-position

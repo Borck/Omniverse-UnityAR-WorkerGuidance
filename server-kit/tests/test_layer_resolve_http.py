@@ -38,10 +38,20 @@ def test_layers_resolve_returns_btu_style_visibility_projection() -> None:
 
     step1 = payload["resolvedSteps"][0]
     assert step1["stepId"] == "10"
+    assert step1["activePrimPath"] == "/Assembly/PART_A"
+    assert step1["timelineStartStep"] == 1
+    assert step1["timelineEndStep"] == 101
+    assert step1["timelineFps"] == 30
+    assert step1["animationLayerRole"] == "animation"
+    assert step1["targetLayerRole"] == "target-position"
+    assert step1["handoverTargetLayerId"] == "PART_A-Position.usd"
+    assert step1["handoverNextAnimationLayerId"] == "PART_B_anim.usd"
     assert step1["visibleLayerIds"] == ["PART_A-Position.usd", "PART_B_anim.usd"]
 
     step5 = payload["resolvedSteps"][4]
     assert step5["stepId"] == "50"
+    assert step5["handoverTargetLayerId"] == "PART_E-Position.usd"
+    assert step5["handoverNextAnimationLayerId"] == ""
     assert step5["visibleLayerIds"] == [
         "PART_A-Position.usd",
         "PART_B-Position.usd",

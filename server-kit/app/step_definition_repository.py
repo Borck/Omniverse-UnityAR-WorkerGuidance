@@ -22,9 +22,13 @@ class StepDefinition:
     safety_notes: list[str]
     expected_duration_sec: int
     sequence_index: int
+    timeline_start_step: int
+    timeline_end_step: int
+    timeline_fps: int
     animation_start_step: int
     animation_end_step: int
     keep_visible_until_step: int
+    active_prim_path: str
     animation_layer_role: str
     target_layer_role: str
     start_offset_xyz: tuple[float, float, float]
@@ -45,6 +49,10 @@ class StepDefinitionRepository:
         for job in jobs:
             if job.get("jobId") != job_id:
                 continue
+            timeline_profile = job.get("timelineProfile", {})
+            timeline_start_step = int(timeline_profile.get("startStep", 0))
+            timeline_end_step = int(timeline_profile.get("endStep", 0))
+            timeline_fps = int(timeline_profile.get("fps", 0))
             return [
                 StepDefinition(
                     job_id=job_id,
@@ -61,9 +69,13 @@ class StepDefinitionRepository:
                     safety_notes=item.get("safetyNotes", []),
                     expected_duration_sec=int(item.get("expectedDurationSec", 0)),
                     sequence_index=int(item.get("sequenceIndex", idx + 1)),
+                    timeline_start_step=timeline_start_step,
+                    timeline_end_step=timeline_end_step,
+                    timeline_fps=timeline_fps,
                     animation_start_step=int(item.get("animationStartStep", 0)),
                     animation_end_step=int(item.get("animationEndStep", 0)),
                     keep_visible_until_step=int(item.get("keepVisibleUntilStep", 0)),
+                    active_prim_path=str(item.get("activePrimPath", item["sourcePrimPath"])),
                     animation_layer_role=str(item.get("animationLayerRole", "animation")),
                     target_layer_role=str(item.get("targetLayerRole", "target-position")),
                     start_offset_xyz=self._parse_vector3(item.get("startOffset", [0.0, 0.1, 0.0])),

@@ -57,6 +57,14 @@ def test_resolve_steps_uses_btu_visibility_rule() -> None:
     assert len(resolved) == 5
 
     # Step 1 complete -> show PART_A end-position + PART_B animation
+    assert resolved[0].active_prim_path == "/Assembly/PART_A"
+    assert resolved[0].timeline_start_step == 1
+    assert resolved[0].timeline_end_step == 101
+    assert resolved[0].timeline_fps == 30
+    assert resolved[0].animation_layer_role == "animation"
+    assert resolved[0].target_layer_role == "target-position"
+    assert resolved[0].handover_target_layer_id == "PART_A-Position.usd"
+    assert resolved[0].handover_next_animation_layer_id == "PART_B_anim.usd"
     assert resolved[0].visible_layer_ids == (
         "PART_A-Position.usd",
         "PART_B_anim.usd",
@@ -71,6 +79,8 @@ def test_resolve_steps_uses_btu_visibility_rule() -> None:
     )
 
     # Final step complete -> show all end-position layers, no next animation
+    assert resolved[4].handover_target_layer_id == "PART_E-Position.usd"
+    assert resolved[4].handover_next_animation_layer_id == ""
     assert resolved[4].visible_layer_ids == (
         "PART_A-Position.usd",
         "PART_B-Position.usd",
