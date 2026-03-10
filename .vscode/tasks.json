@@ -17,6 +17,19 @@
       "group": "build"
     },
     {
+      "label": "Proto: Generate C# gRPC (Grpc.Tools)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "tools/proto-csharp/ProtoCSharpGen.csproj",
+        "-nologo",
+        "-v",
+        "minimal"
+      ],
+      "group": "build"
+    },
+    {
       "label": "Server: Run Health Endpoint",
       "type": "shell",
       "command": "python",
@@ -28,6 +41,18 @@
         "0.0.0.0",
         "--port",
         "8080"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/server-kit/app"
+      },
+      "group": "test"
+    },
+    {
+      "label": "Server: Run gRPC Session Stub",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "grpc_server_main.py"
       ],
       "options": {
         "cwd": "${workspaceFolder}/server-kit/app"

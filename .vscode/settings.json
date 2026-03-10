@@ -5,6 +5,7 @@
   },
   "editor.formatOnSave": true,
   "python.analysis.extraPaths": [
+    "${workspaceFolder}/server-kit",
     "${workspaceFolder}/server-kit/app"
   ],
   "python.testing.pytestEnabled": true,

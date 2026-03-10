@@ -9,7 +9,7 @@ namespace Guidance.Runtime
 
         private void Awake()
         {
-            _sessionClient = new SessionClient();
+            _sessionClient = new SessionClient(supportsDraco: true);
             _stepCoordinator = new StepCoordinator();
         }
 

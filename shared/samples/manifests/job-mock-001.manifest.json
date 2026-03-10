@@ -1,0 +1,16 @@
+{
+  "jobId": "job-mock-001",
+  "workflowVersion": "1.0.0",
+  "steps": [
+    {
+      "stepId": "17",
+      "partId": "Bracket_12",
+      "assetVersion": "sha256_18c7dd53a481165d",
+      "glbFile": "part_Bracket_12_18c7dd53.glb",
+      "stepJsonFile": "step_17.json",
+      "targetVersion": "2026-03-10.1",
+      "targetFile": "AssemblyMarker_A.dat",
+      "compression": "NONE"
+    }
+  ]
+}
