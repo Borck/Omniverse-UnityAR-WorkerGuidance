@@ -16,6 +16,7 @@ namespace Guidance.Runtime
         public DiagnosticsBundleExporter DiagnosticsExporter { get; }
         public StepAssetManifestClient ManifestClient { get; }
         public ModelPresenter ModelPresenter { get; }
+        public GrpcAssetTransferClient GrpcAssetTransfer { get; }
 
         public AppRuntimeContext(
             SessionClient sessionClient,
@@ -26,7 +27,8 @@ namespace Guidance.Runtime
             TelemetryClient telemetryClient,
             DiagnosticsBundleExporter diagnosticsExporter,
             StepAssetManifestClient manifestClient,
-            ModelPresenter modelPresenter)
+            ModelPresenter modelPresenter,
+            GrpcAssetTransferClient grpcAssetTransfer = null)
         {
             SessionClient = sessionClient;
             StepCoordinator = stepCoordinator;
@@ -37,6 +39,7 @@ namespace Guidance.Runtime
             DiagnosticsExporter = diagnosticsExporter;
             ManifestClient = manifestClient;
             ModelPresenter = modelPresenter;
+            GrpcAssetTransfer = grpcAssetTransfer;
         }
 
         /// <summary>
@@ -60,6 +63,10 @@ namespace Guidance.Runtime
                     appVersion: Application.version
                 );
 
+            var grpcAssetTransfer = useNativeGrpcTransport
+                ? new GrpcAssetTransferClient(grpcTarget)
+                : null;
+
             return new AppRuntimeContext(
                 sessionClient: new SessionClient(supportsDraco: supportsDraco, transport: transport),
                 stepCoordinator: new StepCoordinator(),
@@ -69,7 +76,8 @@ namespace Guidance.Runtime
                 telemetryClient: new TelemetryClient(),
                 diagnosticsExporter: new DiagnosticsBundleExporter(),
                 manifestClient: new StepAssetManifestClient(httpBridgeBaseUrl),
-                modelPresenter: new ModelPresenter()
+                modelPresenter: new ModelPresenter(),
+                grpcAssetTransfer: grpcAssetTransfer
             );
         }
     }
