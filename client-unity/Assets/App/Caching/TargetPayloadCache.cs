@@ -27,6 +27,12 @@ namespace Guidance.Runtime
             return File.Exists(fullPath);
         }
 
+        /// <summary>Returns the full cache path for a target file without checking existence.</summary>
+        public string GetCachePath(string targetVersion, string fileName)
+        {
+            return GetTargetPath(targetVersion, fileName);
+        }
+
         public IEnumerator GetOrDownloadFile(
             string url,
             string targetVersion,

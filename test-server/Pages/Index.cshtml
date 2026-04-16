@@ -1,0 +1,43 @@
+@page
+@model GuidanceAdminServer.Pages.IndexModel
+@{
+    ViewData["Title"] = "Guidance Admin — Jobs";
+}
+
+<h1>Assembly Jobs</h1>
+
+@if (!Model.Jobs.Any())
+{
+    <p class="text-muted">No jobs submitted yet. <a href="/Jobs/Submit">Submit a new job</a>.</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Job ID</th>
+                <th>Workflow Version</th>
+                <th>Steps</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var job in Model.Jobs)
+            {
+                <tr>
+                    <td>@job.JobId</td>
+                    <td>@job.WorkflowVersion</td>
+                    <td>@job.Steps.Count</td>
+                    <td>
+                        <form method="post" asp-page-handler="Notify">
+                            <input type="hidden" name="jobId" value="@job.JobId" />
+                            <button type="submit" class="btn btn-primary btn-sm">Notify Unity Devices</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<a href="/Jobs/Submit" class="btn btn-success">+ Submit New Job</a>
