@@ -1,5 +1,7 @@
 using System.IO;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Guidance.Runtime
@@ -10,6 +12,7 @@ namespace Guidance.Runtime
     public sealed class ModelPresenter
     {
         private GameObject _activeModelRoot;
+        private CancellationTokenSource _loadCts;
         private readonly List<IModelLoader> _loaders;
 
         public ModelPresenter()
@@ -21,6 +24,10 @@ namespace Guidance.Runtime
             };
         }
 
+        /// <summary>
+        /// Synchronous model presentation kept for replay paths. Production step activations
+        /// should use <see cref="PresentModelAsync"/> to avoid blocking the main thread.
+        /// </summary>
         public void PresentModel(string modelFilePath, StepActivationDto activation)
         {
             ClearActiveModel();
@@ -58,8 +65,56 @@ namespace Guidance.Runtime
             Debug.Log($"[ModelPresenter] Presented model for step {activation.StepId} from {modelFilePath}");
         }
 
+        /// <summary>
+        /// Asynchronously loads and presents the model. Cancels any in-flight load from
+        /// the previous step activation before starting a new one.
+        /// </summary>
+        public async Task PresentModelAsync(string modelFilePath, StepActivationDto activation, CancellationToken ct)
+        {
+            ClearActiveModel();
+
+            if (string.IsNullOrEmpty(modelFilePath) || !File.Exists(modelFilePath))
+            {
+                Debug.LogWarning($"[ModelPresenter] Model file missing: {modelFilePath}");
+                return;
+            }
+
+            _activeModelRoot = new GameObject($"Model_{activation.PartId}_{activation.StepId}");
+
+            IModelLoader selectedLoader = null;
+            foreach (var loader in _loaders)
+            {
+                if (loader.CanLoad(modelFilePath))
+                {
+                    selectedLoader = loader;
+                    break;
+                }
+            }
+
+            if (selectedLoader == null)
+            {
+                Debug.LogWarning($"[ModelPresenter] No model loader available for {modelFilePath}");
+                return;
+            }
+
+            try
+            {
+                await selectedLoader.LoadModelAsync(modelFilePath, _activeModelRoot.transform, ct);
+                Debug.Log($"[ModelPresenter] Async-loaded model for step {activation.StepId} from {modelFilePath}");
+            }
+            catch (TaskCanceledException)
+            {
+                Debug.Log($"[ModelPresenter] Load cancelled for step {activation.StepId}");
+                ClearActiveModel();
+            }
+        }
+
         public void ClearActiveModel()
         {
+            _loadCts?.Cancel();
+            _loadCts?.Dispose();
+            _loadCts = null;
+
             if (_activeModelRoot == null)
             {
                 return;

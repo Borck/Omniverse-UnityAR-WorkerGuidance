@@ -2,6 +2,8 @@ using UnityEngine;
 using System;
 using System.Collections;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Guidance.Runtime
 {
@@ -36,6 +38,7 @@ namespace Guidance.Runtime
         private string _lastModelPath = string.Empty;
         private string _lastTargetPayloadPath = string.Empty;
         private string _lastTargetVersion = string.Empty;
+        private CancellationTokenSource _loadCancellation;
 
         private void Awake()
         {
@@ -389,7 +392,24 @@ namespace Guidance.Runtime
             }
 
             _runtime.TargetManager.ActivateTarget(activation.TargetId, resolved.TargetVersion, targetPayloadPath);
-            _runtime.ModelPresenter.PresentModel(modelPath, activation);
+
+            // Cancel any previous in-flight model load and start a fresh async load.
+            _loadCancellation?.Cancel();
+            _loadCancellation?.Dispose();
+            _loadCancellation = new CancellationTokenSource();
+            var loadToken = _loadCancellation.Token;
+
+            Task loadTask = _runtime.ModelPresenter.PresentModelAsync(modelPath, activation, loadToken);
+            yield return new WaitUntil(() => loadTask.IsCompleted);
+
+            if (loadTask.IsFaulted)
+            {
+                var err = loadTask.Exception?.GetBaseException().Message ?? "Unknown load error";
+                _runtime.TelemetryClient.TrackFault("MODEL_LOAD", err);
+                _runtime.StepCoordinator.RegisterFault(err);
+                if (statusPanel != null) statusPanel.SetWarning(err);
+                yield break;
+            }
             _lastModelPath = modelPath ?? string.Empty;
             _lastTargetPayloadPath = targetPayloadPath ?? string.Empty;
             _lastTargetVersion = resolved.TargetVersion ?? string.Empty;
