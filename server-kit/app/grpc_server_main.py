@@ -32,6 +32,7 @@ def run_combined_grpc_server(config: AppConfig) -> None:
     repo_root = Path(__file__).resolve().parents[2]
     manifest_service = ManifestService(manifests_root=repo_root / config.manifests_root)
     asset_root = repo_root / config.asset_root
+    target_root = repo_root / config.target_root
     draco_codec = DracoCodec(
         DracoCodecConfig(
             enabled=config.draco_enabled,
@@ -57,6 +58,7 @@ def run_combined_grpc_server(config: AppConfig) -> None:
         AssetTransferService(
             manifest_service=manifest_service,
             asset_root=asset_root,
+            target_root=target_root,
             logger=logger,
             draco_codec=draco_codec,
         ),

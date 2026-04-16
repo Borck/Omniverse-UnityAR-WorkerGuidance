@@ -346,13 +346,36 @@ namespace Guidance.Runtime
             var targetFileName = ExtractFileName(resolved.TargetUrl, activation.StepId, defaultExtension: "dat");
             string targetPayloadPath = null;
             string targetPayloadError = null;
-            yield return _runtime.TargetPayloadCache.GetOrDownloadFile(
-                resolved.TargetUrl,
-                resolved.TargetVersion,
-                targetFileName,
-                onReady: path => targetPayloadPath = path,
-                onError: error => targetPayloadError = error
-            );
+
+            if (_runtime.GrpcAssetTransfer != null && !string.IsNullOrEmpty(resolved.TargetVersion))
+            {
+                var targetOutputPath = _runtime.TargetPayloadCache.GetCachePath(resolved.TargetVersion, targetFileName);
+                if (!_runtime.TargetPayloadCache.TryGetCachedFile(resolved.TargetVersion, targetFileName, out _))
+                {
+                    yield return _runtime.GrpcAssetTransfer.StreamTargetAsync(
+                        activation.JobId,
+                        activation.StepId,
+                        resolved.TargetVersion,
+                        targetOutputPath,
+                        onReady: path => targetPayloadPath = path,
+                        onError: error => targetPayloadError = error
+                    );
+                }
+                else
+                {
+                    targetPayloadPath = targetOutputPath;
+                }
+            }
+            else
+            {
+                yield return _runtime.TargetPayloadCache.GetOrDownloadFile(
+                    resolved.TargetUrl,
+                    resolved.TargetVersion,
+                    targetFileName,
+                    onReady: path => targetPayloadPath = path,
+                    onError: error => targetPayloadError = error
+                );
+            }
 
             if (!string.IsNullOrEmpty(targetPayloadError))
             {

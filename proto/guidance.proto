@@ -137,6 +137,7 @@ message StepAssetStreamRequest {
   string job_id = 1;
   string step_id = 2;
   AssetCompression preferred_compression = 3;
+  AssetType asset_type = 4;
 }
 
 message StepAssetChunk {
@@ -170,4 +171,10 @@ enum AssetCompression {
   ASSET_COMPRESSION_UNSPECIFIED = 0;
   ASSET_COMPRESSION_NONE = 1;
   ASSET_COMPRESSION_DRACO = 2;
+}
+
+enum AssetType {
+  ASSET_TYPE_UNSPECIFIED = 0;
+  ASSET_TYPE_GLB = 1;
+  ASSET_TYPE_VUFORIA_TARGET = 2;
 }
