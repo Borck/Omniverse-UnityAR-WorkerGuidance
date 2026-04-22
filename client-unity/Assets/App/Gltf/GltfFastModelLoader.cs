@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -30,58 +31,52 @@ namespace Guidance.Runtime
             return ext == ".glb" || ext == ".gltf";
         }
 
+        /// <summary>
+        /// Synchronous wrapper kept for editor tests only. Production code should use
+        /// <see cref="LoadModelAsync"/> to avoid blocking the main thread.
+        /// </summary>
         public void LoadModel(string modelFilePath, Transform parent, Action<string> onError)
         {
             try
             {
-                if (_gltfImportType == null)
-                {
-                    onError?.Invoke("glTFast package was not found at runtime");
-                    return;
-                }
-
-                var importInstance = Activator.CreateInstance(_gltfImportType);
-                if (importInstance == null)
-                {
-                    onError?.Invoke("Unable to create GLTFast.GltfImport instance");
-                    return;
-                }
-
-                var loadMethod = FindLoadMethod();
-                if (loadMethod == null)
-                {
-                    onError?.Invoke("No supported glTFast Load(...) method found");
-                    return;
-                }
-
-                var modelUri = new Uri(modelFilePath).AbsoluteUri;
-                var loadResult = InvokeLoad(importInstance, loadMethod, modelUri);
-                if (!loadResult)
-                {
-                    onError?.Invoke($"glTFast failed loading model: {modelFilePath}");
-                    return;
-                }
-
-                var instantiateMethod = FindInstantiateMethod();
-                if (instantiateMethod == null)
-                {
-                    onError?.Invoke("No supported glTFast InstantiateMainSceneAsync(...) method found");
-                    return;
-                }
-
-                var instantiateResult = InvokeInstantiate(importInstance, instantiateMethod, parent);
-                if (!instantiateResult)
-                {
-                    onError?.Invoke("glTFast failed to instantiate main scene");
-                    return;
-                }
-
-                Debug.Log($"[GltfFastModelLoader] Loaded model via glTFast: {modelFilePath}");
+                LoadModelAsync(modelFilePath, parent, CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (Exception ex)
             {
                 onError?.Invoke($"glTFast loader failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Asynchronously loads and instantiates the glTF/GLB model.
+        /// Awaits glTFast tasks natively to avoid blocking any thread.
+        /// </summary>
+        public async Task LoadModelAsync(string modelFilePath, Transform parent, CancellationToken ct)
+        {
+            if (_gltfImportType == null)
+            {
+                throw new InvalidOperationException("glTFast package was not found at runtime");
+            }
+
+            var importInstance = Activator.CreateInstance(_gltfImportType)
+                ?? throw new InvalidOperationException("Unable to create GLTFast.GltfImport instance");
+
+            var loadMethod = FindLoadMethod()
+                ?? throw new InvalidOperationException("No supported glTFast Load(...) method found");
+
+            var modelUri = new Uri(modelFilePath).AbsoluteUri;
+            await InvokeLoadAsync(importInstance, loadMethod, modelUri);
+
+            ct.ThrowIfCancellationRequested();
+
+            var instantiateMethod = FindInstantiateMethod()
+                ?? throw new InvalidOperationException("No supported glTFast InstantiateMainSceneAsync(...) method found");
+
+            await InvokeInstantiateAsync(importInstance, instantiateMethod, parent);
+
+            Debug.Log($"[GltfFastModelLoader] Loaded model via glTFast: {modelFilePath}");
         }
 
         private MethodInfo FindLoadMethod()
@@ -91,18 +86,29 @@ namespace Guidance.Runtime
 
         private MethodInfo FindInstantiateMethod()
         {
-            // Most common glTFast signatures use parent Transform.
             return _gltfImportType.GetMethod("InstantiateMainSceneAsync", new[] { typeof(Transform) })
                 ?? _gltfImportType.GetMethod("InstantiateMainSceneAsync", Type.EmptyTypes);
         }
 
-        private static bool InvokeLoad(object importInstance, MethodInfo loadMethod, string modelUri)
+        private static async Task InvokeLoadAsync(object importInstance, MethodInfo loadMethod, string modelUri)
         {
             var result = loadMethod.Invoke(importInstance, new object[] { modelUri });
-            return CoerceToBool(result, true);
+            if (result is Task task)
+            {
+                await task;
+                if (task.GetType().IsGenericType)
+                {
+                    var resultProp = task.GetType().GetProperty("Result");
+                    var taskResult = resultProp?.GetValue(task);
+                    if (taskResult is bool success && !success)
+                    {
+                        throw new InvalidOperationException($"glTFast Load() returned false");
+                    }
+                }
+            }
         }
 
-        private static bool InvokeInstantiate(object importInstance, MethodInfo instantiateMethod, Transform parent)
+        private static async Task InvokeInstantiateAsync(object importInstance, MethodInfo instantiateMethod, Transform parent)
         {
             var parameters = instantiateMethod.GetParameters();
             object result;
@@ -116,47 +122,19 @@ namespace Guidance.Runtime
                 result = instantiateMethod.Invoke(importInstance, Array.Empty<object>());
             }
 
-            return CoerceToBool(result, true);
-        }
-
-        private static bool CoerceToBool(object value, bool defaultValue)
-        {
-            if (value == null)
+            if (result is Task task)
             {
-                return defaultValue;
-            }
-
-            if (value is bool b)
-            {
-                return b;
-            }
-
-            if (value is Task task)
-            {
-                task.GetAwaiter().GetResult();
-
-                var taskType = task.GetType();
-                if (!taskType.IsGenericType)
+                await task;
+                if (task.GetType().IsGenericType)
                 {
-                    return defaultValue;
+                    var resultProp = task.GetType().GetProperty("Result");
+                    var taskResult = resultProp?.GetValue(task);
+                    if (taskResult is bool success && !success)
+                    {
+                        throw new InvalidOperationException("glTFast InstantiateMainSceneAsync() returned false");
+                    }
                 }
-
-                var resultProperty = taskType.GetProperty("Result");
-                if (resultProperty == null)
-                {
-                    return defaultValue;
-                }
-
-                var taskResult = resultProperty.GetValue(task);
-                if (taskResult is bool taskBool)
-                {
-                    return taskBool;
-                }
-
-                return defaultValue;
             }
-
-            return defaultValue;
         }
     }
 }

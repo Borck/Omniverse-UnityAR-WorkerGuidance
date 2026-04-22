@@ -2,6 +2,8 @@ using UnityEngine;
 using System;
 using System.Collections;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Guidance.Runtime
 {
@@ -36,6 +38,7 @@ namespace Guidance.Runtime
         private string _lastModelPath = string.Empty;
         private string _lastTargetPayloadPath = string.Empty;
         private string _lastTargetVersion = string.Empty;
+        private CancellationTokenSource _loadCancellation;
 
         private void Awake()
         {
@@ -346,13 +349,36 @@ namespace Guidance.Runtime
             var targetFileName = ExtractFileName(resolved.TargetUrl, activation.StepId, defaultExtension: "dat");
             string targetPayloadPath = null;
             string targetPayloadError = null;
-            yield return _runtime.TargetPayloadCache.GetOrDownloadFile(
-                resolved.TargetUrl,
-                resolved.TargetVersion,
-                targetFileName,
-                onReady: path => targetPayloadPath = path,
-                onError: error => targetPayloadError = error
-            );
+
+            if (_runtime.GrpcAssetTransfer != null && !string.IsNullOrEmpty(resolved.TargetVersion))
+            {
+                var targetOutputPath = _runtime.TargetPayloadCache.GetCachePath(resolved.TargetVersion, targetFileName);
+                if (!_runtime.TargetPayloadCache.TryGetCachedFile(resolved.TargetVersion, targetFileName, out _))
+                {
+                    yield return _runtime.GrpcAssetTransfer.StreamTargetAsync(
+                        activation.JobId,
+                        activation.StepId,
+                        resolved.TargetVersion,
+                        targetOutputPath,
+                        onReady: path => targetPayloadPath = path,
+                        onError: error => targetPayloadError = error
+                    );
+                }
+                else
+                {
+                    targetPayloadPath = targetOutputPath;
+                }
+            }
+            else
+            {
+                yield return _runtime.TargetPayloadCache.GetOrDownloadFile(
+                    resolved.TargetUrl,
+                    resolved.TargetVersion,
+                    targetFileName,
+                    onReady: path => targetPayloadPath = path,
+                    onError: error => targetPayloadError = error
+                );
+            }
 
             if (!string.IsNullOrEmpty(targetPayloadError))
             {
@@ -366,7 +392,24 @@ namespace Guidance.Runtime
             }
 
             _runtime.TargetManager.ActivateTarget(activation.TargetId, resolved.TargetVersion, targetPayloadPath);
-            _runtime.ModelPresenter.PresentModel(modelPath, activation);
+
+            // Cancel any previous in-flight model load and start a fresh async load.
+            _loadCancellation?.Cancel();
+            _loadCancellation?.Dispose();
+            _loadCancellation = new CancellationTokenSource();
+            var loadToken = _loadCancellation.Token;
+
+            Task loadTask = _runtime.ModelPresenter.PresentModelAsync(modelPath, activation, loadToken);
+            yield return new WaitUntil(() => loadTask.IsCompleted);
+
+            if (loadTask.IsFaulted)
+            {
+                var err = loadTask.Exception?.GetBaseException().Message ?? "Unknown load error";
+                _runtime.TelemetryClient.TrackFault("MODEL_LOAD", err);
+                _runtime.StepCoordinator.RegisterFault(err);
+                if (statusPanel != null) statusPanel.SetWarning(err);
+                yield break;
+            }
             _lastModelPath = modelPath ?? string.Empty;
             _lastTargetPayloadPath = targetPayloadPath ?? string.Empty;
             _lastTargetVersion = resolved.TargetVersion ?? string.Empty;

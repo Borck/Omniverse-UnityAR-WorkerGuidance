@@ -21,7 +21,7 @@ except ImportError:
 
 
 class AssetTransferService(guidance_pb2_grpc.AssetTransferServiceServicer):
-    """Streams step GLB payloads in chunks to runtime clients."""
+    """Streams step GLB or Vuforia target payloads in chunks to runtime clients."""
 
     def __init__(
         self,
@@ -29,10 +29,12 @@ class AssetTransferService(guidance_pb2_grpc.AssetTransferServiceServicer):
         asset_root: Path,
         logger: ContextAdapter,
         draco_codec: DracoCodec,
+        target_root: Path | None = None,
         chunk_size: int = 64 * 1024,
     ) -> None:
         self._manifest_service = manifest_service
         self._asset_root = asset_root
+        self._target_root = target_root or asset_root
         self._logger = logger
         self._draco_codec = draco_codec
         self._chunk_size = chunk_size
@@ -46,6 +48,22 @@ class AssetTransferService(guidance_pb2_grpc.AssetTransferServiceServicer):
         step = next((item for item in manifest.steps if item.step_id == request.step_id), None)
         if step is None:
             context.abort(grpc.StatusCode.NOT_FOUND, "Step not found in manifest")
+
+        want_target = request.asset_type == guidance_pb2.ASSET_TYPE_VUFORIA_TARGET
+
+        if want_target:
+            file_name = step.target_file
+            file_path = self._target_root / step.target_version / file_name
+            if not file_path.exists():
+                context.abort(grpc.StatusCode.NOT_FOUND, "Vuforia target file not found")
+            yield from self._stream_file(
+                request,
+                step.target_version,
+                file_name,
+                file_path,
+                guidance_pb2.ASSET_COMPRESSION_NONE,
+            )
+            return
 
         file_name = step.glb_file
         file_path = self._asset_root / step.asset_version / file_name

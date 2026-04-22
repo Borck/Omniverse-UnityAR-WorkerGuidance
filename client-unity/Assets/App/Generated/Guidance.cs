@@ -68,10 +68,11 @@ namespace Guidance.V1 {
             "CgdnbGJfdXJsGAQgASgJEhUKDXN0ZXBfanNvbl91cmwYBSABKAkSFgoOdGFy",
             "Z2V0X3ZlcnNpb24YBiABKAkSEgoKdGFyZ2V0X3VybBgHIAEoCSJTCgVGYXVs",
             "dBIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkSFgoOY29ycmVsYXRp",
-            "b25faWQYAyABKAkSEwoLcmVjb3ZlcmFibGUYBCABKAgidwoWU3RlcEFzc2V0",
-            "U3RyZWFtUmVxdWVzdBIOCgZqb2JfaWQYASABKAkSDwoHc3RlcF9pZBgCIAEo",
-            "CRI8ChVwcmVmZXJyZWRfY29tcHJlc3Npb24YAyABKA4yHS5ndWlkYW5jZS52",
-            "MS5Bc3NldENvbXByZXNzaW9uIssBCg5TdGVwQXNzZXRDaHVuaxIOCgZqb2Jf",
+            "b25faWQYAyABKAkSEwoLcmVjb3ZlcmFibGUYBCABKAgiowEKFlN0ZXBBc3Nl",
+            "dFN0cmVhbVJlcXVlc3QSDgoGam9iX2lkGAEgASgJEg8KB3N0ZXBfaWQYAiAB",
+            "KAkSPAoVcHJlZmVycmVkX2NvbXByZXNzaW9uGAMgASgOMh0uZ3VpZGFuY2Uu",
+            "djEuQXNzZXRDb21wcmVzc2lvbhIqCgphc3NldF90eXBlGAQgASgOMhYuZ3Vp",
+            "ZGFuY2UudjEuQXNzZXRUeXBlIssBCg5TdGVwQXNzZXRDaHVuaxIOCgZqb2Jf",
             "aWQYASABKAkSDwoHc3RlcF9pZBgCIAEoCRIVCg1hc3NldF92ZXJzaW9uGAMg",
             "ASgJEhEKCWZpbGVfbmFtZRgEIAEoCRI6ChNhcHBsaWVkX2NvbXByZXNzaW9u",
             "GAUgASgOMh0uZ3VpZGFuY2UudjEuQXNzZXRDb21wcmVzc2lvbhITCgtjaHVu",
@@ -85,18 +86,20 @@ namespace Guidance.V1 {
             "X05FWFQQAxIdChlVU0VSX0FDVElPTl9UWVBFX1BSRVZJT1VTEAQSGQoVVVNF",
             "Ul9BQ1RJT05fVFlQRV9IRUxQEAUqbgoQQXNzZXRDb21wcmVzc2lvbhIhCh1B",
             "U1NFVF9DT01QUkVTU0lPTl9VTlNQRUNJRklFRBAAEhoKFkFTU0VUX0NPTVBS",
-            "RVNTSU9OX05PTkUQARIbChdBU1NFVF9DT01QUkVTU0lPTl9EUkFDTxACMl8K",
-            "Fkd1aWRhbmNlU2Vzc2lvblNlcnZpY2USRQoHQ29ubmVjdBIaLmd1aWRhbmNl",
-            "LnYxLkNsaWVudE1lc3NhZ2UaGi5ndWlkYW5jZS52MS5TZXJ2ZXJNZXNzYWdl",
-            "KAEwATJcChFBc3NldFF1ZXJ5U2VydmljZRJHCgtHZXRNYW5pZmVzdBIcLmd1",
-            "aWRhbmNlLnYxLk1hbmlmZXN0UmVxdWVzdBoaLmd1aWRhbmNlLnYxLkFzc2V0",
-            "TWFuaWZlc3QybQoUQXNzZXRUcmFuc2ZlclNlcnZpY2USVQoPU3RyZWFtU3Rl",
-            "cEFzc2V0EiMuZ3VpZGFuY2UudjEuU3RlcEFzc2V0U3RyZWFtUmVxdWVzdBob",
-            "Lmd1aWRhbmNlLnYxLlN0ZXBBc3NldENodW5rMAFCDqoCC0d1aWRhbmNlLlYx",
-            "YgZwcm90bzM="));
+            "RVNTSU9OX05PTkUQARIbChdBU1NFVF9DT01QUkVTU0lPTl9EUkFDTxACKloK",
+            "CUFzc2V0VHlwZRIaChZBU1NFVF9UWVBFX1VOU1BFQ0lGSUVEEAASEgoOQVNT",
+            "RVRfVFlQRV9HTEIQARIdChlBU1NFVF9UWVBFX1ZVRk9SSUFfVEFSR0VUEAIy",
+            "XwoWR3VpZGFuY2VTZXNzaW9uU2VydmljZRJFCgdDb25uZWN0EhouZ3VpZGFu",
+            "Y2UudjEuQ2xpZW50TWVzc2FnZRoaLmd1aWRhbmNlLnYxLlNlcnZlck1lc3Nh",
+            "Z2UoATABMlwKEUFzc2V0UXVlcnlTZXJ2aWNlEkcKC0dldE1hbmlmZXN0Ehwu",
+            "Z3VpZGFuY2UudjEuTWFuaWZlc3RSZXF1ZXN0GhouZ3VpZGFuY2UudjEuQXNz",
+            "ZXRNYW5pZmVzdDJtChRBc3NldFRyYW5zZmVyU2VydmljZRJVCg9TdHJlYW1T",
+            "dGVwQXNzZXQSIy5ndWlkYW5jZS52MS5TdGVwQXNzZXRTdHJlYW1SZXF1ZXN0",
+            "GhsuZ3VpZGFuY2UudjEuU3RlcEFzc2V0Q2h1bmswAUIOqgILR3VpZGFuY2Uu",
+            "VjFiBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
-          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Guidance.V1.TrackingStatus), typeof(global::Guidance.V1.UserActionType), typeof(global::Guidance.V1.AssetCompression), }, null, new pbr::GeneratedClrTypeInfo[] {
+          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Guidance.V1.TrackingStatus), typeof(global::Guidance.V1.UserActionType), typeof(global::Guidance.V1.AssetCompression), typeof(global::Guidance.V1.AssetType), }, null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.ClientMessage), global::Guidance.V1.ClientMessage.Parser, new[]{ "Hello", "Heartbeat", "TrackingState", "UserAction", "StepCompleted", "Fault" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.ServerMessage), global::Guidance.V1.ServerMessage.Parser, new[]{ "HelloResponse", "AssignJob", "StepActivated", "CancelStep", "Ping", "Fault" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.HelloRequest), global::Guidance.V1.HelloRequest.Parser, new[]{ "DeviceId", "AppVersion", "Capabilities" }, null, null, null, null),
@@ -113,7 +116,7 @@ namespace Guidance.V1 {
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.AssetManifest), global::Guidance.V1.AssetManifest.Parser, new[]{ "JobId", "WorkflowVersion", "Steps" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.StepAssetRef), global::Guidance.V1.StepAssetRef.Parser, new[]{ "StepId", "PartId", "AssetVersion", "GlbUrl", "StepJsonUrl", "TargetVersion", "TargetUrl" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.Fault), global::Guidance.V1.Fault.Parser, new[]{ "Code", "Message", "CorrelationId", "Recoverable" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.StepAssetStreamRequest), global::Guidance.V1.StepAssetStreamRequest.Parser, new[]{ "JobId", "StepId", "PreferredCompression" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.StepAssetStreamRequest), global::Guidance.V1.StepAssetStreamRequest.Parser, new[]{ "JobId", "StepId", "PreferredCompression", "AssetType" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Guidance.V1.StepAssetChunk), global::Guidance.V1.StepAssetChunk.Parser, new[]{ "JobId", "StepId", "AssetVersion", "FileName", "AppliedCompression", "ChunkIndex", "Data", "IsLast" }, null, null, null, null)
           }));
     }
@@ -141,6 +144,12 @@ namespace Guidance.V1 {
     [pbr::OriginalName("ASSET_COMPRESSION_UNSPECIFIED")] Unspecified = 0,
     [pbr::OriginalName("ASSET_COMPRESSION_NONE")] None = 1,
     [pbr::OriginalName("ASSET_COMPRESSION_DRACO")] Draco = 2,
+  }
+
+  public enum AssetType {
+    [pbr::OriginalName("ASSET_TYPE_UNSPECIFIED")] Unspecified = 0,
+    [pbr::OriginalName("ASSET_TYPE_GLB")] Glb = 1,
+    [pbr::OriginalName("ASSET_TYPE_VUFORIA_TARGET")] VuforiaTarget = 2,
   }
 
   #endregion
@@ -5389,6 +5398,7 @@ namespace Guidance.V1 {
       jobId_ = other.jobId_;
       stepId_ = other.stepId_;
       preferredCompression_ = other.preferredCompression_;
+      assetType_ = other.assetType_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -5434,6 +5444,18 @@ namespace Guidance.V1 {
       }
     }
 
+    /// <summary>Field number for the "asset_type" field.</summary>
+    public const int AssetTypeFieldNumber = 4;
+    private global::Guidance.V1.AssetType assetType_ = global::Guidance.V1.AssetType.Unspecified;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Guidance.V1.AssetType AssetType {
+      get { return assetType_; }
+      set {
+        assetType_ = value;
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -5452,6 +5474,7 @@ namespace Guidance.V1 {
       if (JobId != other.JobId) return false;
       if (StepId != other.StepId) return false;
       if (PreferredCompression != other.PreferredCompression) return false;
+      if (AssetType != other.AssetType) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -5462,6 +5485,7 @@ namespace Guidance.V1 {
       if (JobId.Length != 0) hash ^= JobId.GetHashCode();
       if (StepId.Length != 0) hash ^= StepId.GetHashCode();
       if (PreferredCompression != global::Guidance.V1.AssetCompression.Unspecified) hash ^= PreferredCompression.GetHashCode();
+      if (AssetType != global::Guidance.V1.AssetType.Unspecified) hash ^= AssetType.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -5492,6 +5516,10 @@ namespace Guidance.V1 {
         output.WriteRawTag(24);
         output.WriteEnum((int) PreferredCompression);
       }
+      if (AssetType != global::Guidance.V1.AssetType.Unspecified) {
+        output.WriteRawTag(32);
+        output.WriteEnum((int) AssetType);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -5514,6 +5542,10 @@ namespace Guidance.V1 {
         output.WriteRawTag(24);
         output.WriteEnum((int) PreferredCompression);
       }
+      if (AssetType != global::Guidance.V1.AssetType.Unspecified) {
+        output.WriteRawTag(32);
+        output.WriteEnum((int) AssetType);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -5532,6 +5564,9 @@ namespace Guidance.V1 {
       }
       if (PreferredCompression != global::Guidance.V1.AssetCompression.Unspecified) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) PreferredCompression);
+      }
+      if (AssetType != global::Guidance.V1.AssetType.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) AssetType);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -5553,6 +5588,9 @@ namespace Guidance.V1 {
       }
       if (other.PreferredCompression != global::Guidance.V1.AssetCompression.Unspecified) {
         PreferredCompression = other.PreferredCompression;
+      }
+      if (other.AssetType != global::Guidance.V1.AssetType.Unspecified) {
+        AssetType = other.AssetType;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -5585,6 +5623,10 @@ namespace Guidance.V1 {
             PreferredCompression = (global::Guidance.V1.AssetCompression) input.ReadEnum();
             break;
           }
+          case 32: {
+            AssetType = (global::Guidance.V1.AssetType) input.ReadEnum();
+            break;
+          }
         }
       }
     #endif
@@ -5614,6 +5656,10 @@ namespace Guidance.V1 {
           }
           case 24: {
             PreferredCompression = (global::Guidance.V1.AssetCompression) input.ReadEnum();
+            break;
+          }
+          case 32: {
+            AssetType = (global::Guidance.V1.AssetType) input.ReadEnum();
             break;
           }
         }
