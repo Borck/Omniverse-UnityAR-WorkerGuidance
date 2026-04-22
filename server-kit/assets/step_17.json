@@ -1,0 +1,19 @@
+{
+  "jobId": "job-mock-001",
+  "workflowVersion": "1.0.0",
+  "stepId": "17",
+  "partId": "Bracket_12",
+  "displayName": "Install bracket",
+  "instructionsShort": "Align and insert along highlighted path.",
+  "safetyNotes": [
+    "Check cable clearance."
+  ],
+  "assetVersion": "sha256_18c7dd53a481165d",
+  "targetId": "AssemblyMarker_A",
+  "targetVersion": "2026-03-10.1",
+  "anchorType": "ImageTarget",
+  "animationName": "Insert_17",
+  "prefetchNextStepId": "18",
+  "compression": "NONE",
+  "glbFile": "part_Bracket_12_18c7dd53.glb"
+}
