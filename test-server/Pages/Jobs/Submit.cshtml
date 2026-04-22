@@ -1,0 +1,107 @@
+@page
+@model GuidanceAdminServer.Pages.Jobs.SubmitModel
+@{
+    ViewData["Title"] = "Submit Assembly Job";
+}
+
+<h1>Submit Assembly Job</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<form method="post" enctype="multipart/form-data">
+    <div class="card mb-4">
+        <div class="card-header"><strong>Job Details</strong></div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Job ID</label>
+                <input name="JobId" class="form-control" required placeholder="e.g. job-assembly-001" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Workflow Version</label>
+                <input name="WorkflowVersion" class="form-control" required placeholder="e.g. v1.0.0" />
+            </div>
+        </div>
+    </div>
+
+    <div id="steps-container">
+        <div class="card mb-3 step-card" data-index="0">
+            <div class="card-header"><strong>Step 1</strong></div>
+            <div class="card-body row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Step ID</label>
+                    <input name="Steps[0].StepId" class="form-control" required placeholder="e.g. step-01" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Part ID</label>
+                    <input name="Steps[0].PartId" class="form-control" required placeholder="e.g. Bracket_A" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Display Name</label>
+                    <input name="Steps[0].DisplayName" class="form-control" required placeholder="e.g. Install Bracket A" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Instructions</label>
+                    <textarea name="Steps[0].InstructionsShort" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Safety Notes (one per line)</label>
+                    <textarea name="Steps[0].SafetyNotes" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Asset Version</label>
+                    <input name="Steps[0].AssetVersion" class="form-control" required placeholder="e.g. v1" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Target ID</label>
+                    <input name="Steps[0].TargetId" class="form-control" placeholder="e.g. fixture-01" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Target Version</label>
+                    <input name="Steps[0].TargetVersion" class="form-control" placeholder="e.g. v1" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Anchor Type</label>
+                    <input name="Steps[0].AnchorType" class="form-control" placeholder="e.g. ModelTarget" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Animation Name</label>
+                    <input name="Steps[0].AnimationName" class="form-control" placeholder="e.g. Insert_BracketA" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">GLB Model File (.glb)</label>
+                    <input name="GlbFiles[0]" type="file" class="form-control" accept=".glb" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Vuforia Target File (.zip or .dat)</label>
+                    <input name="TargetFiles[0]" type="file" class="form-control" accept=".zip,.dat" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button type="button" class="btn btn-outline-secondary mb-3" id="add-step-btn">+ Add Step</button>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success btn-lg">Submit &amp; Notify Unity</button>
+        <a href="/" class="btn btn-outline-secondary btn-lg">Cancel</a>
+    </div>
+</form>
+
+<script>
+    let stepCount = 1;
+    document.getElementById('add-step-btn').addEventListener('click', () => {
+        const container = document.getElementById('steps-container');
+        const template = container.querySelector('.step-card').cloneNode(true);
+        const idx = stepCount++;
+        template.querySelector('.card-header strong').textContent = `Step ${idx + 1}`;
+        template.setAttribute('data-index', idx);
+        template.querySelectorAll('[name]').forEach(el => {
+            el.name = el.name.replace(/\[0\]/, `[${idx}]`);
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
+        });
+        container.appendChild(template);
+    });
+</script>
