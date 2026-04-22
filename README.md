@@ -12,7 +12,7 @@
 This repository contains the first implementation slice for an AR worker guidance system.
 
 ## Components
-- `server-kit/`: Omniverse Kit server for step resolution, export, gRPC, and HTTP services.
+- `server-kit/`: Omniverse Kit server for step resolution, export, gRPC, omniverse server and Unity client HTTP services.
 - `client-unity/`: Unity 6 client runtime for session orchestration, model loading, and tracking.
 - `proto/`: Shared protobuf contracts used by server and client.
 - `shared/`: Shared schemas, sample payloads, and fixtures.
