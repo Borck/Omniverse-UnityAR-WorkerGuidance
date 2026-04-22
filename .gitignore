@@ -14,12 +14,13 @@ obj/
 *.cache/
 
 # Unity generated
-client-unity/Library/
-client-unity/Logs/
-client-unity/Temp/
-client-unity/Obj/
-client-unity/UserSettings/
-client-unity/Build/
+client-unity/
+
+# AxisAlign code
+AxisAlign AR_Abdul/
+
+# Nothing goes from the venv
+.venv310/
 
 # OS
 .DS_Store
