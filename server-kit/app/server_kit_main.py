@@ -1,6 +1,7 @@
 """FastAPI entrypoint for guidance runtime HTTP and bridge endpoints."""
 
 from contextlib import asynccontextmanager
+import app
 from fastapi import FastAPI
 from fastapi import BackgroundTasks
 from fastapi import HTTPException
@@ -9,6 +10,9 @@ from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
 from fastapi import status
 from pathlib import Path
+from app.omniverse.router import router as omniverse_router
+from app.unity.router import router as unity_router
+
 
 try:
   from .config import AppConfig
@@ -173,11 +177,16 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
       step_id="-",
       event="server.start",
     )
+    import omni.client
+    omni.client.initialize()
     yield
+    omni.client.shutdown()
 
   app = FastAPI(title="Guidance Server", version="0.2.0", lifespan=lifespan)
   app.state.config = resolved_config
   app.state.logger = logger
+  app.include_router(omniverse_router, prefix="/omni", tags=["Omniverse Connection"])
+  app.include_router(unity_router, prefix="/unity", tags=["Unity Connection"])
 
   @app.get("/health")
   def health() -> dict[str, str]:

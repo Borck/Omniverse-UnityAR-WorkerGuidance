@@ -1,0 +1,12 @@
+{
+  "sessionCount": 1,
+  "deviceIndex": {
+    "string": "session-1"
+  },
+  "sessions": {
+    "session-1": {
+      "deviceId": "string",
+      "state": "Idle"
+    }
+  }
+}
