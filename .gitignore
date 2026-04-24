@@ -13,8 +13,15 @@ obj/
 *.tmp
 *.cache/
 
-# Unity generated
-client-unity/
+# Unity generated (auto-rebuilt)
+client-unity/Library/
+client-unity/Temp/
+client-unity/Logs/
+client-unity/obj/
+client-unity/Build/
+client-unity/Builds/
+client-unity/UserSettings/
+client-unity/*.pidb
 
 # AxisAlign code
 AxisAlign AR_Abdul/
