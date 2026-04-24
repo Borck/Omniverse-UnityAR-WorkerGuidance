@@ -4,7 +4,7 @@ using System.Collections;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-
+using System.Collections.Generic;
 namespace Guidance.Runtime
 {
     /// <summary>
@@ -39,6 +39,9 @@ namespace Guidance.Runtime
         private string _lastTargetPayloadPath = string.Empty;
         private string _lastTargetVersion = string.Empty;
         private CancellationTokenSource _loadCancellation;
+        private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
+        private string _lastHistoryModelPath = string.Empty;
+
 
         private void Awake()
         {
@@ -124,10 +127,12 @@ namespace Guidance.Runtime
 
         private void OnSessionStepActivated(StepActivationDto activation)
         {
+            _runtime.ModelPresenter.ClearActiveModel();
             Debug.Log($"[AppBootstrap] Step activated from session: {activation.JobId}/{activation.StepId}");
             _runtime.StepCoordinator.ActivateStep(activation.JobId, activation.StepId);
             _runtime.TelemetryClient.TrackStepActivated(activation.JobId, activation.StepId, activation.PartId);
             _lastActivation = activation;
+            _stepHistory.Add(activation);
 
             if (statusPanel != null)
             {
@@ -198,15 +203,15 @@ namespace Guidance.Runtime
 
             var completedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _runtime.SessionClient.SendStepCompleted(_lastActivation.JobId, _lastActivation.StepId, completedAt);
-            _runtime.TargetManager.DeactivateTarget();
-            _runtime.ModelPresenter.ClearActiveModel();
-            _lastActivation = null;
+            // _runtime.TargetManager.DeactivateTarget();
+            // _runtime.ModelPresenter.ClearActiveModel();
+            // _lastActivation = null;
 
-            if (statusPanel != null)
-            {
-                statusPanel.SetActiveStep("-", "-");
-                statusPanel.SetInstruction("-");
-            }
+            // if (statusPanel != null)
+            // {
+            //     statusPanel.SetActiveStep("-", "-");
+            //     statusPanel.SetInstruction("-");
+            // }
 
             _isFrozenStepMode = false;
         }
@@ -228,7 +233,11 @@ namespace Guidance.Runtime
                     _lastTargetVersion,
                     _lastTargetPayloadPath
                 );
-                _runtime.ModelPresenter.PresentModel(_lastModelPath, _lastActivation);
+                _loadCancellation?.Cancel();
+                _loadCancellation?.Dispose();
+                _loadCancellation = new CancellationTokenSource();
+                _ = _runtime.ModelPresenter.PresentModelAsync(_lastModelPath, _lastActivation, _loadCancellation.Token);
+                // _runtime.ModelPresenter.PresentModel(_lastModelPath, _lastActivation);
                 if (statusPanel != null)
                 {
                     statusPanel.SetWarning(string.Empty);
@@ -241,12 +250,49 @@ namespace Guidance.Runtime
 
         public void PreviousStep()
         {
-            if (statusPanel != null)
+            // Need at least 2 entries: current + one before it
+            if (_stepHistory.Count < 2)
             {
-                statusPanel.SetWarning("Previous-Step navigation is not yet available in online mode.");
+                if (statusPanel != null)
+                    statusPanel.SetWarning("No previous step available.");
+                return;
             }
-            ReplayActiveStep();
+
+            // Remove current step from history, peek at previous
+            _stepHistory.RemoveAt(_stepHistory.Count - 1);
+            var previousActivation = _stepHistory[_stepHistory.Count - 1];
+
+            // Try loading from cache first
+            var previousFileName = $"part_{previousActivation.PartId}_{previousActivation.AssetVersion?.Substring(7, 8)}.glb";
+            if (_runtime.AssetCache.TryGetCachedFile(previousActivation.AssetVersion, previousFileName, out var cachedPath)
+                && File.Exists(cachedPath))
+            {
+                _runtime.ModelPresenter.ClearActiveModel();
+                _lastActivation = previousActivation;
+                _loadCancellation?.Cancel();
+                _loadCancellation?.Dispose();
+                _loadCancellation = new CancellationTokenSource();
+                _ = _runtime.ModelPresenter.PresentModelAsync(cachedPath, previousActivation, _loadCancellation.Token);
+                if (statusPanel != null)
+                {
+                    statusPanel.SetActiveStep(previousActivation.StepId, previousActivation.PartId);
+                    statusPanel.SetInstruction(previousActivation.DisplayName);
+                    statusPanel.SetWarning(string.Empty);
+                }
+            }
+            else
+            {
+                // Not cached — re-resolve from manifest
+                _lastActivation = previousActivation;
+                StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
+                if (statusPanel != null)
+                {
+                    statusPanel.SetActiveStep(previousActivation.StepId, previousActivation.PartId);
+                    statusPanel.SetInstruction(previousActivation.DisplayName);
+                }
+            }
         }
+
 
         public void ShowHelp()
         {

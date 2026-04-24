@@ -4,6 +4,7 @@ from pathlib import Path
 
 #  ─── Omniverse Connection Config ────────────────────────────────────────────────
 SERVER = "omniverse://141.43.76.21"
+REPO_ROOT = Path(__file__).resolve().parents[3]  # → Omniverse-UnityAR-WorkerGuidance/
 
 @dataclass(frozen=True)
 class AppConfig:

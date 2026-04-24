@@ -39,7 +39,13 @@ namespace Guidance.Runtime
             }
 
             _activeModelRoot = new GameObject($"Model_{activation.PartId}_{activation.StepId}");
-
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                _activeModelRoot.transform.position = cam.transform.position + cam.transform.forward * 0.5f;
+                _activeModelRoot.transform.rotation = Quaternion.LookRotation(-cam.transform.forward);
+                _activeModelRoot.transform.localScale = Vector3.one * 0.9f; // Omniverse cm → meters
+            }
             IModelLoader selectedLoader = null;
             foreach (var loader in _loaders)
             {
@@ -80,6 +86,13 @@ namespace Guidance.Runtime
             }
 
             _activeModelRoot = new GameObject($"Model_{activation.PartId}_{activation.StepId}");
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                _activeModelRoot.transform.position = cam.transform.position + cam.transform.forward * 0.5f;
+                _activeModelRoot.transform.rotation = Quaternion.LookRotation(-cam.transform.forward);
+                _activeModelRoot.transform.localScale = Vector3.one * 0.9f; // Omniverse cm → meters
+            }
 
             IModelLoader selectedLoader = null;
             foreach (var loader in _loaders)

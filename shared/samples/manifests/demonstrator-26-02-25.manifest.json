@@ -1,0 +1,76 @@
+{
+  "jobId": "demonstrator-26-02-25",
+  "workflowVersion": "1.0.0",
+  "steps": [
+    {
+      "stepId": "step-001",
+      "partId": "plate_bottom_01",
+      "assetVersion": "sha256_009e5c5303dfa3ec",
+      "glbFile": "part_plate_bottom_01_009e5c53.glb",
+      "stepJsonFile": "step-001.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-002",
+      "partId": "cores_001_002",
+      "assetVersion": "sha256_bf766e1f54940b6f",
+      "glbFile": "part_cores_001_002_bf766e1f.glb",
+      "stepJsonFile": "step-002.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-003",
+      "partId": "left_unit_phase_03",
+      "assetVersion": "sha256_cdc64c500d608e7e",
+      "glbFile": "part_left_unit_phase_03_cdc64c50.glb",
+      "stepJsonFile": "step-003.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-004",
+      "partId": "right_unit_phase_03",
+      "assetVersion": "sha256_07174e29a9a53da2",
+      "glbFile": "part_right_unit_phase_03_07174e29.glb",
+      "stepJsonFile": "step-004.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-005",
+      "partId": "plate_top_02",
+      "assetVersion": "sha256_46d2958f2b1a76e0",
+      "glbFile": "part_plate_top_02_46d2958f.glb",
+      "stepJsonFile": "step-005.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-006",
+      "partId": "frame_ring_03_004",
+      "assetVersion": "sha256_aa0831f2971c1009",
+      "glbFile": "part_frame_ring_03_004_aa0831f2.glb",
+      "stepJsonFile": "step-006.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-007",
+      "partId": "frame_ring_03_multi",
+      "assetVersion": "sha256_e527147202360366",
+      "glbFile": "part_frame_ring_03_multi_e5271472.glb",
+      "stepJsonFile": "step-007.json",
+      "targetVersion": "",
+      "targetFile": "",
+      "compression": "NONE"
+    }
+  ]
+}

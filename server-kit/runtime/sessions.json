@@ -1,11 +1,16 @@
 {
-  "sessionCount": 1,
+  "sessionCount": 2,
   "deviceIndex": {
-    "string": "session-1"
+    "string": "session-1",
+    "37bddadfa0180c90a40d1b83a6a3486610accd0a": "session-2"
   },
   "sessions": {
     "session-1": {
       "deviceId": "string",
+      "state": "Idle"
+    },
+    "session-2": {
+      "deviceId": "37bddadfa0180c90a40d1b83a6a3486610accd0a",
       "state": "Idle"
     }
   }

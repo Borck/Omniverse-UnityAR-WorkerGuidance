@@ -200,7 +200,8 @@ namespace Guidance.Runtime
             Debug.Log($"[HttpBridgeSessionTransport] Connected baseUrl={_baseUrl} session={_sessionId}");
             Connected?.Invoke();
 
-            if (message.step_activated != null)
+            if (message.step_activated != null && !string.IsNullOrEmpty(message.step_activated.job_id) && !string.IsNullOrEmpty(message.step_activated.step_id))
+
             {
                 StepActivated?.Invoke(
                     new StepActivationDto(
@@ -268,7 +269,8 @@ namespace Guidance.Runtime
                 return;
             }
 
-            if (message.step_activated != null)
+            if (message.step_activated != null && !string.IsNullOrEmpty(message.step_activated.job_id) && !string.IsNullOrEmpty(message.step_activated.step_id))
+
             {
                 StepActivated?.Invoke(
                     new StepActivationDto(

@@ -1,7 +1,6 @@
 """FastAPI entrypoint for guidance runtime HTTP and bridge endpoints."""
 
 from contextlib import asynccontextmanager
-import app
 from fastapi import FastAPI
 from fastapi import BackgroundTasks
 from fastapi import HTTPException
@@ -12,6 +11,8 @@ from fastapi import status
 from pathlib import Path
 from app.omniverse.router import router as omniverse_router
 from app.unity.router import router as unity_router
+from app.unity.router import connected_clients
+import json as _json
 
 
 try:
@@ -116,7 +117,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   logger = configure_logging(resolved_config.log_level)
   stage_open_service = StageOpenService(stage_uri=resolved_config.stage_uri)
   processed_step_completions: dict[str, set[tuple[str, str, int]]] = {}
-  default_job_id = "job-mock-001"
+  default_job_id = "demonstrator-26-02-25"
 
   def _sorted_steps_for_job(job_id: str):
     steps = step_repo.get_steps(job_id)
@@ -319,7 +320,15 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     next_step = _next_step(completion.job_id, completion.step_id)
     if next_step is None:
       return JSONResponse(content={"ack": {"duplicate": False}})
-
+    if next_step is not None:
+        # Push via WebSocket to any connected AxisAlign/WS clients simultaneously
+        step_msg = _json.dumps({"action": "load_step", "step_id": next_step.step_id})
+        for ws_client in list(connected_clients):
+            try:
+                import asyncio
+                asyncio.create_task(ws_client.send_text(step_msg))
+            except Exception:
+                connected_clients.remove(ws_client)
     _set_session_state_with_log(
       session_id=completion.session_id,
       next_state=SessionState.STEP_READY,
@@ -350,7 +359,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
           "glbUrl": f"/api/assets/{step.asset_version}/{step.glb_file}",
           "stepJsonUrl": f"/api/assets/{step.asset_version}/{step.step_json_file}",
           "targetVersion": step.target_version,
-          "targetUrl": f"/api/targets/{step.target_version}/{step.target_file}",
+          "targetUrl": f"/api/targets/{step.target_version}/{step.target_file}" if step.target_version and step.target_file else "",
           "compression": step.compression,
         }
         for step in manifest.steps

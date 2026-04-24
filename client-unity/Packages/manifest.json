@@ -3,6 +3,7 @@
     "com.atteneder.gltfast": "https://github.com/atteneder/glTFast.git",
     "com.ptc.vuforia.engine": "file:com.ptc.vuforia.engine-11.4.4.tgz",
     "com.unity.test-framework": "1.5.1",
-    "com.unity.modules.physics": "1.0.0"
+    "com.unity.modules.physics": "1.0.0",
+    "com.unity.modules.animation": "1.0.0"
   }
 }

@@ -1,21 +1,21 @@
-import os
-from typing import Optional
-
-# Must happen BEFORE importing omni.client so Windows can find the DLLs
-# os.add_dll_directory(r"C:\Users\shahan\VsCodeProjects\omniverse_connection")
-
-# Set credentials before initializing
-os.environ["OMNI_USER"] = "shahan"
-os.environ["OMNI_PASS"] = "12345678"
 
 import omni.client
 from fastapi import FastAPI, HTTPException, APIRouter
 from contextlib import asynccontextmanager
 from app.omniverse.service import _list, _recursive_list
-from app.core.config import SERVER
+from app.core.config import REPO_ROOT, SERVER
+import os
+from typing import Optional
+from app.core.logging import configure_logging
+from fastapi import BackgroundTasks
+from app.omniverse.nucleus_job_service import prepare_job
+# Set credentials before initializing
+os.environ["OMNI_USER"] = "shahan"
+os.environ["OMNI_PASS"] = "12345678"
 
 
 router = APIRouter(tags=["Omniverse Connection"])
+logger = configure_logging("INFO")
 
 
 
@@ -115,3 +115,21 @@ def download(remote_path: str, local_path: str):
     if result != omni.client.Result.OK:
         raise HTTPException(status_code=500, detail=str(result))
     return {"status": "ok", "downloaded_to": local_path}
+
+
+@router.post("/jobs/{job_id}/prepare", summary="Pull job GLBs from Nucleus and build manifest")
+def prepare_job_endpoint(
+    job_id: str,
+    nucleus_export_path: str,           # e.g. /Projects/DIREKT/.../Exports/demonstrator-26-02-25
+    target_version: str = "v1.0.0",
+    target_file: str = "demonstrator.dat",
+    background_tasks: BackgroundTasks = None,
+):
+    result = prepare_job(
+        nucleus_export_path=nucleus_export_path,
+        repo_root=REPO_ROOT,
+        target_version=target_version,
+        target_file=target_file,
+    )
+    logger.info(f"Job prepared: {result}")
+    return {"status": "ready", **result}

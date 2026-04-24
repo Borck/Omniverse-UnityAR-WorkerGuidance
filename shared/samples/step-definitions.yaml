@@ -149,3 +149,157 @@ jobs:
         safetyNotes:
           - Keep hands clear.
         expectedDurationSec: 30
+  - jobId: demonstrator-26-02-25
+    workflowVersion: "1.0.0"
+    timelineProfile:
+      startStep: 0
+      endStep: 700
+      fps: 30
+    steps:
+      - stepId: "step-001"
+        partId: plate_bottom_01
+        displayName: "PLATE_BOTTOM_01_001"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: plate_bottom_01_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_009e5c5303dfa3ec
+        instructionsShort: "Install PLATE_BOTTOM_01_001"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 1
+        animationStartStep: 0
+        animationEndStep: 100
+        keepVisibleUntilStep: 100
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-002"
+        partId: cores_001_002
+        displayName: "CORES_001 CORES_002"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: cores_001_002_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_bf766e1f54940b6f
+        instructionsShort: "Install CORES_001 CORES_002"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 2
+        animationStartStep: 100
+        animationEndStep: 200
+        keepVisibleUntilStep: 200
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-003"
+        partId: left_unit_phase_03
+        displayName: "LEFT_UNIT_PHASE_03_001"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: left_unit_phase_03_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_cdc64c500d608e7e
+        instructionsShort: "Install LEFT_UNIT_PHASE_03_001"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 3
+        animationStartStep: 200
+        animationEndStep: 300
+        keepVisibleUntilStep: 300
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-004"
+        partId: right_unit_phase_03
+        displayName: "RIGHT_UNIT_PHASE_03_001"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: right_unit_phase_03_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_07174e29a9a53da2
+        instructionsShort: "Install RIGHT_UNIT_PHASE_03_001"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 4
+        animationStartStep: 300
+        animationEndStep: 400
+        keepVisibleUntilStep: 400
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-005"
+        partId: plate_top_02
+        displayName: "PLATE_TOP_02_002"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: plate_top_02_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_46d2958f2b1a76e0
+        instructionsShort: "Install PLATE_TOP_02_002"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 5
+        animationStartStep: 400
+        animationEndStep: 500
+        keepVisibleUntilStep: 500
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-006"
+        partId: frame_ring_03_004
+        displayName: "TestFrameRing03_004"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: frame_ring_03_004_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_aa0831f2971c1009
+        instructionsShort: "Install TestFrameRing03_004"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 6
+        animationStartStep: 500
+        animationEndStep: 600
+        keepVisibleUntilStep: 600
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-007"
+        partId: frame_ring_03_multi
+        displayName: "TestFrameRing03_003-005-006-007-010-011"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: frame_ring_03_multi_anim
+        anchorType: model-target
+        targetId: demonstrator_model_target
+        targetVersion: "v1.0.0"
+        assetVersion: sha256_e527147202360366
+        instructionsShort: "Install TestFrameRing03_003-005-006-007-010-011"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 7
+        animationStartStep: 600
+        animationEndStep: 700
+        keepVisibleUntilStep: 700
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
