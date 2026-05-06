@@ -17,6 +17,7 @@ namespace Guidance.Runtime
 
         public event Action<StepActivationDto> StepActivated;
         public event Action<SessionConnectionState> ConnectionStateChanged;
+        public event Action WorkflowCompleted;
 
         public SessionClient(bool supportsDraco)
             : this(
@@ -58,6 +59,7 @@ namespace Guidance.Runtime
             _transport.Connected += OnTransportConnected;
             _transport.StepActivated += OnTransportStepActivated;
             _transport.Faulted += OnTransportFaulted;
+            _transport.WorkflowCompleted += OnTransportWorkflowCompleted;
             Debug.Log($"[SessionClient] Initialized ({compressionMode}, transport={_transport.GetType().Name}).");
         }
 
@@ -136,6 +138,12 @@ namespace Guidance.Runtime
         {
             Debug.LogWarning($"[SessionClient] Transport fault: {error}");
             SetConnectionState(SessionConnectionState.Faulted);
+        }
+
+        private void OnTransportWorkflowCompleted()
+        {
+            Debug.Log("[SessionClient] Workflow completed — no further steps from server.");
+            WorkflowCompleted?.Invoke();
         }
 
         private void SetConnectionState(SessionConnectionState state)

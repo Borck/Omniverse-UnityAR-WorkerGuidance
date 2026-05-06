@@ -121,8 +121,8 @@ def download(remote_path: str, local_path: str):
 def prepare_job_endpoint(
     job_id: str,
     nucleus_export_path: str,           # e.g. /Projects/DIREKT/.../Exports/demonstrator-26-02-25
-    target_version: str = "v1.0.0",
-    target_file: str = "demonstrator.dat",
+    target_version: str = "2026-03-10.1",
+    target_file: str = "Fixture_detectors_1.dat",
     background_tasks: BackgroundTasks = None,
 ):
     result = prepare_job(

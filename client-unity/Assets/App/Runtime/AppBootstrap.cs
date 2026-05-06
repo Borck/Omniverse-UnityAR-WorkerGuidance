@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,6 +47,7 @@ namespace Guidance.Runtime
         private CancellationTokenSource _loadCancellation;
         private bool _vuforiaTargetLoaded;
         private Transform _activeObserverTransform;
+        private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
 
         private void Awake()
         {
@@ -66,6 +68,7 @@ namespace Guidance.Runtime
             _runtime.StepCoordinator.StateChanged += OnStepStateChanged;
             _runtime.SessionClient.StepActivated += OnSessionStepActivated;
             _runtime.SessionClient.ConnectionStateChanged += OnSessionConnectionStateChanged;
+            _runtime.SessionClient.WorkflowCompleted += OnSessionWorkflowCompleted;
         }
 
         private void Start()
@@ -135,6 +138,7 @@ namespace Guidance.Runtime
             _runtime.StepCoordinator.ActivateStep(activation.JobId, activation.StepId);
             _runtime.TelemetryClient.TrackStepActivated(activation.JobId, activation.StepId, activation.PartId);
             _lastActivation = activation;
+            _stepHistory.Add(activation);
 
             if (statusPanel != null)
             {
@@ -146,6 +150,18 @@ namespace Guidance.Runtime
             if (enableRuntimeAssetPipeline)
             {
                 StartCoroutine(ResolveAndPresentStepAsset(activation));
+            }
+        }
+
+        private void OnSessionWorkflowCompleted()
+        {
+            Debug.Log("[AppBootstrap] Workflow complete — all steps done.");
+            _runtime.StepCoordinator.RegisterFault("workflow-complete");
+            if (statusPanel != null)
+            {
+                statusPanel.SetActiveStep("-", "-");
+                statusPanel.SetInstruction("-");
+                statusPanel.SetWarning("Alle Schritte abgeschlossen! Workflow komplett.");
             }
         }
 
@@ -209,7 +225,10 @@ namespace Guidance.Runtime
             if (!string.IsNullOrEmpty(_lastModelPath) && File.Exists(_lastModelPath))
             {
                 _runtime.TargetManager.ActivateTarget(_lastActivation.TargetId, _lastTargetVersion, _lastTargetPayloadPath);
-                _runtime.ModelPresenter.PresentModel(_lastModelPath, _lastActivation);
+                _loadCancellation?.Cancel();
+                _loadCancellation?.Dispose();
+                _loadCancellation = new CancellationTokenSource();
+                _ = _runtime.ModelPresenter.PresentModelAsync(_lastModelPath, _lastActivation, _loadCancellation.Token, _activeObserverTransform);
                 if (statusPanel != null) statusPanel.SetWarning(string.Empty);
                 return;
             }
@@ -219,25 +238,27 @@ namespace Guidance.Runtime
 
         public void PreviousStep()
         {
-            if (_lastActivation == null) return;
-
-            if (_runtime.SessionClient.ConnectionState != SessionConnectionState.Connected)
+            if (_stepHistory.Count < 2)
             {
-                if (statusPanel != null) statusPanel.SetWarning("Previous-Step requires a server connection.");
+                if (statusPanel != null) statusPanel.SetWarning("No previous step available.");
                 return;
             }
 
-            _runtime.SessionClient.SendUserAction(_lastActivation.JobId, _lastActivation.StepId, UserActionType.Previous);
-            _runtime.TargetManager.DeactivateTarget();
+            _stepHistory.RemoveAt(_stepHistory.Count - 1);
+            var previousActivation = _stepHistory[^1];
+
             _runtime.ModelPresenter.ClearActiveModel();
-            _lastActivation = null;
+            _runtime.TargetManager.DeactivateTarget();
+            _lastActivation = previousActivation;
 
             if (statusPanel != null)
             {
-                statusPanel.SetActiveStep("-", "-");
-                statusPanel.SetInstruction("-");
+                statusPanel.SetActiveStep(previousActivation.StepId, previousActivation.PartId);
+                statusPanel.SetInstruction(previousActivation.DisplayName);
                 statusPanel.SetWarning(string.Empty);
             }
+
+            StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
         }
 
         public void ShowHelp()
@@ -264,7 +285,8 @@ namespace Guidance.Runtime
 
             var path = _runtime.DiagnosticsExporter.Export(snapshot);
             _runtime.TelemetryClient.TrackFault("DIAGNOSTICS_EXPORT", $"Diagnostics exported: {path}");
-            if (statusPanel != null) statusPanel.SetWarning($"Diagnostics exportiert: {path}");
+            Debug.Log($"[AppBootstrap] Diagnostics exported: {path}");
+            if (statusPanel != null) statusPanel.SetWarning("Diagnostics exportiert (siehe Console)");
         }
 
         private IEnumerator ResolveAndPresentStepAsset(StepActivationDto activation)
@@ -339,13 +361,20 @@ namespace Guidance.Runtime
                 yield break;
             }
 
-            statusPanel?.SetTargetStatus(targetCached ? "ready (from cache)" : "ready (from server)");
-            _runtime.TargetManager.ActivateTarget(activation.TargetId, resolved.TargetVersion, targetDatPath);
+            if (!string.IsNullOrEmpty(targetDatPath))
+            {
+                statusPanel?.SetTargetStatus(targetCached ? "ready (from cache)" : "ready (from server)");
+                _runtime.TargetManager.ActivateTarget(activation.TargetId, resolved.TargetVersion, targetDatPath);
+            }
+            else
+            {
+                statusPanel?.SetTargetStatus("no target (skipped)");
+            }
 
             // ====================================================================
             // VUFORIA LOADING BLOCK (Fixed target injection)
             // ====================================================================
-            if (!_vuforiaTargetLoaded && string.Equals(activation.AnchorType, "model-target", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(targetDatPath) && !_vuforiaTargetLoaded && string.Equals(activation.AnchorType, "model-target", StringComparison.OrdinalIgnoreCase))
             {
                 string vuforiaError = null;
 

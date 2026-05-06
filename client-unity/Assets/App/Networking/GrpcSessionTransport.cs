@@ -30,6 +30,7 @@ namespace Guidance.Runtime
         public event Action Connected;
         public event Action<StepActivationDto> StepActivated;
         public event Action<string> Faulted;
+        public event Action WorkflowCompleted;
 
         public bool IsConnected { get; private set; }
 
@@ -301,6 +302,15 @@ namespace Guidance.Runtime
                         default:
                             break;
                     }
+                }
+
+                // Stream ended cleanly by the server (last step completed, no further steps).
+                if (!myCancellation.IsCancellationRequested && IsConnected)
+                {
+                    if (_mainThreadContext != null)
+                        _mainThreadContext.Post(_ => WorkflowCompleted?.Invoke(), null);
+                    else
+                        WorkflowCompleted?.Invoke();
                 }
             }
             catch (OperationCanceledException)

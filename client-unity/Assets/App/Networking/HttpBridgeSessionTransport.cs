@@ -21,6 +21,7 @@ namespace Guidance.Runtime
         public event Action Connected;
         public event Action<StepActivationDto> StepActivated;
         public event Action<string> Faulted;
+        public event Action WorkflowCompleted;
 
         public bool IsConnected { get; private set; }
 
@@ -307,7 +308,8 @@ namespace Guidance.Runtime
                 return;
             }
 
-            Debug.Log($"[HttpBridgeSessionTransport] Step completion acknowledged for {jobId}/{stepId}");
+            Debug.Log($"[HttpBridgeSessionTransport] Step completion acknowledged for {jobId}/{stepId} — no next step, workflow complete");
+            WorkflowCompleted?.Invoke();
         }
 
         [Serializable]

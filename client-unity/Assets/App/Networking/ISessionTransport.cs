@@ -11,6 +11,7 @@ namespace Guidance.Runtime
         event Action Connected;
         event Action<StepActivationDto> StepActivated;
         event Action<string> Faulted;
+        event Action WorkflowCompleted;
 
         bool IsConnected { get; }
 

@@ -144,8 +144,8 @@ def prepare_job(
             "assetVersion": asset_version,
             "glbFile": glb_out_name,
             "stepJsonFile": step_json_name,
-            "targetVersion": "",    # ← empty: no Vuforia target needed
-            "targetFile": "",       # ← empty: skip target download
+            "targetVersion": target_version,
+            "targetFile": target_file,
             "compression": "NONE",
             })
 

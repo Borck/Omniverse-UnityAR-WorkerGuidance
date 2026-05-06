@@ -82,7 +82,7 @@ namespace Guidance.Runtime
         {
             if (string.IsNullOrEmpty(primaryUrl) || string.IsNullOrEmpty(primaryFileName))
             {
-                onError?.Invoke("Target pair download: url or fileName is empty");
+                onReady?.Invoke(string.Empty, string.Empty);
                 yield break;
             }
 
