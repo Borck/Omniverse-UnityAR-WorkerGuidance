@@ -12,7 +12,8 @@ Updated: 2026-03-10
 
 ## 2. Start Server Stack
 1. HTTP API:
-- `python -m uvicorn server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit/app`
+- `python -m uvicorn server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit/app` 
+or python -m uvicorn app.server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit
 2. gRPC session service:
 - `python server-kit/app/grpc_server_main.py`
 
