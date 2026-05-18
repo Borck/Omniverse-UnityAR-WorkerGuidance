@@ -183,6 +183,14 @@ namespace Guidance.Runtime
         {
             if (_revealShaderTemplate == null) return;
 
+            // Destroy previous reveal materials to prevent GPU memory accumulation across steps.
+            if (_activeRevealMaterials != null)
+            {
+                foreach (var mats in _activeRevealMaterials)
+                    foreach (var m in mats)
+                        if (m != null) Object.Destroy(m);
+            }
+
             _activeRevealMaterials = new Material[_renderers.Length][];
             for (int i = 0; i < _renderers.Length; i++)
             {

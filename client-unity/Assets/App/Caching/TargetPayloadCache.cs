@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -8,10 +9,13 @@ namespace Guidance.Runtime
 {
     /// <summary>
     /// Downloads and caches target payload files by immutable target version.
+    /// Concurrent requests for the same file wait for the first download rather than
+    /// each opening their own HTTP connection.
     /// </summary>
     public sealed class TargetPayloadCache
     {
         private readonly string _cacheRoot;
+        private readonly HashSet<string> _inProgress = new HashSet<string>();
 
         public TargetPayloadCache(string cacheRoot = null)
         {
@@ -27,7 +31,6 @@ namespace Guidance.Runtime
             return File.Exists(fullPath);
         }
 
-        /// <summary>Returns the full cache path for a target file without checking existence.</summary>
         public string GetCachePath(string targetVersion, string fileName)
         {
             return GetTargetPath(targetVersion, fileName);
@@ -52,11 +55,26 @@ namespace Guidance.Runtime
                 yield break;
             }
 
+            var key = $"{targetVersion}/{fileName}";
+
+            if (_inProgress.Contains(key))
+            {
+                yield return new WaitUntil(() => !_inProgress.Contains(key));
+                if (TryGetCachedFile(targetVersion, fileName, out var waitedPath))
+                    onReady?.Invoke(waitedPath);
+                else
+                    onError?.Invoke($"Concurrent download of {fileName} failed");
+                yield break;
+            }
+
+            _inProgress.Add(key);
+
             using var request = UnityWebRequest.Get(url);
             yield return request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
+                _inProgress.Remove(key);
                 onError?.Invoke($"Target payload download failed: {request.error}");
                 yield break;
             }
@@ -64,15 +82,10 @@ namespace Guidance.Runtime
             var outputPath = GetTargetPath(targetVersion, fileName);
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? _cacheRoot);
             File.WriteAllBytes(outputPath, request.downloadHandler.data);
+            _inProgress.Remove(key); // remove AFTER write so waiting coroutines find the file
             onReady?.Invoke(outputPath);
         }
 
-        /// <summary>
-        /// Downloads both the paired .xml and .dat files for a Vuforia Model Target.
-        /// <paramref name="datUrl"/> is the .dat URL the manifest provides; the matching
-        /// .xml URL is derived by swapping the extension. Both files end up in the same
-        /// cache folder so Vuforia can resolve the pair from the .xml path.
-        /// </summary>
         public IEnumerator GetOrDownloadTargetPair(
             string primaryUrl,
             string targetVersion,
@@ -96,27 +109,13 @@ namespace Guidance.Runtime
             string datPath = null;
             string pairError = null;
 
-            yield return GetOrDownloadFile(
-                xmlUrl, targetVersion, xmlFileName,
-                onReady: p => xmlPath = p,
-                onError: e => pairError = e
-            );
-            if (!string.IsNullOrEmpty(pairError))
-            {
-                onError?.Invoke(pairError);
-                yield break;
-            }
+            yield return GetOrDownloadFile(xmlUrl, targetVersion, xmlFileName,
+                onReady: p => xmlPath = p, onError: e => pairError = e);
+            if (!string.IsNullOrEmpty(pairError)) { onError?.Invoke(pairError); yield break; }
 
-            yield return GetOrDownloadFile(
-                datUrl, targetVersion, datFileName,
-                onReady: p => datPath = p,
-                onError: e => pairError = e
-            );
-            if (!string.IsNullOrEmpty(pairError))
-            {
-                onError?.Invoke(pairError);
-                yield break;
-            }
+            yield return GetOrDownloadFile(datUrl, targetVersion, datFileName,
+                onReady: p => datPath = p, onError: e => pairError = e);
+            if (!string.IsNullOrEmpty(pairError)) { onError?.Invoke(pairError); yield break; }
 
             onReady?.Invoke(xmlPath, datPath);
         }
