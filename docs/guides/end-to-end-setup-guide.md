@@ -11,11 +11,12 @@ Updated: 2026-03-10
 - C#: `dotnet build tools/proto-csharp/ProtoCSharpGen.csproj -nologo -v minimal`
 
 ## 2. Start Server Stack
-1. HTTP API:
-- `python -m uvicorn server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit/app` 
-or python -m uvicorn app.server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit
-2. gRPC session service:
-- `python server-kit/app/grpc_server_main.py`
+Run both commands from the project root (`Omniverse-UnityAR-WorkerGuidance/`).
+
+1. HTTP API (terminal 1):
+- `python -m uvicorn app.server_kit_main:app --host 0.0.0.0 --port 8080 --app-dir server-kit`
+2. gRPC session service (terminal 2):
+- `cd server-kit && python -m app.grpc_server_main`
 
 ## 3. Build Runtime Packages
 1. Optional direct package build:

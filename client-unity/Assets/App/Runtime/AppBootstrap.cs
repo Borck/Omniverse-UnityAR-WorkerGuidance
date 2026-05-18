@@ -15,8 +15,8 @@ namespace Guidance.Runtime
     public sealed class AppBootstrap : MonoBehaviour
     {
         [SerializeField] private bool useNativeGrpcTransport = true;
-        [SerializeField] private string grpcTarget = "172.20.10.2:50051";
-        [SerializeField] private string httpBridgeBaseUrl = "172.20.10.2:8080";
+        [SerializeField] private string grpcTarget = "aleuten.local:50051";
+        [SerializeField] private string httpBridgeBaseUrl = "aleuten.local:8080";
         [SerializeField] private string desiredJobId = "demonstrator-26-02-25";
         [SerializeField] private bool enableRuntimeAssetPipeline = true;
         [SerializeField] private bool useHologramShader = true;
@@ -48,6 +48,7 @@ namespace Guidance.Runtime
         private bool _vuforiaTargetLoaded;
         private Transform _activeObserverTransform;
         private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
+        private Coroutine _resolveCoroutine;
 
         private void Awake()
         {
@@ -135,6 +136,8 @@ namespace Guidance.Runtime
         private void OnSessionStepActivated(StepActivationDto activation)
         {
             Debug.Log($"[AppBootstrap] Step activated from session: {activation.JobId}/{activation.StepId}");
+            if (_runtime.StepCoordinator.CurrentState == StepCoordinatorState.Faulted)
+                _runtime.StepCoordinator.RecoverFromFault();
             _runtime.StepCoordinator.ActivateStep(activation.JobId, activation.StepId);
             _runtime.TelemetryClient.TrackStepActivated(activation.JobId, activation.StepId, activation.PartId);
             _lastActivation = activation;
@@ -149,7 +152,10 @@ namespace Guidance.Runtime
 
             if (enableRuntimeAssetPipeline)
             {
-                StartCoroutine(ResolveAndPresentStepAsset(activation));
+                if (_resolveCoroutine != null)
+                    StopCoroutine(_resolveCoroutine);
+                _runtime.ModelPresenter.ClearActiveModel();
+                _resolveCoroutine = StartCoroutine(ResolveAndPresentStepAsset(activation));
             }
         }
 
@@ -201,7 +207,11 @@ namespace Guidance.Runtime
                 return;
             }
 
-            if (!_runtime.StepCoordinator.ConfirmStepCompleted()) return;
+            if (!_runtime.StepCoordinator.ConfirmStepCompleted())
+            {
+                statusPanel?.SetWarning($"Cannot confirm: step state is {_runtime.StepCoordinator.CurrentState}");
+                return;
+            }
 
             var completedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _runtime.SessionClient.SendStepCompleted(_lastActivation.JobId, _lastActivation.StepId, completedAt);
@@ -233,7 +243,10 @@ namespace Guidance.Runtime
                 return;
             }
 
-            StartCoroutine(ResolveAndPresentStepAsset(_lastActivation));
+            if (_resolveCoroutine != null)
+                StopCoroutine(_resolveCoroutine);
+            _runtime.ModelPresenter.ClearActiveModel();
+            _resolveCoroutine = StartCoroutine(ResolveAndPresentStepAsset(_lastActivation));
         }
 
         public void PreviousStep()
@@ -247,7 +260,6 @@ namespace Guidance.Runtime
             _stepHistory.RemoveAt(_stepHistory.Count - 1);
             var previousActivation = _stepHistory[^1];
 
-            _runtime.ModelPresenter.ClearActiveModel();
             _runtime.TargetManager.DeactivateTarget();
             _lastActivation = previousActivation;
 
@@ -258,7 +270,10 @@ namespace Guidance.Runtime
                 statusPanel.SetWarning(string.Empty);
             }
 
-            StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
+            if (_resolveCoroutine != null)
+                StopCoroutine(_resolveCoroutine);
+            _runtime.ModelPresenter.ClearActiveModel();
+            _resolveCoroutine = StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
         }
 
         public void ShowHelp()
@@ -314,7 +329,13 @@ namespace Guidance.Runtime
                 _runtime.StepCoordinator.RegisterFault("Step asset resolve returned null");
                 if (statusPanel != null) statusPanel.SetWarning("Step asset resolve returned null");
                 yield break;
+
             }
+
+            // Kick off next-step prefetch immediately after manifest resolves so it
+            // downloads in parallel while we load the current step's assets.
+            if (resolvedBundle.Next != null)
+                StartCoroutine(PrefetchNextStepAssets(resolvedBundle.Next, activation.StepId));
 
             var resolved = resolvedBundle.Current;
             var fileName = ExtractFileName(resolved.GlbUrl, activation.StepId);
@@ -437,10 +458,7 @@ namespace Guidance.Runtime
             _lastTargetPayloadPath = targetDatPath ?? string.Empty;
             _lastTargetVersion = resolved.TargetVersion ?? string.Empty;
 
-            if (resolvedBundle.Next != null)
-            {
-                StartCoroutine(PrefetchNextStepAssets(resolvedBundle.Next, activation.StepId));
-            }
+            _resolveCoroutine = null;
 
             if (autoConfirmStepAfterAssetReady)
             {
