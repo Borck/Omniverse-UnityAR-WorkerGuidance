@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Guidance.V1;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -14,10 +15,13 @@ namespace Guidance.Runtime
         private readonly string _deviceId;
         private readonly string _appVersion;
         private string _sessionId = string.Empty;
+        private int _missedHeartbeats;
+        private const int MaxMissedHeartbeats = 3;
 
         public event Action Connected;
         public event Action<StepActivationDto> StepActivated;
         public event Action<string> Faulted;
+        public event Action WorkflowCompleted;
 
         public bool IsConnected { get; private set; }
 
@@ -46,7 +50,7 @@ namespace Guidance.Runtime
             };
 
             var json = JsonUtility.ToJson(payload);
-            var url = _baseUrl + "/session/connect";
+            var url = _baseUrl + "/unity/connect";
 
             var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
             {
@@ -100,7 +104,7 @@ namespace Guidance.Runtime
             };
 
             var json = JsonUtility.ToJson(payload);
-            var url = _baseUrl + "/session/heartbeat";
+            var url = _baseUrl + "/unity/heartbeat";
 
             var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
             {
@@ -114,11 +118,21 @@ namespace Guidance.Runtime
             {
                 if (request.result != UnityWebRequest.Result.Success)
                 {
-                    Faulted?.Invoke($"Heartbeat failed: {request.error}");
+                    _missedHeartbeats++;
+                    if (_missedHeartbeats >= MaxMissedHeartbeats)
+                    {
+                        IsConnected = false;
+                        Faulted?.Invoke($"Heartbeat failed {_missedHeartbeats}x: {request.error}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[HttpBridgeSessionTransport] Heartbeat missed ({_missedHeartbeats}/{MaxMissedHeartbeats}): {request.error}");
+                    }
                     request.Dispose();
                     return;
                 }
 
+                _missedHeartbeats = 0;
                 ProcessHeartbeatResponse(request.downloadHandler.text, clientTimeUnixMs);
                 request.Dispose();
             };
@@ -144,7 +158,7 @@ namespace Guidance.Runtime
             };
 
             var json = JsonUtility.ToJson(payload);
-            var url = _baseUrl + "/session/step-completed";
+            var url = _baseUrl + "/unity/step-completed";
 
             var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
             {
@@ -166,6 +180,11 @@ namespace Guidance.Runtime
                 ProcessStepCompletedResponse(request.downloadHandler.text, jobId, stepId);
                 request.Dispose();
             };
+        }
+
+        public void SendUserAction(string jobId, string stepId, UserActionType action)
+        {
+            Debug.LogWarning($"[HttpBridgeSessionTransport] SendUserAction({action}) not supported on HTTP bridge; use gRPC transport.");
         }
 
         private void ProcessConnectResponse(string responseJson)
@@ -196,11 +215,13 @@ namespace Guidance.Runtime
             }
 
             _sessionId = message.hello_response.session_id;
+            _missedHeartbeats = 0;
             IsConnected = true;
             Debug.Log($"[HttpBridgeSessionTransport] Connected baseUrl={_baseUrl} session={_sessionId}");
             Connected?.Invoke();
 
-            if (message.step_activated != null)
+            if (message.step_activated != null && !string.IsNullOrEmpty(message.step_activated.job_id) && !string.IsNullOrEmpty(message.step_activated.step_id))
+
             {
                 StepActivated?.Invoke(
                     new StepActivationDto(
@@ -210,7 +231,8 @@ namespace Guidance.Runtime
                         message.step_activated.display_name,
                         message.step_activated.asset_version,
                         message.step_activated.target_id,
-                        message.step_activated.target_version
+                        message.step_activated.target_version,
+                        message.step_activated.anchor_type
                     )
                 );
             }
@@ -268,7 +290,8 @@ namespace Guidance.Runtime
                 return;
             }
 
-            if (message.step_activated != null)
+            if (message.step_activated != null && !string.IsNullOrEmpty(message.step_activated.job_id) && !string.IsNullOrEmpty(message.step_activated.step_id))
+
             {
                 StepActivated?.Invoke(
                     new StepActivationDto(
@@ -278,13 +301,15 @@ namespace Guidance.Runtime
                         message.step_activated.display_name,
                         message.step_activated.asset_version,
                         message.step_activated.target_id,
-                        message.step_activated.target_version
+                        message.step_activated.target_version,
+                        message.step_activated.anchor_type
                     )
                 );
                 return;
             }
 
-            Debug.Log($"[HttpBridgeSessionTransport] Step completion acknowledged for {jobId}/{stepId}");
+            Debug.Log($"[HttpBridgeSessionTransport] Step completion acknowledged for {jobId}/{stepId} — no next step, workflow complete");
+            WorkflowCompleted?.Invoke();
         }
 
         [Serializable]
@@ -346,6 +371,7 @@ namespace Guidance.Runtime
             public string asset_version;
             public string target_id;
             public string target_version;
+            public string anchor_type;
         }
 
         [Serializable]

@@ -3,7 +3,8 @@ using System.Collections;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Grpc.Core;
+using Cysharp.Net.Http;
+using Grpc.Net.Client;
 using Guidance.V1;
 using UnityEngine;
 
@@ -69,7 +70,13 @@ namespace Guidance.Runtime
             string outputPath,
             CancellationToken ct)
         {
-            var channel = new Channel(_target, ChannelCredentials.Insecure);
+            var handler = new YetAnotherHttpHandler { Http2Only = true };
+            var httpClient = new System.Net.Http.HttpClient(handler);
+            GrpcChannel channel = GrpcChannel.ForAddress($"http://{_target}", new GrpcChannelOptions
+            {
+                HttpClient = httpClient,
+                DisposeHttpClient = true,
+            });
             try
             {
                 var client = new AssetTransferService.AssetTransferServiceClient(channel);
@@ -120,7 +127,7 @@ namespace Guidance.Runtime
             }
             finally
             {
-                await channel.ShutdownAsync();
+                channel.Dispose();
             }
         }
     }

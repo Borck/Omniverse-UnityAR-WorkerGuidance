@@ -12,6 +12,7 @@ namespace Guidance.Runtime
         public string AssetVersion { get; }
         public string TargetId { get; }
         public string TargetVersion { get; }
+        public string AnchorType { get; }
 
         public StepActivationDto(
             string jobId,
@@ -20,7 +21,8 @@ namespace Guidance.Runtime
             string displayName,
             string assetVersion = "",
             string targetId = "",
-            string targetVersion = "")
+            string targetVersion = "",
+            string anchorType = "")
         {
             JobId = jobId;
             StepId = stepId;
@@ -29,6 +31,7 @@ namespace Guidance.Runtime
             AssetVersion = assetVersion;
             TargetId = targetId;
             TargetVersion = targetVersion;
+            AnchorType = anchorType;
         }
     }
 }

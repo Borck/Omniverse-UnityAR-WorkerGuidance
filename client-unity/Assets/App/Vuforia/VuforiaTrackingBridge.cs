@@ -42,6 +42,31 @@ namespace Guidance.Runtime
             }
         }
 
+        /// <summary>
+        /// Attaches the bridge to an observer created at runtime after the Model Target
+        /// database was loaded from the downloaded .xml/.dat pair. Safe to call repeatedly;
+        /// replaces any previously bound observer.
+        /// </summary>
+        public void AssignObserver(ObserverBehaviour newObserver)
+        {
+            if (observerBehaviour == newObserver)
+            {
+                return;
+            }
+
+            if (observerBehaviour != null)
+            {
+                observerBehaviour.OnTargetStatusChanged -= HandleTargetStatusChanged;
+            }
+
+            observerBehaviour = newObserver;
+
+            if (observerBehaviour != null && isActiveAndEnabled)
+            {
+                observerBehaviour.OnTargetStatusChanged += HandleTargetStatusChanged;
+            }
+        }
+
         private void HandleTargetStatusChanged(ObserverBehaviour behaviour, TargetStatus status)
         {
             if (appBootstrap == null)

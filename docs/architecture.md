@@ -65,14 +65,17 @@ inside the project's `Assets/` tree.
 | `StepAssetManifestClient` | `Gltf/StepAssetManifestClient.cs` | HTTP GET of step asset manifest from server |
 | `AssetCache` | `Caching/AssetCache.cs` | Immutable-by-version disk cache for GLB models |
 | `TargetPayloadCache` | `Caching/TargetPayloadCache.cs` | Immutable-by-version disk cache for Vuforia targets |
-| `ModelPresenter` | `Gltf/ModelPresenter.cs` | Lifecycle for the active 3D model; dispatches to `IModelLoader` |
+| `ModelPresenter` | `Gltf/ModelPresenter.cs` | Lifecycle for the active 3D model; dispatches to `IModelLoader`; calls `HologramApplier` after load |
 | `GltfFastModelLoader` | `Gltf/GltfFastModelLoader.cs` | glTFast-backed async GLB loader (reflection-resolved) |
 | `PrimitiveFallbackModelLoader` | `Gltf/PrimitiveFallbackModelLoader.cs` | Cube placeholder when glTFast is absent |
+| `HologramApplier` | `Runtime/HologramApplier.cs` | Static utility that swaps every renderer's materials for a shared cyan hologram material with double-tap heartbeat (see `visual-effects.md`) |
+| `FixtureOverlay` | `Runtime/FixtureOverlay.cs` | Attached at runtime to the Vuforia observer GameObject. Plays slice-plane reveal on first track, then steady hologram skin until tracking is lost |
 | `TargetManager` | `Vuforia/TargetManager.cs` | Tracks active target metadata and smoothed poses |
 | `VuforiaTrackingBridge` | `Vuforia/VuforiaTrackingBridge.cs` | Forwards Vuforia observer events into `AppBootstrap` |
 | `VuforiaModelTargetLoader` | `Vuforia/VuforiaModelTargetLoader.cs` | Coroutine-based Vuforia DataSet activation from runtime-downloaded file |
 | `StepCoordinator` | `StateMachine/StepCoordinator.cs` | Step state machine (Idle → Tracking → Confirmed) |
 | `TelemetryClient` | `Telemetry/TelemetryClient.cs` | Fault/event tracking |
+| `SessionStatusPanel` | `UI/SessionStatusPanel.cs` | Optional in-scene HUD showing connection/step state and confirm/previous/replay buttons |
 
 ### Python Server-Kit
 
@@ -125,7 +128,13 @@ AppBootstrap.OnSessionStepActivated()
   ├─ ⑩  gRPC StreamStepAsset(ASSET_TYPE_VUFORIA_TARGET)  →  GrpcAssetTransferClient  →  TargetPayloadCache
   │
   ├─ ⑪  ModelPresenter.PresentModelAsync()  →  GltfFastModelLoader.LoadModelAsync()
+  │       └─ HologramApplier.Apply()  (if AppBootstrap.useHologramShader = true)
   └─ ⑫  TargetManager.ActivateTarget()  →  VuforiaModelTargetLoader (if VUFORIA_ENGINE)
+          └─ on first observer creation, FixtureOverlay component is attached to the
+             observer GameObject (if AppBootstrap.fixtureOverlayPrefab is set).
+             FixtureOverlay subscribes to ObserverBehaviour.OnTargetStatusChanged and
+             plays a slice-plane reveal when status becomes TRACKED, hides on loss
+             (with a 0.3s debounce against Vuforia status flicker).
 ```
 
 ---

@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using Guidance.V1;
 
 namespace Guidance.Runtime
 {
@@ -16,6 +17,7 @@ namespace Guidance.Runtime
 
         public event Action<StepActivationDto> StepActivated;
         public event Action<SessionConnectionState> ConnectionStateChanged;
+        public event Action WorkflowCompleted;
 
         public SessionClient(bool supportsDraco)
             : this(
@@ -57,6 +59,7 @@ namespace Guidance.Runtime
             _transport.Connected += OnTransportConnected;
             _transport.StepActivated += OnTransportStepActivated;
             _transport.Faulted += OnTransportFaulted;
+            _transport.WorkflowCompleted += OnTransportWorkflowCompleted;
             Debug.Log($"[SessionClient] Initialized ({compressionMode}, transport={_transport.GetType().Name}).");
         }
 
@@ -87,6 +90,11 @@ namespace Guidance.Runtime
             _transport.SendStepCompleted(jobId, stepId, completedAtUnixMs);
         }
 
+        public void SendUserAction(string jobId, string stepId, UserActionType action)
+        {
+            _transport.SendUserAction(jobId, stepId, action);
+        }
+
         public void TryReconnect()
         {
             if (ConnectionState == SessionConnectionState.Connected)
@@ -95,6 +103,13 @@ namespace Guidance.Runtime
             }
 
             Debug.Log("[SessionClient] Attempting reconnect.");
+            // Tear down any stale call before reconnecting. Without this, a previous
+            // Connect() that left _call non-null (e.g. an HTTP/2 handshake hanging
+            // on a flaky link, or a faulted task whose CleanupConnection never ran)
+            // causes the next _transport.Connect() to no-op via its
+            // `if (_call != null) return;` guard — and the app sits forever logging
+            // "Attempting reconnect" without ever actually opening a new socket.
+            _transport.Disconnect();
             _transport.Connect();
         }
 
@@ -123,6 +138,12 @@ namespace Guidance.Runtime
         {
             Debug.LogWarning($"[SessionClient] Transport fault: {error}");
             SetConnectionState(SessionConnectionState.Faulted);
+        }
+
+        private void OnTransportWorkflowCompleted()
+        {
+            Debug.Log("[SessionClient] Workflow completed — no further steps from server.");
+            WorkflowCompleted?.Invoke();
         }
 
         private void SetConnectionState(SessionConnectionState state)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.IO;
 using UnityEngine;
 
 #if VUFORIA_ENGINE
@@ -8,117 +9,163 @@ using Vuforia;
 
 namespace Guidance.Runtime
 {
-    /// <summary>
-    /// Loads a Vuforia Model Target database that was downloaded at runtime from the server.
-    /// The database files (<c>.dat</c> / <c>.xml</c>) are never bundled in the app; they are
-    /// fetched from the guidance server and stored in <c>Application.persistentDataPath</c>.
-    ///
-    /// Uses a coroutine so that Vuforia API calls happen on the Unity main thread
-    /// without dropping frames.
-    /// </summary>
     public static class VuforiaModelTargetLoader
     {
 #if VUFORIA_ENGINE
         /// <summary>
-        /// Coroutine that activates a Vuforia Model Target dataset from a downloaded .dat file path.
+        /// Loads a Model Target database following the official Vuforia runtime scripting pattern.
+        /// The .xml/.dat pair must be in StreamingAssets/Vuforia/ (bundled in the build).
+        /// databaseFilePath is only used to derive the database name — the actual files read
+        /// are always the bundled ones, which Vuforia handles correctly on Android too.
         /// </summary>
-        /// <param name="datFilePath">
-        /// Absolute path to the <c>.dat</c> file. The paired <c>.xml</c> must exist alongside it.
-        /// </param>
-        /// <param name="onLoaded">
-        /// Called with the activated <see cref="ObserverBehaviour"/> on success.
-        /// </param>
-        /// <param name="onError">Called with an error description on failure.</param>
         public static IEnumerator LoadModelTargetDatabaseAsync(
-            string datFilePath,
+            string databaseFilePath,
+            string targetNameFallback,
             Action<ObserverBehaviour> onLoaded,
             Action<string> onError)
         {
-            if (string.IsNullOrEmpty(datFilePath))
+            if (string.IsNullOrEmpty(databaseFilePath))
             {
-                onError?.Invoke("VuforiaModelTargetLoader: datFilePath is null or empty");
+                onError?.Invoke("[VuforiaModelTargetLoader] databaseFilePath is null or empty");
                 yield break;
             }
 
-            ObjectTracker objectTracker = null;
-            DataSet dataSet = null;
+            // Derive the absolute path to the downloaded XML file.
+            // Vuforia CreateModelTarget accepts absolute paths for runtime-downloaded databases.
+            string dbName = Path.GetFileNameWithoutExtension(databaseFilePath);
+            string absoluteXmlPath = Path.ChangeExtension(databaseFilePath, ".xml");
 
-            // Retrieve the ObjectTracker on the main thread
-            objectTracker = TrackerManager.Instance.GetTracker<ObjectTracker>();
-            if (objectTracker == null)
+            // Validate that both required files exist in the download cache.
+            string absoluteDatPath = Path.ChangeExtension(databaseFilePath, ".dat");
+            if (!File.Exists(absoluteXmlPath) || !File.Exists(absoluteDatPath))
             {
-                onError?.Invoke("VuforiaModelTargetLoader: ObjectTracker is not available");
+                onError?.Invoke(
+                    $"[VuforiaModelTargetLoader] Database files missing in cache — " +
+                    $"xml={File.Exists(absoluteXmlPath)} dat={File.Exists(absoluteDatPath)} " +
+                    $"(xml: {absoluteXmlPath})");
                 yield break;
             }
 
-            objectTracker.Stop();
+            string exactTargetName = ExtractTargetNameFromXml(absoluteXmlPath, targetNameFallback ?? dbName);
 
-            // CreateDataSet and ActivateDataSet must run on the main thread
-            dataSet = objectTracker.CreateDataSet();
-            if (dataSet == null)
+            bool done = false;
+            string capturedError = null;
+            ObserverBehaviour capturedResult = null;
+
+            void TryCreateTarget()
             {
-                onError?.Invoke("VuforiaModelTargetLoader: Failed to create DataSet");
-                objectTracker.Start();
-                yield break;
-            }
-
-            bool loaded = dataSet.Load(datFilePath, VuforiaUnity.StorageType.STORAGE_ABSOLUTE);
-            if (!loaded)
-            {
-                onError?.Invoke($"VuforiaModelTargetLoader: DataSet.Load failed for {datFilePath}");
-                objectTracker.Start();
-                yield break;
-            }
-
-            bool activated = objectTracker.ActivateDataSet(dataSet);
-            if (!activated)
-            {
-                onError?.Invoke("VuforiaModelTargetLoader: ActivateDataSet failed");
-                objectTracker.Start();
-                yield break;
-            }
-
-            objectTracker.Start();
-
-            // Allow Vuforia one frame to register the observers
-            yield return null;
-
-            ObserverBehaviour observer = null;
-            foreach (var trackable in dataSet.GetTrackables<TrackableBehaviour>())
-            {
-                observer = trackable as ObserverBehaviour;
-                if (observer != null)
+                try
                 {
-                    break;
+                    // Absolute path to the runtime-downloaded XML — Vuforia supports absolute paths.
+                    var modelTarget = VuforiaBehaviour.Instance.ObserverFactory.CreateModelTarget(
+                        absoluteXmlPath, exactTargetName);
+
+                    if (modelTarget != null)
+                    {
+                        modelTarget.gameObject.AddComponent<RuntimeTargetVisibilityManager>();
+                        modelTarget.OnTargetStatusChanged += (b, s) =>
+                            Debug.Log($"[VuforiaModelTargetLoader] Target status: {s.Status}");
+                        Debug.Log($"[VuforiaModelTargetLoader] Target created: {modelTarget.TargetName}");
+                        capturedResult = modelTarget;
+                    }
+                    else
+                    {
+                        capturedError = $"[VuforiaModelTargetLoader] CreateModelTarget returned null for '{exactTargetName}' (path: {absoluteXmlPath}).";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    capturedError = $"[VuforiaModelTargetLoader] Exception creating target: {ex.Message}";
+                }
+                done = true;
+            }
+
+            if (VuforiaApplication.Instance.IsInitialized)
+            {
+                // Vuforia is already running — create the target immediately (official pattern)
+                TryCreateTarget();
+            }
+            else
+            {
+                // Vuforia not yet started — subscribe to OnVuforiaStarted (official pattern)
+                VuforiaApplication.Instance.OnVuforiaStarted += TryCreateTarget;
+
+                float waited = 0f;
+                while (!done && waited < 10f)
+                {
+                    yield return null;
+                    waited += Time.deltaTime;
+                }
+
+                VuforiaApplication.Instance.OnVuforiaStarted -= TryCreateTarget;
+
+                if (!done)
+                {
+                    onError?.Invoke("[VuforiaModelTargetLoader] Timed out waiting for Vuforia to start (10 s).");
+                    yield break;
                 }
             }
 
-            if (observer == null)
-            {
-                onError?.Invoke("VuforiaModelTargetLoader: No ObserverBehaviour found after activation");
-                yield break;
-            }
-
-            Debug.Log($"[VuforiaModelTargetLoader] Loaded runtime target from {datFilePath}");
-            onLoaded?.Invoke(observer);
+            if (capturedError != null)
+                onError?.Invoke(capturedError);
+            else
+                onLoaded?.Invoke(capturedResult);
         }
 
-#else
-
-        /// <summary>
-        /// No-op fallback used when Vuforia Engine is not present in the project.
-        /// Logs a warning and immediately calls <paramref name="onLoaded"/> with null.
-        /// </summary>
-        public static IEnumerator LoadModelTargetDatabaseAsync(
-            string datFilePath,
-            Action<UnityEngine.Object> onLoaded,
-            Action<string> onError)
+        private static string ExtractTargetNameFromXml(string xmlFilePath, string fallbackName)
         {
-            Debug.LogWarning("[VuforiaModelTargetLoader] Vuforia Engine is not available — target loading skipped.");
-            onLoaded?.Invoke(null);
-            yield break;
+            try
+            {
+                if (File.Exists(xmlFilePath))
+                {
+                    string content = File.ReadAllText(xmlFilePath);
+                    const string searchStr = "<ModelTarget name=\"";
+                    int start = content.IndexOf(searchStr, StringComparison.Ordinal);
+                    if (start >= 0)
+                    {
+                        start += searchStr.Length;
+                        int end = content.IndexOf('"', start);
+                        if (end > start) return content.Substring(start, end - start);
+                    }
+                }
+            }
+            catch { }
+            return fallbackName;
         }
-
 #endif
     }
+
+#if VUFORIA_ENGINE
+    public class RuntimeTargetVisibilityManager : MonoBehaviour
+    {
+        private ObserverBehaviour _observer;
+
+        void Start()
+        {
+            _observer = GetComponent<ObserverBehaviour>();
+            if (_observer)
+            {
+                _observer.OnTargetStatusChanged += OnStatusChanged;
+                UpdateVisibility(_observer.TargetStatus.Status);
+            }
+        }
+
+        void OnDestroy()
+        {
+            if (_observer) _observer.OnTargetStatusChanged -= OnStatusChanged;
+        }
+
+        private void OnStatusChanged(ObserverBehaviour behaviour, TargetStatus targetStatus)
+        {
+            UpdateVisibility(targetStatus.Status);
+        }
+
+        private void UpdateVisibility(Status status)
+        {
+            bool isTracked = status == Status.TRACKED || status == Status.EXTENDED_TRACKED;
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+                r.enabled = isTracked;
+        }
+    }
+#endif
 }

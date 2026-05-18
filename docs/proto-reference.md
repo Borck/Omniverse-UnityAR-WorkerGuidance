@@ -231,6 +231,19 @@ One message per chunk of the streamed file.
 | `USER_ACTION_TYPE_PREVIOUS` | 4 | Go back to previous step (supervisor override) |
 | `USER_ACTION_TYPE_HELP` | 5 | Request help or show guidance overlay |
 
+#### Server-side handling (Python server-kit)
+
+`grpc_session_service.py` reads the `user_action` payload in the `Connect` duplex loop and reacts as follows:
+
+| Action received | Server response |
+|---|---|
+| `PREVIOUS` | Looks up the previous step in the configured step repository for the active job; if found, sends `StepActivated` for that step |
+| `REPLAY` | Re-emits `StepActivated` for the currently active step |
+| `CONFIRM`, `NEXT` | Currently flow through `step_completed` (the client sends `StepCompleted` as a shortcut for confirm/next). The action is logged but does not cause a separate state transition |
+| `HELP` | Logged only; reserved for future use |
+
+Boundary case: at the first/last step of a job, `PREVIOUS`/(implicit)`NEXT` returns `None` from the lookup and the server emits no message — the client UI stays on the current step.
+
 ---
 
 ## Versioning Strategy

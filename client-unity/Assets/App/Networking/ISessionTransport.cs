@@ -1,4 +1,5 @@
 using System;
+using Guidance.V1;
 
 namespace Guidance.Runtime
 {
@@ -10,6 +11,7 @@ namespace Guidance.Runtime
         event Action Connected;
         event Action<StepActivationDto> StepActivated;
         event Action<string> Faulted;
+        event Action WorkflowCompleted;
 
         bool IsConnected { get; }
 
@@ -17,5 +19,6 @@ namespace Guidance.Runtime
         void Disconnect();
         void SendHeartbeat(long clientTimeUnixMs);
         void SendStepCompleted(string jobId, string stepId, long completedAtUnixMs);
+        void SendUserAction(string jobId, string stepId, UserActionType action);
     }
 }

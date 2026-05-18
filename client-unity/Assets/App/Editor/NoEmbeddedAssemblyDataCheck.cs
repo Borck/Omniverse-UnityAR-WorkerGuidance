@@ -36,10 +36,22 @@ namespace Guidance.Editor
             ".step.json",
         };
 
-        // Paths that are explicitly excluded from the check (Editor-only test fixtures).
+        // Paths that are explicitly excluded from the check (Editor-only test fixtures
+        // and Android build infrastructure — AndroidManifest.xml and network_security_config.xml
+        // are platform configuration files, not embedded assembly data).
         private static readonly string[] AllowedSubPaths =
         {
             Path.Combine("Assets", "App", "Tests"),
+            Path.Combine("Assets", "Plugins", "Android"),
+            Path.Combine("Assets", "Packages"),
+            Path.Combine("Assets", "NuGet"),     // NuGet editor infrastructure, not assembly data
+        };
+
+        // Specific filenames that are Unity build-system files, never assembly data.
+        // link.xml controls IL2CPP managed-code stripping and must live inside Assets/.
+        private static readonly string[] AllowedFileNames =
+        {
+            "link.xml",
         };
 
         public void OnPreprocessBuild(BuildReport report)
@@ -81,6 +93,14 @@ namespace Guidance.Editor
         {
             var lowerName = Path.GetFileName(filePath).ToLowerInvariant();
             var lowerFull = filePath.ToLowerInvariant();
+
+            foreach (var allowed in AllowedFileNames)
+            {
+                if (lowerName == allowed.ToLowerInvariant())
+                {
+                    return false;
+                }
+            }
 
             foreach (var ext in ForbiddenExtensions)
             {

@@ -73,6 +73,14 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                     continue
 
                 device_id = message.hello.device_id or "unknown-device"
+                requested_job_id = self._parse_desired_job(message.hello.capabilities)
+                if requested_job_id:
+                    active_job_id = requested_job_id
+                    self._logger.info(
+                        f"client requested job={requested_job_id}",
+                        session_id="-",
+                        step_id="-",
+                    )
                 session_id, resumed = self._session_manager.register_or_resume_session(device_id)
                 self._set_session_state_with_log(session_id, SessionState.IDLE, reason="hello")
                 handshake_done = True
@@ -150,6 +158,39 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                         step_activated=self._to_step_activated(next_step, completed_job_id)
                     )
 
+            elif payload_name == "user_action" and handshake_done:
+                action_job_id = message.user_action.job_id or active_job_id
+                action_step_id = message.user_action.step_id
+                action_type = message.user_action.action
+
+                self._logger.info(
+                    f"user action received type={action_type}",
+                    session_id=session_id,
+                    step_id=action_step_id or "-",
+                    event="grpc.user_action",
+                )
+
+                target_step: StepDefinition | None = None
+                reason = ""
+                if action_type == guidance_pb2.USER_ACTION_TYPE_PREVIOUS:
+                    target_step = self._get_previous_step(action_job_id, action_step_id)
+                    reason = "previous-step-activated"
+                elif action_type == guidance_pb2.USER_ACTION_TYPE_REPLAY:
+                    target_step = self._get_step(action_job_id, action_step_id)
+                    reason = "replay-step-activated"
+
+                if target_step is not None:
+                    active_job_id = action_job_id
+                    self._set_session_state_with_log(
+                        session_id,
+                        SessionState.STEP_READY,
+                        reason=reason,
+                        step_id=target_step.step_id,
+                    )
+                    yield guidance_pb2.ServerMessage(
+                        step_activated=self._to_step_activated(target_step, action_job_id)
+                    )
+
             elif payload_name == "fault":
                 self._logger.warning(
                     "client fault code=%s message=%s",
@@ -162,6 +203,21 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                 )
 
         self._logger.info("session stream closed", session_id=session_id or "-", step_id="-")
+
+    @staticmethod
+    def _parse_desired_job(capabilities: str) -> str:
+        """Extract a 'job=<id>' token from the capabilities string sent by clients.
+
+        Capabilities is a comma-separated list (e.g. ``unity-ar,job=Fixture_detectors_1-26-02-25``).
+        Returns the job id if present, otherwise an empty string.
+        """
+        if not capabilities:
+            return ""
+        for token in capabilities.split(","):
+            token = token.strip()
+            if token.startswith("job="):
+                return token[len("job="):].strip()
+        return ""
 
     def _get_steps(self, job_id: str) -> list[StepDefinition]:
         if self._step_repository is None:
@@ -182,6 +238,23 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                 if index + 1 < len(steps):
                     return steps[index + 1]
                 return None
+        return None
+
+    def _get_previous_step(self, job_id: str, current_step_id: str) -> StepDefinition | None:
+        steps = self._get_steps(job_id)
+        if not steps:
+            return None
+        for index, step in enumerate(steps):
+            if step.step_id == current_step_id:
+                if index - 1 >= 0:
+                    return steps[index - 1]
+                return None
+        return None
+
+    def _get_step(self, job_id: str, step_id: str) -> StepDefinition | None:
+        for step in self._get_steps(job_id):
+            if step.step_id == step_id:
+                return step
         return None
 
     @staticmethod

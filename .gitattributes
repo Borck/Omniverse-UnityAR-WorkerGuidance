@@ -1,0 +1,6 @@
+# Normalize line endings for common text files to LF
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.cs text eol=lf
+*.txt text eol=lf

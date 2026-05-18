@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Cysharp.Net.Http;
 using Grpc.Core;
+using Grpc.Net.Client;
 using Guidance.V1;
 using UnityEngine;
 
@@ -15,8 +17,11 @@ namespace Guidance.Runtime
         private readonly string _target;
         private readonly string _deviceId;
         private readonly string _appVersion;
+        private readonly string _desiredJobId;
 
-        private Channel _channel;
+        private System.Threading.SynchronizationContext _mainThreadContext;
+
+        private GrpcChannel _channel;
         private GuidanceSessionService.GuidanceSessionServiceClient _client;
         private AsyncDuplexStreamingCall<ClientMessage, ServerMessage> _call;
         private CancellationTokenSource _readCancellation;
@@ -25,14 +30,17 @@ namespace Guidance.Runtime
         public event Action Connected;
         public event Action<StepActivationDto> StepActivated;
         public event Action<string> Faulted;
+        public event Action WorkflowCompleted;
 
         public bool IsConnected { get; private set; }
 
-        public GrpcSessionTransport(string target, string deviceId, string appVersion)
+        public GrpcSessionTransport(string target, string deviceId, string appVersion, string desiredJobId = "")
         {
             _target = target;
             _deviceId = deviceId;
             _appVersion = appVersion;
+            _desiredJobId = desiredJobId ?? string.Empty;
+            _mainThreadContext = System.Threading.SynchronizationContext.Current;
         }
 
         public void Connect()
@@ -44,7 +52,17 @@ namespace Guidance.Runtime
 
             try
             {
-                _channel = new Channel(_target, ChannelCredentials.Insecure);
+                // YetAnotherHttpHandler is a Rust-based HTTP/2 client that works on
+                // Unity Android IL2CPP where SocketsHttpHandler is unavailable.
+                // Http2Only = true forces h2c (cleartext HTTP/2) prior-knowledge for the
+                // Grpc.Net.Client transport, matching the Python grpcio server.
+                var handler = new YetAnotherHttpHandler { Http2Only = true };
+                var httpClient = new System.Net.Http.HttpClient(handler);
+                _channel = GrpcChannel.ForAddress($"http://{_target}", new GrpcChannelOptions
+                {
+                    HttpClient = httpClient,
+                    DisposeHttpClient = true,
+                });
                 _client = new GuidanceSessionService.GuidanceSessionServiceClient(_channel);
                 _call = _client.Connect();
                 _readCancellation = new CancellationTokenSource();
@@ -86,34 +104,62 @@ namespace Guidance.Runtime
             _ = WriteStepCompletedAsync(jobId, stepId, completedAtUnixMs);
         }
 
+        public void SendUserAction(string jobId, string stepId, UserActionType action)
+        {
+            if (_call == null)
+            {
+                Faulted?.Invoke("Cannot send user action while disconnected");
+                return;
+            }
+
+            _ = WriteUserActionAsync(jobId, stepId, action);
+        }
+
+        private string BuildCapabilitiesString()
+        {
+            if (string.IsNullOrEmpty(_desiredJobId))
+            {
+                return "unity-ar";
+            }
+            return $"unity-ar,job={_desiredJobId}";
+        }
+
         private async Task WriteHelloAsync()
         {
+            var myCall = _call;
+            if (myCall == null) return;
             try
             {
-                await _call.RequestStream.WriteAsync(
+                await myCall.RequestStream.WriteAsync(
                     new ClientMessage
                     {
                         Hello = new HelloRequest
                         {
                             DeviceId = _deviceId,
                             AppVersion = _appVersion,
-                            Capabilities = "unity-ar"
+                            Capabilities = BuildCapabilitiesString()
                         }
                     }
                 );
             }
             catch (Exception ex)
             {
-                Faulted?.Invoke($"gRPC hello failed: {ex.Message}");
+                var msg = $"gRPC hello failed: {ex.Message}";
+                if (_mainThreadContext != null)
+                    _mainThreadContext.Post(_ => Faulted?.Invoke(msg), null);
+                else
+                    Faulted?.Invoke(msg);
                 CleanupConnection();
             }
         }
 
         private async Task WriteHeartbeatAsync(long clientTimeUnixMs)
         {
+            var myCall = _call;
+            if (myCall == null) return;
             try
             {
-                await _call.RequestStream.WriteAsync(
+                await myCall.RequestStream.WriteAsync(
                     new ClientMessage
                     {
                         Heartbeat = new Heartbeat
@@ -126,16 +172,22 @@ namespace Guidance.Runtime
             }
             catch (Exception ex)
             {
-                Faulted?.Invoke($"gRPC heartbeat failed: {ex.Message}");
+                var msg = $"gRPC heartbeat failed: {ex.Message}";
+                if (_mainThreadContext != null)
+                    _mainThreadContext.Post(_ => Faulted?.Invoke(msg), null);
+                else
+                    Faulted?.Invoke(msg);
                 CleanupConnection();
             }
         }
 
         private async Task WriteStepCompletedAsync(string jobId, string stepId, long completedAtUnixMs)
         {
+            var myCall = _call;
+            if (myCall == null) return;
             try
             {
-                await _call.RequestStream.WriteAsync(
+                await myCall.RequestStream.WriteAsync(
                     new ClientMessage
                     {
                         StepCompleted = new StepCompleted
@@ -149,18 +201,56 @@ namespace Guidance.Runtime
             }
             catch (Exception ex)
             {
-                Faulted?.Invoke($"gRPC step_completed failed: {ex.Message}");
+                var msg = $"gRPC step_completed failed: {ex.Message}";
+                if (_mainThreadContext != null)
+                    _mainThreadContext.Post(_ => Faulted?.Invoke(msg), null);
+                else
+                    Faulted?.Invoke(msg);
+                CleanupConnection();
+            }
+        }
+
+        private async Task WriteUserActionAsync(string jobId, string stepId, UserActionType action)
+        {
+            var myCall = _call;
+            if (myCall == null) return;
+            try
+            {
+                await myCall.RequestStream.WriteAsync(
+                    new ClientMessage
+                    {
+                        UserAction = new UserAction
+                        {
+                            JobId = jobId,
+                            StepId = stepId,
+                            Action = action,
+                        }
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                var msg = $"gRPC user_action failed: {ex.Message}";
+                if (_mainThreadContext != null)
+                    _mainThreadContext.Post(_ => Faulted?.Invoke(msg), null);
+                else
+                    Faulted?.Invoke(msg);
                 CleanupConnection();
             }
         }
 
         private async Task ReadLoopAsync()
         {
+            // Capture local references so the finally guard can tell whether a concurrent
+            // TryReconnect() has already swapped in a new call before this loop exits.
+            var myCall = _call;
+            var myCancellation = _readCancellation;
+
             try
             {
-                while (_call != null && await _call.ResponseStream.MoveNext(_readCancellation.Token))
+                while (myCall != null && await myCall.ResponseStream.MoveNext(myCancellation.Token))
                 {
-                    var message = _call.ResponseStream.Current;
+                    var message = myCall.ResponseStream.Current;
                     if (message == null)
                     {
                         continue;
@@ -174,26 +264,35 @@ namespace Guidance.Runtime
                             {
                                 IsConnected = true;
                                 Debug.Log($"[GrpcSessionTransport] Connected target={_target} session={_sessionId}");
-                                Connected?.Invoke();
+
+                                if (_mainThreadContext != null)
+                                    _mainThreadContext.Post(_ => Connected?.Invoke(), null);
+                                else
+                                    Connected?.Invoke();
                             }
                             break;
 
                         case ServerMessage.PayloadOneofCase.StepActivated:
-                            StepActivated?.Invoke(
-                                new StepActivationDto(
-                                    message.StepActivated.JobId,
-                                    message.StepActivated.StepId,
-                                    message.StepActivated.PartId,
-                                    message.StepActivated.DisplayName,
-                                    message.StepActivated.AssetVersion,
-                                    message.StepActivated.TargetId,
-                                    message.StepActivated.TargetVersion
-                                )
-                            );
+                            if (_mainThreadContext != null)
+                            {
+                                _mainThreadContext.Post(_ => StepActivated?.Invoke(
+                                    new StepActivationDto(
+                                        message.StepActivated.JobId,
+                                        message.StepActivated.StepId,
+                                        message.StepActivated.PartId,
+                                        message.StepActivated.DisplayName,
+                                        message.StepActivated.AssetVersion,
+                                        message.StepActivated.TargetId,
+                                        message.StepActivated.TargetVersion,
+                                        message.StepActivated.AnchorType
+                                    )
+                                ), null);
+                            }
                             break;
 
                         case ServerMessage.PayloadOneofCase.Fault:
-                            Faulted?.Invoke($"gRPC server fault: {message.Fault.Code} {message.Fault.Message}");
+                            if (_mainThreadContext != null)
+                                _mainThreadContext.Post(_ => Faulted?.Invoke($"gRPC server fault: {message.Fault.Code} {message.Fault.Message}"), null);
                             break;
 
                         case ServerMessage.PayloadOneofCase.Ping:
@@ -204,18 +303,40 @@ namespace Guidance.Runtime
                             break;
                     }
                 }
+
+                // Stream ended cleanly by the server (last step completed, no further steps).
+                if (!myCancellation.IsCancellationRequested && IsConnected)
+                {
+                    if (_mainThreadContext != null)
+                        _mainThreadContext.Post(_ => WorkflowCompleted?.Invoke(), null);
+                    else
+                        WorkflowCompleted?.Invoke();
+                }
             }
             catch (OperationCanceledException)
             {
-                // normal during disconnect/reconnect
+                // Normal — raised when myCancellation is cancelled during Disconnect().
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
+            {
+                // Normal — Grpc.Net.Client wraps OperationCanceledException as
+                // RpcException(Cancelled) on client-side teardown. Not a server error.
             }
             catch (Exception ex)
             {
-                Faulted?.Invoke($"gRPC read loop failed: {ex.Message}");
+                var msg = $"gRPC read loop failed: {ex.Message}";
+                if (_mainThreadContext != null)
+                    _mainThreadContext.Post(_ => Faulted?.Invoke(msg), null);
+                else
+                    Faulted?.Invoke(msg);
             }
             finally
             {
-                if (_call != null)
+                // Only clean up if WE are still the active call. A concurrent
+                // TryReconnect() calls Disconnect() then Connect() on the main thread,
+                // which can replace _call before this background finally block runs.
+                // Cleaning up in that case would destroy the brand-new connection.
+                if (_call == myCall)
                 {
                     CleanupConnection();
                 }
@@ -251,7 +372,7 @@ namespace Guidance.Runtime
             {
                 try
                 {
-                    _channel.ShutdownAsync().GetAwaiter().GetResult();
+                    _channel.Dispose();
                 }
                 catch
                 {

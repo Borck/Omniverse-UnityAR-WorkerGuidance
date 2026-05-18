@@ -18,6 +18,10 @@ namespace Guidance.Runtime
         private string _instruction = "-";
         private string _warning = string.Empty;
 
+        private string _pipelineStatus = string.Empty;
+        private string _targetStatus = string.Empty;
+        private string _transportMode = string.Empty;
+
         private void Awake()
         {
             if (appBootstrap == null)
@@ -51,16 +55,39 @@ namespace Guidance.Runtime
         {
             _warning = warning ?? string.Empty;
         }
+        public void SetPipelineStatus(string status)
+        {
+            _pipelineStatus = status ?? string.Empty;
+        }
+
+        public void SetTargetStatus(string status)
+        {
+            _targetStatus = status ?? string.Empty;
+        }
+
+        public void SetTransportMode(string mode)
+        {
+            _transportMode = mode ?? string.Empty;
+        }
 
         private void OnGUI()
         {
-            if (!visible)
-            {
-                return;
-            }
+            if (!visible) return;
 
-            GUILayout.BeginArea(new Rect(16, 16, 520, 190), GUI.skin.box);
-            GUILayout.Label("Guidance Runtime Status");
+            var panelWidth = Mathf.Min(Screen.width - 16f, 340f);
+            var btnWidth = GUILayout.Width((panelWidth - 20) / 3f);
+            var btnHeight = GUILayout.Height(30);
+
+            var extraLines = (string.IsNullOrEmpty(_warning) ? 0 : 1)
+                           + (string.IsNullOrEmpty(_pipelineStatus) ? 0 : 1)
+                           + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1);
+            var panelHeight = 265f + extraLines * 26f;
+
+            GUILayout.BeginArea(new Rect(8, 8, panelWidth, panelHeight), GUI.skin.box);
+
+            GUILayout.Label("<b>Guidance Runtime Status</b>");
+            if (!string.IsNullOrEmpty(_transportMode))
+                GUILayout.Label($"Transport: {_transportMode}");
             GUILayout.Label($"Connection: {_connectionState}");
             GUILayout.Label($"Step State: {_stepState}");
             GUILayout.Label($"Active Step: {_activeStep}");
@@ -68,33 +95,26 @@ namespace Guidance.Runtime
             GUILayout.Label($"Instruction: {_instruction}");
 
             if (!string.IsNullOrEmpty(_warning))
-            {
                 GUILayout.Label($"Warning: {_warning}");
-            }
+            if (!string.IsNullOrEmpty(_pipelineStatus))
+                GUILayout.Label($"GLB: {_pipelineStatus}");
+            if (!string.IsNullOrEmpty(_targetStatus))
+                GUILayout.Label($"Target: {_targetStatus}");
 
             if (showControls && appBootstrap != null)
             {
+                GUILayout.Space(6);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Replay"))
-                {
-                    appBootstrap.ReplayActiveStep();
-                }
-                if (GUILayout.Button("Previous"))
-                {
-                    appBootstrap.PreviousStep();
-                }
-                if (GUILayout.Button("Confirm / Next"))
-                {
-                    appBootstrap.ConfirmActiveStep();
-                }
-                if (GUILayout.Button("Help"))
-                {
-                    appBootstrap.ShowHelp();
-                }
-                if (GUILayout.Button("Diagnostics"))
-                {
-                    appBootstrap.ExportDiagnosticsBundle();
-                }
+                if (GUILayout.Button("Replay", btnWidth, btnHeight)) appBootstrap.ReplayActiveStep();
+                if (GUILayout.Button("Previous", btnWidth, btnHeight)) appBootstrap.PreviousStep();
+                if (GUILayout.Button("Confirm / Next", btnWidth, btnHeight)) appBootstrap.ConfirmActiveStep();
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(4);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Help", btnWidth, btnHeight)) appBootstrap.ShowHelp();
+                if (GUILayout.Button("Diagnostics", btnWidth, btnHeight)) appBootstrap.ExportDiagnosticsBundle();
+                GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
             }
 

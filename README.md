@@ -12,7 +12,7 @@
 This repository contains the first implementation slice for an AR worker guidance system.
 
 ## Components
-- `server-kit/`: Omniverse Kit server for step resolution, export, gRPC, and HTTP services.
+- `server-kit/`: Omniverse Kit server for step resolution, export, gRPC, omniverse server and Unity client HTTP services.
 - `client-unity/`: Unity 6 client runtime for session orchestration, model loading, and tracking.
 - `proto/`: Shared protobuf contracts used by server and client.
 - `shared/`: Shared schemas, sample payloads, and fixtures.
@@ -144,15 +144,21 @@ Implementation note:
 ## Unity Runtime Notes
 - `AppBootstrap` defaults to native gRPC transport (`useNativeGrpcTransport=true`, `grpcTarget=localhost:50051`).
 - HTTP bridge remains available as fallback (`useNativeGrpcTransport=false`, `httpBridgeBaseUrl=http://localhost:8080`).
+- gRPC HTTP/2 transport on Android IL2CPP is provided by [`YetAnotherHttpHandler`](https://github.com/Cysharp/YetAnotherHttpHandler) (Rust-based) — Unity's bundled Mono runtime does not expose `SocketsHttpHandler`, so `Grpc.Net.Client` cannot be used without it.
 - At runtime, Unity sends periodic heartbeats and attempts reconnect when connection is not in `Connected` state.
 - Step activation triggers manifest lookup and local cached GLB resolution before presenting a single active model.
+- Loaded GLB parts are styled with the **Hologram shader** (translucent cyan, fresnel rim, scrolling scan lines, double-tap heartbeat pulse). Toggle via `AppBootstrap.useHologramShader`.
+- An optional **fixture overlay** (static 3D model of the tracked machine) materializes via a slice-plane reveal animation when the Vuforia Model Target is first acquired and disappears (with debounce) when tracking is lost. Set `AppBootstrap.fixtureOverlayPrefab` to enable.
+- See [`docs/visual-effects.md`](docs/visual-effects.md) for shader properties and tuning guide.
 
 ## Architecture Decisions (Applied)
 - Unity C# protobuf/gRPC generation workflow: `Grpc.Tools` build project under `tools/proto-csharp/`.
 - Canonical step-definition source: external YAML (`shared/samples/step-definitions.yaml`).
 - Structured logging schema: JSON log lines with fixed fields (`timestamp`, `level`, `event`, `message`, `session_id`, `step_id`, `correlation_id`).
-- Runtime glTF loader direction: `glTFast` (Unity integration to follow in client implementation).
-- Unity session transport direction for Android 10+ / Unity 6: native direct gRPC as default runtime path (no proxy container required), with HTTP bridge fallback.
+- Runtime glTF loader: `com.atteneder.gltfast` via UPM — handles GLB binary loading and animation extraction at runtime.
+- Unity session transport for Android (VUZIX M4000, ARM64, IL2CPP): pure-managed `Grpc.Net.Client` 2.76.x (NuGetForUnity) over `YetAnotherHttpHandler` for HTTP/2. The deprecated `Grpc.Core` C-core library is no longer used.
+- Unity session transport direction: native direct gRPC as default runtime path (no proxy container required), with HTTP bridge fallback.
+- Visual effects: custom HLSL/CG shaders for Built-in render pipeline (no URP package required) — `Hologram.shader` for animated parts, `FixtureReveal.shader` for the static fixture materialize/dematerialize transition.
 
 ## Draco Streaming Policy
 - Draco is applied only when both sides support it.

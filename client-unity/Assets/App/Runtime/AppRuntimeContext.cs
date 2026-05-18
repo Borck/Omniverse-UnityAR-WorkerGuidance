@@ -49,16 +49,23 @@ namespace Guidance.Runtime
             bool useNativeGrpcTransport,
             string grpcTarget,
             string httpBridgeBaseUrl,
-            bool supportsDraco)
+            bool supportsDraco,
+            string desiredJobId = "")
         {
+            var httpBase = httpBridgeBaseUrl.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase)
+                        || httpBridgeBaseUrl.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase)
+                ? httpBridgeBaseUrl
+                : $"http://{httpBridgeBaseUrl}";
+
             ISessionTransport transport = useNativeGrpcTransport
                 ? new GrpcSessionTransport(
                     target: grpcTarget,
                     deviceId: SystemInfo.deviceUniqueIdentifier,
-                    appVersion: Application.version
+                    appVersion: Application.version,
+                    desiredJobId: desiredJobId
                 )
                 : new HttpBridgeSessionTransport(
-                    baseUrl: httpBridgeBaseUrl,
+                    baseUrl: httpBase,
                     deviceId: SystemInfo.deviceUniqueIdentifier,
                     appVersion: Application.version
                 );
@@ -75,7 +82,7 @@ namespace Guidance.Runtime
                 targetManager: new TargetManager(),
                 telemetryClient: new TelemetryClient(),
                 diagnosticsExporter: new DiagnosticsBundleExporter(),
-                manifestClient: new StepAssetManifestClient(httpBridgeBaseUrl),
+                manifestClient: new StepAssetManifestClient(httpBase),
                 modelPresenter: new ModelPresenter(),
                 grpcAssetTransfer: grpcAssetTransfer
             );

@@ -151,9 +151,43 @@ however, the file assets remain on disk and can be re-served.
 
 ## Network Requirements
 
-- The Unity AR device and the server must be on the same network (same Wi-Fi or wired LAN).
+- The Unity AR device and the server must be able to reach each other over IP (same Wi-Fi/LAN, shared mobile hotspot, VPN, or any routable network).
 - Required open ports:
   - **5000** (test server: HTTP + gRPC)
   - **8080** (Python server: HTTP)
   - **50051** (Python server: gRPC)
-- No internet connection is required during operation.
+- No internet connection is required during operation, only mutual reachability.
+
+### Windows firewall — first time per host
+
+The Unity AR device cannot reach the servers without inbound rules for the gRPC and HTTP ports. Run **PowerShell as Administrator** on the host:
+
+```powershell
+New-NetFirewallRule -DisplayName "Guidance gRPC" -Direction Inbound -Protocol TCP -LocalPort 50051 -Action Allow -Profile Any
+New-NetFirewallRule -DisplayName "Guidance HTTP" -Direction Inbound -Protocol TCP -LocalPort 8080  -Action Allow -Profile Any
+```
+
+`-Profile Any` is important when using a mobile hotspot — Windows classifies hotspot networks as Public, and a Private-only rule will not apply.
+
+### Verifying reachability from the AR device
+
+From any other machine on the same network:
+
+```powershell
+# Health check (Python server)
+curl http://<server-ip>:8080/health
+# expected: {"status":"ok"}
+
+# gRPC port reachability
+Test-NetConnection <server-ip> -Port 50051
+# expected: TcpTestSucceeded : True
+```
+
+### Running the server on a different machine than the assets
+
+The server process is location-independent: any PC with Python and the dependencies installed can run it. As long as the server can reach the asset/manifest store (currently a local folder; future: Nucleus URL), and the AR device can reach the server's IP, the system works.
+
+To move the server to a new PC:
+1. Install dependencies on that PC (`pip install -r server-kit/app/requirements.txt`)
+2. Open the firewall ports (above)
+3. Update the Unity client's `AppBootstrap.grpcTarget` / `httpBridgeBaseUrl` to the new PC's IP and rebuild the APK

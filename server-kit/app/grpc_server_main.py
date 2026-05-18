@@ -1,4 +1,7 @@
 """Combined gRPC server bootstrap for session and asset transfer services."""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent / "generated"))
 
 try:
     from .config import AppConfig

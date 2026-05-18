@@ -62,6 +62,7 @@ namespace Guidance.Runtime
                 error => Debug.LogWarning($"[ModelPresenter] Loader error: {error}")
             );
 
+            HologramApplier.Apply(_activeModelRoot.transform);
             Debug.Log($"[ModelPresenter] Presented model for step {activation.StepId} from {modelFilePath}");
         }
 
@@ -69,7 +70,16 @@ namespace Guidance.Runtime
         /// Asynchronously loads and presents the model. Cancels any in-flight load from
         /// the previous step activation before starting a new one.
         /// </summary>
-        public async Task PresentModelAsync(string modelFilePath, StepActivationDto activation, CancellationToken ct)
+        /// <param name="parentTransform">
+        /// Optional parent for the model root.  When a Vuforia <c>ObserverBehaviour</c>
+        /// is provided here the model will move with the tracked physical object.
+        /// Pass <c>null</c> to place the model at world origin (desktop test fallback).
+        /// </param>
+        public async Task PresentModelAsync(
+            string modelFilePath,
+            StepActivationDto activation,
+            CancellationToken ct,
+            Transform parentTransform = null)
         {
             ClearActiveModel();
 
@@ -80,6 +90,14 @@ namespace Guidance.Runtime
             }
 
             _activeModelRoot = new GameObject($"Model_{activation.PartId}_{activation.StepId}");
+
+            if (parentTransform != null)
+            {
+                _activeModelRoot.transform.SetParent(parentTransform, worldPositionStays: false);
+                _activeModelRoot.transform.localPosition = Vector3.zero;
+                _activeModelRoot.transform.localRotation = Quaternion.identity;
+                _activeModelRoot.transform.localScale    = Vector3.one;
+            }
 
             IModelLoader selectedLoader = null;
             foreach (var loader in _loaders)
@@ -100,6 +118,7 @@ namespace Guidance.Runtime
             try
             {
                 await selectedLoader.LoadModelAsync(modelFilePath, _activeModelRoot.transform, ct);
+                HologramApplier.Apply(_activeModelRoot.transform);
                 Debug.Log($"[ModelPresenter] Async-loaded model for step {activation.StepId} from {modelFilePath}");
             }
             catch (TaskCanceledException)
