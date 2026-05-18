@@ -115,16 +115,21 @@ namespace Guidance.Runtime
                 return;
             }
 
+            var myRoot = _activeModelRoot;
             try
             {
-                await selectedLoader.LoadModelAsync(modelFilePath, _activeModelRoot.transform, ct);
-                HologramApplier.Apply(_activeModelRoot.transform);
-                Debug.Log($"[ModelPresenter] Async-loaded model for step {activation.StepId} from {modelFilePath}");
+                await selectedLoader.LoadModelAsync(modelFilePath, myRoot.transform, ct);
+                if (_activeModelRoot == myRoot)
+                {
+                    HologramApplier.Apply(myRoot.transform);
+                    Debug.Log($"[ModelPresenter] Async-loaded model for step {activation.StepId} from {modelFilePath}");
+                }
             }
             catch (TaskCanceledException)
             {
                 Debug.Log($"[ModelPresenter] Load cancelled for step {activation.StepId}");
-                ClearActiveModel();
+                if (_activeModelRoot == myRoot)
+                    ClearActiveModel();
             }
         }
 
