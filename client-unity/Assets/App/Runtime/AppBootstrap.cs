@@ -31,6 +31,7 @@ namespace Guidance.Runtime
 
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
+        [SerializeField] private Transform imageTargetAnchor;
 
         private AppRuntimeContext _runtime;
         private StepActivationDto _lastActivation;
@@ -412,6 +413,20 @@ namespace Guidance.Runtime
                     if (statusPanel != null) statusPanel.SetWarning(vuforiaError);
                     yield break;
                 }
+            }
+            else if (string.Equals(activation.AnchorType, "image-target", StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(activation.AnchorType, "ImageTarget", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeObserverTransform = imageTargetAnchor;
+#if VUFORIA_ENGINE
+                if (imageTargetAnchor != null && vuforiaTrackingBridge != null)
+                {
+                    var imgObserver = imageTargetAnchor.GetComponentInParent<Vuforia.ObserverBehaviour>();
+                    if (imgObserver != null)
+                        vuforiaTrackingBridge.AssignObserver(imgObserver);
+                }
+#endif
+                Debug.Log($"[AppBootstrap] Image target anchor assigned for step {activation.StepId}");
             }
             // ====================================================================
 
