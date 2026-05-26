@@ -32,6 +32,11 @@ namespace Guidance.Runtime
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
         [SerializeField] private Transform imageTargetAnchor;
+        [SerializeField] private JobSelectorPanel jobSelectorPanel;
+#if VUFORIA_ENGINE
+        [SerializeField] private Vuforia.ObserverBehaviour imageTargetObserver;
+        private Vuforia.ObserverBehaviour _modelTargetObserver;
+#endif
 
         private AppRuntimeContext _runtime;
         private StepActivationDto _lastActivation;
@@ -53,28 +58,47 @@ namespace Guidance.Runtime
         private void Awake()
         {
             System.AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+            if (vuforiaTrackingBridge == null)
+                vuforiaTrackingBridge = FindFirstObjectByType<VuforiaTrackingBridge>();
+
+#if VUFORIA_ENGINE
+            // Resolve while imageTargetAnchor is still active — GetComponentInParent
+            // returns null on inactive objects, so this must run before Start() hides it.
+            if (imageTargetAnchor != null && imageTargetObserver == null)
+                imageTargetObserver = imageTargetAnchor.GetComponentInParent<Vuforia.ObserverBehaviour>();
+#endif
+        }
+
+        private void Start()
+        {
+            if (imageTargetAnchor != null)
+                imageTargetAnchor.gameObject.SetActive(false);
+
+            HologramApplier.Enabled = useHologramShader;
+
+            if (jobSelectorPanel != null)
+                jobSelectorPanel.Show(this);
+            else
+                InitializeWithJob(desiredJobId);
+        }
+
+        public void InitializeWithJob(string jobId)
+        {
+            desiredJobId = jobId;
             _runtime = AppRuntimeContext.CreateDefault(
                 useNativeGrpcTransport: useNativeGrpcTransport,
                 grpcTarget: grpcTarget,
                 httpBridgeBaseUrl: httpBridgeBaseUrl,
                 supportsDraco: true,
-                desiredJobId: desiredJobId
+                desiredJobId: jobId
             );
-
-            if (vuforiaTrackingBridge == null)
-            {
-                vuforiaTrackingBridge = FindFirstObjectByType<VuforiaTrackingBridge>();
-            }
 
             _runtime.StepCoordinator.StateChanged += OnStepStateChanged;
             _runtime.SessionClient.StepActivated += OnSessionStepActivated;
             _runtime.SessionClient.ConnectionStateChanged += OnSessionConnectionStateChanged;
             _runtime.SessionClient.WorkflowCompleted += OnSessionWorkflowCompleted;
-        }
 
-        private void Start()
-        {
-            HologramApplier.Enabled = useHologramShader;
             _runtime.SessionClient.Initialize();
             _runtime.StepCoordinator.Initialize();
             _runtime.SessionClient.Connect();
@@ -190,6 +214,62 @@ namespace Guidance.Runtime
                     _pendingCompletionAtUnixMs = 0;
                 }
             }
+        }
+
+        public void ReturnToJobSelector()
+        {
+            if (jobSelectorPanel == null) return;
+
+            _loadCancellation?.Cancel();
+            _loadCancellation?.Dispose();
+            _loadCancellation = null;
+
+            if (_runtime != null)
+            {
+                _runtime.ModelPresenter.ClearActiveModel();
+                _runtime.TargetManager.DeactivateTarget();
+                _runtime.SessionClient.Disconnect();
+            }
+
+#if VUFORIA_ENGINE
+            if (imageTargetObserver != null)
+                imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
+
+            if (_modelTargetObserver != null)
+            {
+                if (vuforiaTrackingBridge != null)
+                    vuforiaTrackingBridge.AssignObserver(null);
+                UnityEngine.Object.Destroy(_modelTargetObserver.gameObject);
+                _modelTargetObserver = null;
+            }
+#endif
+
+            _lastActivation = null;
+            _stepHistory.Clear();
+            _vuforiaTargetLoaded = false;
+            _isFrozenStepMode = false;
+            _pendingCompletionJobId = string.Empty;
+            _pendingCompletionStepId = string.Empty;
+            _lastModelPath = string.Empty;
+            _lastTargetPayloadPath = string.Empty;
+            _lastTargetVersion = string.Empty;
+            _activeObserverTransform = null;
+            _runtime = null;
+
+            if (imageTargetAnchor != null)
+                imageTargetAnchor.gameObject.SetActive(false);
+
+            if (statusPanel != null)
+            {
+                statusPanel.SetConnectionState(SessionConnectionState.Disconnected);
+                statusPanel.SetStepState(StepCoordinatorState.Idle);
+                statusPanel.SetActiveStep("-", "-");
+                statusPanel.SetInstruction("-");
+                statusPanel.SetWarning(string.Empty);
+                statusPanel.ClearImageTargetFound();
+            }
+
+            jobSelectorPanel.Show(this);
         }
 
         public void ConfirmActiveStep()
@@ -391,6 +471,9 @@ namespace Guidance.Runtime
                         }
                         _activeObserverTransform = observer != null ? observer.transform : null;
                         _vuforiaTargetLoaded = true;
+#if VUFORIA_ENGINE
+                        _modelTargetObserver = observer;
+#endif
                         statusPanel?.SetTargetStatus(observer != null ? "ACTIVE in Vuforia (from FastAPI)" : "ERROR: Vuforia returned null observer");
 
                         if (observer != null && fixtureOverlayPrefab != null)
@@ -419,11 +502,26 @@ namespace Guidance.Runtime
             {
                 _activeObserverTransform = imageTargetAnchor;
 #if VUFORIA_ENGINE
-                if (imageTargetAnchor != null && vuforiaTrackingBridge != null)
+                if (imageTargetObserver != null)
                 {
-                    var imgObserver = imageTargetAnchor.GetComponentInParent<Vuforia.ObserverBehaviour>();
-                    if (imgObserver != null)
-                        vuforiaTrackingBridge.AssignObserver(imgObserver);
+                    // Subscribe directly from AppBootstrap — VuforiaTrackingBridge is bypassed
+                    // for image targets because its isActiveAndEnabled check can fail when the
+                    // anchor is inactive.
+                    imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
+                    imageTargetObserver.OnTargetStatusChanged += OnImageTargetStatusChanged;
+
+                    var s = imageTargetObserver.TargetStatus.Status;
+                    var alreadyTracked = s == Vuforia.Status.TRACKED
+                                      || s == Vuforia.Status.EXTENDED_TRACKED
+                                      || s == Vuforia.Status.LIMITED;
+                    if (imageTargetAnchor != null)
+                        imageTargetAnchor.gameObject.SetActive(alreadyTracked);
+                    statusPanel?.SetImageTargetFound(alreadyTracked);
+                    Debug.Log($"[AppBootstrap] Subscribed to image target: {imageTargetObserver.name}, alreadyTracked={alreadyTracked}");
+                }
+                else
+                {
+                    Debug.LogWarning("[AppBootstrap] imageTargetObserver is null — check that imageTargetAnchor is a child of the ImageTarget GameObject.");
                 }
 #endif
                 Debug.Log($"[AppBootstrap] Image target anchor assigned for step {activation.StepId}");
@@ -486,6 +584,13 @@ namespace Guidance.Runtime
         public void OnTargetTrackingUpdated(Vector3 observedPosition, Quaternion observedRotation, bool trackingAcquired)
         {
             _runtime.TargetManager.UpdateTrackingPose(observedPosition, observedRotation, trackingAcquired);
+
+            if (imageTargetAnchor != null && IsImageTargetStep(_lastActivation))
+            {
+                imageTargetAnchor.gameObject.SetActive(trackingAcquired);
+                statusPanel?.SetImageTargetFound(trackingAcquired);
+            }
+
             if (trackingAcquired)
             {
                 _runtime.StepCoordinator.BeginTracking();
@@ -493,6 +598,32 @@ namespace Guidance.Runtime
             }
             _runtime.StepCoordinator.NotifyTrackingLost();
         }
+
+#if VUFORIA_ENGINE
+        private void OnImageTargetStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
+        {
+            if (!IsImageTargetStep(_lastActivation)) return;
+
+            var tracked = status.Status == Vuforia.Status.TRACKED
+                       || status.Status == Vuforia.Status.EXTENDED_TRACKED
+                       || status.Status == Vuforia.Status.LIMITED;
+
+            if (imageTargetAnchor != null)
+                imageTargetAnchor.gameObject.SetActive(tracked);
+            statusPanel?.SetImageTargetFound(tracked);
+            Debug.Log($"[AppBootstrap] Image target tracking: {(tracked ? "FOUND" : "LOST")}");
+
+            _runtime.TargetManager.UpdateTrackingPose(behaviour.transform.position, behaviour.transform.rotation, tracked);
+
+            if (tracked) _runtime.StepCoordinator.BeginTracking();
+            else _runtime.StepCoordinator.NotifyTrackingLost();
+        }
+#endif
+
+        private static bool IsImageTargetStep(StepActivationDto activation) =>
+            activation != null &&
+            (string.Equals(activation.AnchorType, "image-target", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(activation.AnchorType, "ImageTarget", StringComparison.OrdinalIgnoreCase));
 
         private void UpdateTrackingHint()
         {
@@ -545,6 +676,10 @@ namespace Guidance.Runtime
         private void OnDestroy()
         {
             Debug.Log("[AppBootstrap] Shutting down session safely...");
+#if VUFORIA_ENGINE
+            if (imageTargetObserver != null)
+                imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
+#endif
             if (_runtime != null && _runtime.SessionClient != null)
             {
                 try
