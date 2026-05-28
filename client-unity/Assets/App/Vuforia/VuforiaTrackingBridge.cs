@@ -76,7 +76,6 @@ namespace Guidance.Runtime
 
             var trackingAcquired =
                 status.Status == Status.TRACKED
-                || status.Status == Status.EXTENDED_TRACKED
                 || status.Status == Status.LIMITED;
 
             var poseTransform = behaviour != null ? behaviour.transform : transform;

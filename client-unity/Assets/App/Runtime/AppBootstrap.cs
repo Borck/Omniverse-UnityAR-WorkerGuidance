@@ -512,7 +512,6 @@ namespace Guidance.Runtime
 
                     var s = imageTargetObserver.TargetStatus.Status;
                     var alreadyTracked = s == Vuforia.Status.TRACKED
-                                      || s == Vuforia.Status.EXTENDED_TRACKED
                                       || s == Vuforia.Status.LIMITED;
                     if (imageTargetAnchor != null)
                         imageTargetAnchor.gameObject.SetActive(alreadyTracked);
@@ -605,7 +604,6 @@ namespace Guidance.Runtime
             if (!IsImageTargetStep(_lastActivation)) return;
 
             var tracked = status.Status == Vuforia.Status.TRACKED
-                       || status.Status == Vuforia.Status.EXTENDED_TRACKED
                        || status.Status == Vuforia.Status.LIMITED;
 
             if (imageTargetAnchor != null)
