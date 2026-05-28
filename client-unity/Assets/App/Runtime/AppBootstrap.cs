@@ -67,6 +67,7 @@ namespace Guidance.Runtime
             // returns null on inactive objects, so this must run before Start() hides it.
             if (imageTargetAnchor != null && imageTargetObserver == null)
                 imageTargetObserver = imageTargetAnchor.GetComponentInParent<Vuforia.ObserverBehaviour>();
+
 #endif
         }
 
