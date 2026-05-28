@@ -14,9 +14,9 @@ namespace Guidance.Runtime
     /// </summary>
     public sealed class AppBootstrap : MonoBehaviour
     {
-        [SerializeField] private bool useNativeGrpcTransport = true;
+        // useNativeGrpcTransport removed — gRPC is the only active transport.
         [SerializeField] private string grpcTarget = "172.20.10.2:50051";
-        [SerializeField] private string httpBridgeBaseUrl = "172.20.10.2:8080";
+        [SerializeField] private string httpBridgeBaseUrl = "172.20.10.2:8080"; // used only for HTTP asset/manifest fetching
         [SerializeField] private string desiredJobId = "demonstrator-26-02-25";
         [SerializeField] private bool enableRuntimeAssetPipeline = true;
         [SerializeField] private bool useHologramShader = true;
@@ -87,7 +87,6 @@ namespace Guidance.Runtime
         {
             desiredJobId = jobId;
             _runtime = AppRuntimeContext.CreateDefault(
-                useNativeGrpcTransport: useNativeGrpcTransport,
                 grpcTarget: grpcTarget,
                 httpBridgeBaseUrl: httpBridgeBaseUrl,
                 supportsDraco: true,
@@ -113,7 +112,7 @@ namespace Guidance.Runtime
                 statusPanel.SetActiveStep("-", "-");
                 statusPanel.SetInstruction("-");
                 statusPanel.SetWarning(string.Empty);
-                statusPanel.SetTransportMode(useNativeGrpcTransport ? "gRPC :50051" : "HTTP Bridge :8080");
+                statusPanel.SetTransportMode("gRPC :50051");
             }
         }
 
