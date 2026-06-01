@@ -324,7 +324,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aabcb7c317dbd174cbe36d024149135c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useNativeGrpcTransport: 1
   grpcTarget: 141.43.71.89:50051
   httpBridgeBaseUrl: 141.43.71.89:8080
   desiredJobId: demonstrator-26-02-25
