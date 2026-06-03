@@ -113,7 +113,7 @@ namespace Guidance.Runtime
             if (!string.IsNullOrEmpty(_targetStatus))
                 GUILayout.Label($"Target: {_targetStatus}");
             if (_imageTargetFound.HasValue)
-                GUILayout.Label($"Image Target Found: {(_imageTargetFound.Value ? "YES" : "NO")}");
+                GUILayout.Label($"Target Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
 
             if (showControls && appBootstrap != null)
             {
