@@ -31,7 +31,7 @@ import omni.client
 # --- CONFIGURATION ---------------------------------------------------------
 
 JOB_ID = "demonstrator-26-02-25"
-NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025"
+NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/Project%20Assembly/Source/Animation_PU_Segment"
 # REPO_ROOT = Path(r"D:\Users\Abdul\Omniverse-UnityAR-WorkerGuidance\Omniverse-UnityAR-WorkerGuidance")
 NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
 
@@ -43,16 +43,24 @@ class PartSpec:
     usd_basename: str      # exact USD filename without .usd extension (spaces allowed)
     sequence_index: int    # assembly order (1-based)
 
-
 PARTS: list[PartSpec] = [
     PartSpec("step-001", "plate_bottom_01",     "PLATE_BOTTOM_01_001",                              "PLATE_BOTTOM_01_001",                              1),
     PartSpec("step-002", "cores_001_002",       "CORES_001 CORES_002",                              "CORES_001 CORES_002",                              2),
     PartSpec("step-003", "left_unit_phase_03",  "LEFT_UNIT_PHASE_03_001",                           "LEFT_UNIT_PHASE_03_001",                           3),
     PartSpec("step-004", "right_unit_phase_03", "RIGHT_UNIT_PHASE_03_001",                          "RIGHT_UNIT_PHASE_03_001",                          4),
     PartSpec("step-005", "plate_top_02",        "PLATE_TOP_02_002",                                 "PLATE_TOP_02_002",                                 5),
-    PartSpec("step-006", "frame_ring_03_004",   "TestFrameRing03_004",                              "TestFrameRing03_004",                              6),
-    PartSpec("step-007", "frame_ring_03_multi", "TestFrameRing03_003-005-006-007-010-011",          "TestFrameRing03_003-005-006-007-010-011",          7),
+    PartSpec("step-006", "schrauben_top_02_002","Schrauben_TOP_02_002",                            "Schrauben_TOP_02_002",                              6)
 ]
+
+# PARTS: list[PartSpec] = [
+#     PartSpec("step-001", "plate_bottom_01",     "PLATE_BOTTOM_01_001",                              "PLATE_BOTTOM_01_001",                              1),
+#     PartSpec("step-002", "cores_001_002",       "CORES_001 CORES_002",                              "CORES_001 CORES_002",                              2),
+#     PartSpec("step-003", "left_unit_phase_03",  "LEFT_UNIT_PHASE_03_001",                           "LEFT_UNIT_PHASE_03_001",                           3),
+#     PartSpec("step-004", "right_unit_phase_03", "RIGHT_UNIT_PHASE_03_001",                          "RIGHT_UNIT_PHASE_03_001",                          4),
+#     PartSpec("step-005", "plate_top_02",        "PLATE_TOP_02_002",                                 "PLATE_TOP_02_002",                                 5),
+#     PartSpec("step-006", "frame_ring_03_004",   "TestFrameRing03_004",                              "TestFrameRing03_004",                              6),
+#     PartSpec("step-007", "frame_ring_03_multi", "TestFrameRing03_003-005-006-007-010-011",          "TestFrameRing03_003-005-006-007-010-011",          7),
+# ]
 
 # glTFast-friendly settings: disable materials, lights, cameras. Keep animations.
 CONVERTER_SETTINGS: dict[str, Any] = {

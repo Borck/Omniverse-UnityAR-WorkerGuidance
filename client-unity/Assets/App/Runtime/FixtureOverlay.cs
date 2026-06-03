@@ -28,16 +28,45 @@ namespace Guidance.Runtime
         private Material _revealShaderTemplate;
         private Coroutine _animation;
         private bool _isVisible;
+        private bool _enabled = true;
+
+        /// <summary>
+        /// Master switch — when false, the overlay stays hidden regardless of tracking.
+        /// Driven by the HUD checkbox in AppBootstrap.
+        /// </summary>
+        public bool OverlayEnabled
+        {
+            get => _enabled;
+            set
+            {
+                if (_enabled == value) return;
+                _enabled = value;
+                if (!_enabled)
+                {
+                    if (_animation != null) StopCoroutine(_animation);
+                    _animation = null;
+                    _isVisible = false;
+                    if (_instance != null) _instance.SetActive(false);
+                }
+#if VUFORIA_ENGINE
+                else if (_observer != null)
+                {
+                    UpdateVisibility(_observer.TargetStatus.Status);
+                }
+#endif
+            }
+        }
 
 #if VUFORIA_ENGINE
         private ObserverBehaviour _observer;
 
-        public void Initialize(GameObject prefab, ObserverBehaviour observer)
+        public void Initialize(GameObject prefab, ObserverBehaviour observer, Transform parentOverride = null)
         {
             if (prefab == null || observer == null) return;
 
             _observer = observer;
-            _instance = Object.Instantiate(prefab, observer.transform);
+            var parent = parentOverride != null ? parentOverride : observer.transform;
+            _instance = Object.Instantiate(prefab, parent);
             _instance.name = "FixtureOverlay";
             _instance.transform.localPosition = Vector3.zero;
             _instance.transform.localRotation = Quaternion.identity;
@@ -77,6 +106,7 @@ namespace Guidance.Runtime
 
         private void UpdateVisibility(Status status)
         {
+            if (!_enabled) return;
             bool tracked = status == Status.TRACKED || status == Status.EXTENDED_TRACKED;
 
             if (tracked && !_isVisible)

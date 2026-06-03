@@ -119,6 +119,54 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &60848012
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 60848014}
+  - component: {fileID: 60848013}
+  m_Layer: 0
+  m_Name: ServerConfigPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &60848013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 60848012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d68ed93784bb5fd40af17fa35eb4ad05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultGrpcPort: 50051
+  defaultHttpPort: 8080
+  discoveryPort: 45454
+  discoveryTimeoutSeconds: 3
+--- !u!4 &60848014
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 60848012}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1369277006}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &599964135
 GameObject:
   m_ObjectHideFlags: 0
@@ -148,7 +196,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc0702785bd36a34db40346b3ab35003, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  modelTargetJobId: demonstrator-26-02-25
+  modelTargetJobId: pu-segment-assembly
   imageTargetJobId: demonstrator-26-02-25-img
 --- !u!4 &599964137
 Transform:
@@ -324,13 +372,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aabcb7c317dbd174cbe36d024149135c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useNativeGrpcTransport: 1
-  grpcTarget: 141.43.71.89:50051
-  httpBridgeBaseUrl: 141.43.71.89:8080
-  desiredJobId: demonstrator-26-02-25
+  grpcTarget: 141.43.71.88:50051
+  httpBridgeBaseUrl: 141.43.71.88:8080
+  desiredJobId: pu-segment-assembly
   enableRuntimeAssetPipeline: 1
   useHologramShader: 1
   fixtureOverlayPrefab: {fileID: 919132149155446097, guid: d8f34ef344de3ce43a5363a2df5af030, type: 3}
+  showFixtureOverlay: 0
   vuforiaTrackingBridge: {fileID: 0}
   autoConfirmStepAfterAssetReady: 0
   autoConfirmDelaySeconds: 0.5
@@ -338,6 +386,17 @@ MonoBehaviour:
   reconnectMinIntervalSeconds: 2
   reconnectMaxIntervalSeconds: 20
   reconnectBackoffMultiplier: 1.8
+  serverConfigPanel: {fileID: 60848013}
+  enableAutoDiscovery: 1
+  discoveryPort: 45454
+  serviceTagFilter: antillen
+  discoveryTimeoutSeconds: 3
+  modelTargetAnchorLocalPosition: {x: 0, y: -0.8, z: -2}
+  modelTargetAnchorLocalEulerAngles: {x: 90, y: -90, z: -90}
+  modelTargetAnchorLocalScale: {x: 1, y: 1, z: 1}
+  animationAnchorLocalPosition: {x: 0, y: -0.8, z: -2}
+  animationAnchorLocalEulerAngles: {x: 0, y: 0, z: 0}
+  animationAnchorLocalScale: {x: 1, y: 1, z: 1}
   statusPanel: {fileID: 858389738}
   trackingDirectionHint: {fileID: 0}
   imageTargetAnchor: {fileID: 2000913971}
@@ -355,7 +414,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 60848014}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1378422017
@@ -629,7 +689,7 @@ MonoBehaviour:
   m_Script: {fileID: -1826476478, guid: 8a9a760f95896c34689febc965510927, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mWorldCenterMode: 2
+  mWorldCenterMode: 1
   mWorldCenter: {fileID: 0}
 --- !u!81 &1484046096
 AudioListener:

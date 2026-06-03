@@ -1,314 +1,142 @@
-workflowVersion: 1.0.0
 jobs:
-  - jobId: job-mock-001
-    timelineProfile:
-      startStep: 1
-      endStep: 101
-      fps: 30
-    steps:
-      - stepId: "17"
-        sequenceIndex: 1
-        partId: Bracket_12
-        displayName: Install bracket
-        sourcePrimPath: /Assembly/Bracket_12
-        activePrimPath: /Assembly/Bracket_12
-        animationName: Insert_17
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        animationStartStep: 1
-        animationEndStep: 10
-        keepVisibleUntilStep: 101
-        startOffset: [0.0, 0.1, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-        anchorType: ImageTarget
-        targetId: AssemblyMarker_A
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_18c7dd53a481165d
-        instructionsShort: Align and insert along highlighted path.
-        safetyNotes:
-          - Check cable clearance.
-        expectedDurationSec: 45
-
-  - jobId: job-layer-example-001
-    timelineProfile:
-      startStep: 1
-      endStep: 101
-      fps: 30
-    steps:
-      - stepId: "10"
-        sequenceIndex: 1
-        partId: PART_A
-        displayName: Place part A
-        sourcePrimPath: /Assembly/PART_A
-        activePrimPath: /Assembly/PART_A
-        animationName: Insert_PART_A
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        animationStartStep: 1
-        animationEndStep: 10
-        keepVisibleUntilStep: 101
-        startOffset: [0.0, 0.1, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-        anchorType: ImageTarget
-        targetId: AssemblyMarker_A
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_part_a
-        instructionsShort: Place part A.
-        safetyNotes:
-          - Keep hands clear.
-        expectedDurationSec: 30
-
-      - stepId: "20"
-        sequenceIndex: 2
-        partId: PART_B
-        displayName: Place part B
-        sourcePrimPath: /Assembly/PART_B
-        activePrimPath: /Assembly/PART_B
-        animationName: Insert_PART_B
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        animationStartStep: 11
-        animationEndStep: 30
-        keepVisibleUntilStep: 101
-        startOffset: [0.0, 0.1, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-        anchorType: ImageTarget
-        targetId: AssemblyMarker_A
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_part_b
-        instructionsShort: Place part B.
-        safetyNotes:
-          - Keep hands clear.
-        expectedDurationSec: 30
-
-      - stepId: "30"
-        sequenceIndex: 3
-        partId: PART_C
-        displayName: Place part C
-        sourcePrimPath: /Assembly/PART_C
-        activePrimPath: /Assembly/PART_C
-        animationName: Insert_PART_C
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        animationStartStep: 31
-        animationEndStep: 40
-        keepVisibleUntilStep: 101
-        startOffset: [0.0, 0.1, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-        anchorType: ImageTarget
-        targetId: AssemblyMarker_A
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_part_c
-        instructionsShort: Place part C.
-        safetyNotes:
-          - Keep hands clear.
-        expectedDurationSec: 30
-
-      - stepId: "40"
-        sequenceIndex: 4
-        partId: PART_D
-        displayName: Place part D
-        sourcePrimPath: /Assembly/PART_D
-        activePrimPath: /Assembly/PART_D
-        animationName: Insert_PART_D
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        animationStartStep: 41
-        animationEndStep: 50
-        keepVisibleUntilStep: 101
-        startOffset: [0.0, 0.1, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-        anchorType: ImageTarget
-        targetId: AssemblyMarker_A
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_part_d
-        instructionsShort: Place part D.
-        safetyNotes:
-          - Keep hands clear.
-        expectedDurationSec: 30
-
-      - stepId: "50"
-        sequenceIndex: 5
-        partId: PART_E
-        displayName: Place part E
-        sourcePrimPath: /Assembly/PART_E
-        activePrimPath: /Assembly/PART_E
-        animationName: Insert_PART_E
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        animationStartStep: 51
-        animationEndStep: 60
-        keepVisibleUntilStep: 101
-        startOffset: [0.0, 0.1, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-        anchorType: ImageTarget
-        targetId: AssemblyMarker_A
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_part_e
-        instructionsShort: Place part E.
-        safetyNotes:
-          - Keep hands clear.
-        expectedDurationSec: 30
-  - jobId: demonstrator-26-02-25-img
+  - jobId: pu-segment-assembly
     workflowVersion: "1.0.0"
     timelineProfile:
       startStep: 0
-      endStep: 700
+      endStep: 600
       fps: 30
     steps:
-      - stepId: "step-001"
+      - stepId: step-001
         partId: plate_bottom_01
         displayName: "PLATE_BOTTOM_01_001"
         sourcePrimPath: /World
-        activePrimPath: /World
         animationName: plate_bottom_01_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_009e5c5303dfa3ec
-        instructionsShort: "Install PLATE_BOTTOM_01_001"
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: pending
+        instructionsShort: "Place Part_PLATE_BOTTOM_01_001"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 1
         animationStartStep: 0
         animationEndStep: 100
         keepVisibleUntilStep: 100
+        activePrimPath: /World
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-002"
+      - stepId: step-002
         partId: cores_001_002
         displayName: "CORES_001 CORES_002"
         sourcePrimPath: /World
-        activePrimPath: /World
         animationName: cores_001_002_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_bf766e1f54940b6f
-        instructionsShort: "Install CORES_001 CORES_002"
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: pending
+        instructionsShort: "Place Part_CORES_001 CORES_002"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 2
         animationStartStep: 100
         animationEndStep: 200
         keepVisibleUntilStep: 200
+        activePrimPath: /World
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-003"
+      - stepId: step-003
         partId: left_unit_phase_03
         displayName: "LEFT_UNIT_PHASE_03_001"
         sourcePrimPath: /World
-        activePrimPath: /World
         animationName: left_unit_phase_03_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_cdc64c500d608e7e
-        instructionsShort: "Install LEFT_UNIT_PHASE_03_001"
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: pending
+        instructionsShort: "Place Part_LEFT_UNIT_PHASE_03_001"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 3
         animationStartStep: 200
         animationEndStep: 300
         keepVisibleUntilStep: 300
+        activePrimPath: /World
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-004"
+      - stepId: step-004
         partId: right_unit_phase_03
         displayName: "RIGHT_UNIT_PHASE_03_001"
         sourcePrimPath: /World
-        activePrimPath: /World
         animationName: right_unit_phase_03_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_07174e29a9a53da2
-        instructionsShort: "Install RIGHT_UNIT_PHASE_03_001"
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: pending
+        instructionsShort: "Place Part_RIGHT_UNIT_PHASE_03_001"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 4
         animationStartStep: 300
         animationEndStep: 400
         keepVisibleUntilStep: 400
+        activePrimPath: /World
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-005"
+      - stepId: step-005
         partId: plate_top_02
         displayName: "PLATE_TOP_02_002"
         sourcePrimPath: /World
-        activePrimPath: /World
         animationName: plate_top_02_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_46d2958f2b1a76e0
-        instructionsShort: "Install PLATE_TOP_02_002"
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: pending
+        instructionsShort: "Place Part_PLATE_TOP_02_002"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 5
         animationStartStep: 400
         animationEndStep: 500
         keepVisibleUntilStep: 500
+        activePrimPath: /World
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-006"
-        partId: frame_ring_03_004
-        displayName: "TestFrameRing03_004"
+      - stepId: step-006
+        partId: schrauben_top_02_002
+        displayName: "Schrauben_TOP_02_002"
         sourcePrimPath: /World
-        activePrimPath: /World
-        animationName: frame_ring_03_004_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_aa0831f2971c1009
-        instructionsShort: "Install TestFrameRing03_004"
+        animationName: schrauben_top_02_002_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: pending
+        instructionsShort: "Place Part_Schrauben_TOP_02_002"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 6
         animationStartStep: 500
         animationEndStep: 600
         keepVisibleUntilStep: 600
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        startOffset: [0.0, 0.0, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-007"
-        partId: frame_ring_03_multi
-        displayName: "TestFrameRing03_003-005-006-007-010-011"
-        sourcePrimPath: /World
         activePrimPath: /World
-        animationName: frame_ring_03_multi_anim
-        anchorType: image-target
-        targetId: ""
-        targetVersion: ""
-        assetVersion: sha256_e527147202360366
-        instructionsShort: "Install TestFrameRing03_003-005-006-007-010-011"
-        safetyNotes: []
-        expectedDurationSec: 30
-        sequenceIndex: 7
-        animationStartStep: 600
-        animationEndStep: 700
-        keepVisibleUntilStep: 700
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
-
-  - jobId: demonstrator-26-02-25
+  - jobId: PU_Segment_Assembly
     workflowVersion: "1.0.0"
     timelineProfile:
       startStep: 0
-      endStep: 700
+      endStep: 600
       fps: 30
     steps:
       - stepId: "step-001"
@@ -320,7 +148,7 @@ jobs:
         anchorType: model-target
         targetId: demonstrator_model_target
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_009e5c5303dfa3ec
+        assetVersion: sha256_de369ee8bddc1bc7
         instructionsShort: "Install PLATE_BOTTOM_01_001"
         safetyNotes: []
         expectedDurationSec: 30
@@ -341,7 +169,7 @@ jobs:
         anchorType: model-target
         targetId: demonstrator_model_target
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_bf766e1f54940b6f
+        assetVersion: sha256_e1dc53315c69e139
         instructionsShort: "Install CORES_001 CORES_002"
         safetyNotes: []
         expectedDurationSec: 30
@@ -362,7 +190,7 @@ jobs:
         anchorType: model-target
         targetId: demonstrator_model_target
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_cdc64c500d608e7e
+        assetVersion: sha256_862a67c8355632b2
         instructionsShort: "Install LEFT_UNIT_PHASE_03_001"
         safetyNotes: []
         expectedDurationSec: 30
@@ -383,7 +211,7 @@ jobs:
         anchorType: model-target
         targetId: demonstrator_model_target
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_07174e29a9a53da2
+        assetVersion: sha256_3d4b13cfda02dd8a
         instructionsShort: "Install RIGHT_UNIT_PHASE_03_001"
         safetyNotes: []
         expectedDurationSec: 30
@@ -404,7 +232,7 @@ jobs:
         anchorType: model-target
         targetId: demonstrator_model_target
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_46d2958f2b1a76e0
+        assetVersion: sha256_c979c00ecd2b2b8b
         instructionsShort: "Install PLATE_TOP_02_002"
         safetyNotes: []
         expectedDurationSec: 30
@@ -417,43 +245,22 @@ jobs:
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
       - stepId: "step-006"
-        partId: frame_ring_03_004
-        displayName: "TestFrameRing03_004"
+        partId: schrauben_top_02_002
+        displayName: "Schrauben_TOP_02_002"
         sourcePrimPath: /World
         activePrimPath: /World
-        animationName: frame_ring_03_004_anim
+        animationName: schrauben_top_02_002_anim
         anchorType: model-target
         targetId: demonstrator_model_target
         targetVersion: "2026-03-10.1"
-        assetVersion: sha256_aa0831f2971c1009
-        instructionsShort: "Install TestFrameRing03_004"
+        assetVersion: sha256_552b4c489ce347f0
+        instructionsShort: "Install Schrauben_TOP_02_002"
         safetyNotes: []
         expectedDurationSec: 30
         sequenceIndex: 6
         animationStartStep: 500
         animationEndStep: 600
         keepVisibleUntilStep: 600
-        animationLayerRole: animation
-        targetLayerRole: target-position
-        startOffset: [0.0, 0.0, 0.0]
-        targetPosition: [0.0, 0.0, 0.0]
-      - stepId: "step-007"
-        partId: frame_ring_03_multi
-        displayName: "TestFrameRing03_003-005-006-007-010-011"
-        sourcePrimPath: /World
-        activePrimPath: /World
-        animationName: frame_ring_03_multi_anim
-        anchorType: model-target
-        targetId: demonstrator_model_target
-        targetVersion: "2026-03-10.1"
-        assetVersion: sha256_e527147202360366
-        instructionsShort: "Install TestFrameRing03_003-005-006-007-010-011"
-        safetyNotes: []
-        expectedDurationSec: 30
-        sequenceIndex: 7
-        animationStartStep: 600
-        animationEndStep: 700
-        keepVisibleUntilStep: 700
         animationLayerRole: animation
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
