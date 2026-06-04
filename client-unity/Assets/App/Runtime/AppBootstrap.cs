@@ -41,12 +41,22 @@ namespace Guidance.Runtime
         [SerializeField] private string serviceTagFilter = "";
         [SerializeField] private float discoveryTimeoutSeconds = 3f;
 
+        [Header("Animation offset (applied only to step animations)")]
+        [Tooltip("Local position applied to the spawned animations relative to the model-target observer. Use to nudge a step into perfect alignment.")]
+        [SerializeField] private Vector3 animationOffsetLocalPosition = Vector3.zero;
+        [Tooltip("Local euler rotation (deg) applied to the spawned animations.")]
+        [SerializeField] private Vector3 animationOffsetLocalEulerAngles = Vector3.zero;
+
+        [Header("Fixture overlay offset (applied only to the fixture hologram)")]
+        [Tooltip("Local position applied to the fixture overlay relative to the model-target observer. Independent from the animation offset.")]
+        [SerializeField] private Vector3 overlayOffsetLocalPosition = Vector3.zero;
+        [Tooltip("Local euler rotation (deg) applied to the fixture overlay.")]
+        [SerializeField] private Vector3 overlayOffsetLocalEulerAngles = Vector3.zero;
+
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
-        [SerializeField] private Transform imageTargetAnchor;
         [SerializeField] private JobSelectorPanel jobSelectorPanel;
 #if VUFORIA_ENGINE
-        [SerializeField] private Vuforia.ObserverBehaviour imageTargetObserver;
         private Vuforia.ObserverBehaviour _modelTargetObserver;
 #endif
 
@@ -63,6 +73,7 @@ namespace Guidance.Runtime
         private string _lastTargetPayloadPath = string.Empty;
         private string _lastTargetVersion = string.Empty;
         private CancellationTokenSource _loadCancellation;
+        private Transform _modelSpawnAnchor;
         private bool _vuforiaTargetLoaded;
         private Transform _activeObserverTransform;
         private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
@@ -74,21 +85,10 @@ namespace Guidance.Runtime
 
             if (vuforiaTrackingBridge == null)
                 vuforiaTrackingBridge = FindFirstObjectByType<VuforiaTrackingBridge>();
-
-#if VUFORIA_ENGINE
-            // Resolve while imageTargetAnchor is still active — GetComponentInParent
-            // returns null on inactive objects, so this must run before Start() hides it.
-            if (imageTargetAnchor != null && imageTargetObserver == null)
-                imageTargetObserver = imageTargetAnchor.GetComponentInParent<Vuforia.ObserverBehaviour>();
-
-#endif
         }
 
         private void Start()
         {
-            if (imageTargetAnchor != null)
-                imageTargetAnchor.gameObject.SetActive(false);
-
             HologramApplier.Enabled = useHologramShader;
 
             StartCoroutine(StartupFlow());
@@ -350,9 +350,6 @@ namespace Guidance.Runtime
             }
 
 #if VUFORIA_ENGINE
-            if (imageTargetObserver != null)
-                imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
-
             if (_modelTargetObserver != null)
             {
                 _modelTargetObserver.OnTargetStatusChanged -= OnModelTargetStatusChanged;
@@ -374,10 +371,8 @@ namespace Guidance.Runtime
             _lastTargetPayloadPath = string.Empty;
             _lastTargetVersion = string.Empty;
             _activeObserverTransform = null;
+            _modelSpawnAnchor = null;
             _runtime = null;
-
-            if (imageTargetAnchor != null)
-                imageTargetAnchor.gameObject.SetActive(false);
 
             if (statusPanel != null)
             {
@@ -439,14 +434,28 @@ namespace Guidance.Runtime
 
         public void PreviousStep()
         {
-            if (_stepHistory.Count < 2)
+            if (_stepHistory.Count == 0)
             {
                 if (statusPanel != null) statusPanel.SetWarning("No previous step available.");
                 return;
             }
 
-            _stepHistory.RemoveAt(_stepHistory.Count - 1);
-            var previousActivation = _stepHistory[^1];
+            StepActivationDto previousActivation;
+            if (_lastActivation == null)
+            {
+                // Post-completion: just-finished step becomes active again.
+                previousActivation = _stepHistory[^1];
+            }
+            else
+            {
+                if (_stepHistory.Count < 2)
+                {
+                    if (statusPanel != null) statusPanel.SetWarning("No previous step available.");
+                    return;
+                }
+                _stepHistory.RemoveAt(_stepHistory.Count - 1);
+                previousActivation = _stepHistory[^1];
+            }
 
             _runtime.ModelPresenter.ClearActiveModel();
             _runtime.TargetManager.DeactivateTarget();
@@ -609,10 +618,13 @@ namespace Guidance.Runtime
                         {
                             vuforiaTrackingBridge.AssignObserver(observer);
                         }
-                        // Single identity-transform child of the observer. Used only so we can
-                        // SetActive() it for the tracking gate without disabling the observer
-                        // GameObject itself (which would stop Vuforia from updating its pose).
-                        _activeObserverTransform = observer != null ? GetOrCreateAnimationRoot(observer.transform) : null;
+                        // AnimationRoot is the identity gate. ModelAnchor + OverlayAnchor sit
+                        // under it with independent offsets so the step animations and the
+                        // fixture overlay can be aligned separately.
+                        var animRoot = observer != null ? GetOrCreateAnimationRoot(observer.transform) : null;
+                        _activeObserverTransform = animRoot;
+                        _modelSpawnAnchor = animRoot != null ? GetOrCreateModelAnchor(animRoot) : null;
+                        var overlayAnchor = animRoot != null ? GetOrCreateOverlayAnchor(animRoot) : null;
                         _vuforiaTargetLoaded = true;
 #if VUFORIA_ENGINE
                         _modelTargetObserver = observer;
@@ -635,7 +647,7 @@ namespace Guidance.Runtime
                         if (observer != null && fixtureOverlayPrefab != null)
                         {
                             var overlay = observer.gameObject.AddComponent<FixtureOverlay>();
-                            overlay.Initialize(fixtureOverlayPrefab, observer, _activeObserverTransform);
+                            overlay.Initialize(fixtureOverlayPrefab, observer, overlayAnchor);
                             overlay.OverlayEnabled = showFixtureOverlay;
                             _activeFixtureOverlay = overlay;
                         }
@@ -655,34 +667,7 @@ namespace Guidance.Runtime
                     yield break;
                 }
             }
-            else if (string.Equals(activation.AnchorType, "image-target", StringComparison.OrdinalIgnoreCase)
-                  || string.Equals(activation.AnchorType, "ImageTarget", StringComparison.OrdinalIgnoreCase))
-            {
-                _activeObserverTransform = imageTargetAnchor;
-#if VUFORIA_ENGINE
-                if (imageTargetObserver != null)
-                {
-                    // Subscribe directly from AppBootstrap — VuforiaTrackingBridge is bypassed
-                    // for image targets because its isActiveAndEnabled check can fail when the
-                    // anchor is inactive.
-                    imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
-                    imageTargetObserver.OnTargetStatusChanged += OnImageTargetStatusChanged;
-
-                    var s = imageTargetObserver.TargetStatus.Status;
-                    var alreadyTracked = s == Vuforia.Status.TRACKED
-                                      || s == Vuforia.Status.LIMITED;
-                    if (imageTargetAnchor != null)
-                        imageTargetAnchor.gameObject.SetActive(alreadyTracked);
-                    statusPanel?.SetImageTargetFound(alreadyTracked);
-                    Debug.Log($"[AppBootstrap] Subscribed to image target: {imageTargetObserver.name}, alreadyTracked={alreadyTracked}");
-                }
-                else
-                {
-                    Debug.LogWarning("[AppBootstrap] imageTargetObserver is null — check that imageTargetAnchor is a child of the ImageTarget GameObject.");
-                }
-#endif
-                Debug.Log($"[AppBootstrap] Image target anchor assigned for step {activation.StepId}");
-            }
+            // Image-target path removed — project is model-target only.
             // ====================================================================
 
             _loadCancellation?.Cancel();
@@ -690,9 +675,11 @@ namespace Guidance.Runtime
             _loadCancellation = new CancellationTokenSource();
             var loadToken = _loadCancellation.Token;
 
-            var observerTransform = _activeObserverTransform != null && _activeObserverTransform.gameObject != null
-                ? _activeObserverTransform : null;
-            Task loadTask = _runtime.ModelPresenter.PresentModelAsync(modelPath, activation, loadToken, observerTransform);
+            var spawnAnchor = _modelSpawnAnchor != null && _modelSpawnAnchor.gameObject != null
+                ? _modelSpawnAnchor
+                : (_activeObserverTransform != null && _activeObserverTransform.gameObject != null
+                    ? _activeObserverTransform : null);
+            Task loadTask = _runtime.ModelPresenter.PresentModelAsync(modelPath, activation, loadToken, spawnAnchor);
             yield return new WaitUntil(() => loadTask.IsCompleted);
 
             if (loadTask.IsFaulted)
@@ -742,12 +729,6 @@ namespace Guidance.Runtime
         {
             _runtime.TargetManager.UpdateTrackingPose(observedPosition, observedRotation, trackingAcquired);
 
-            if (imageTargetAnchor != null && IsImageTargetStep(_lastActivation))
-            {
-                imageTargetAnchor.gameObject.SetActive(trackingAcquired);
-                statusPanel?.SetImageTargetFound(trackingAcquired);
-            }
-
             if (trackingAcquired)
             {
                 _runtime.StepCoordinator.BeginTracking();
@@ -766,57 +747,55 @@ namespace Guidance.Runtime
                 _activeObserverTransform.gameObject.SetActive(tracked);
             statusPanel?.SetImageTargetFound(tracked);
         }
-
-        private void OnImageTargetStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
-        {
-            if (!IsImageTargetStep(_lastActivation)) return;
-
-            var tracked = status.Status == Vuforia.Status.TRACKED
-                       || status.Status == Vuforia.Status.LIMITED;
-
-            if (imageTargetAnchor != null)
-                imageTargetAnchor.gameObject.SetActive(tracked);
-            statusPanel?.SetImageTargetFound(tracked);
-            Debug.Log($"[AppBootstrap] Image target tracking: {(tracked ? "FOUND" : "LOST")}");
-
-            _runtime.TargetManager.UpdateTrackingPose(behaviour.transform.position, behaviour.transform.rotation, tracked);
-
-            if (tracked) _runtime.StepCoordinator.BeginTracking();
-            else _runtime.StepCoordinator.NotifyTrackingLost();
-        }
 #endif
 
         /// <summary>
-        /// Identity-transform child of the Vuforia model-target observer. Both the
-        /// fixture overlay and the per-step animations parent here. Exists only so
-        /// the tracking gate can toggle visibility (SetActive) without disabling the
-        /// observer GameObject itself (which would stop Vuforia from updating pose).
-        /// No translation, rotation, or scale is applied — the source data is
-        /// expected to be already aligned with the physical fixture.
+        /// Identity-transform child of the Vuforia model-target observer. Used as
+        /// the tracking gate target (SetActive() toggles the whole AR subtree without
+        /// disabling the observer GameObject, which would stop Vuforia from updating
+        /// pose). Holds two independently-positioned siblings:
+        ///   • ModelAnchor   — animationOffsetLocal* — parents the step animations.
+        ///   • OverlayAnchor — overlayOffsetLocal*   — parents the fixture overlay.
         /// </summary>
         private Transform GetOrCreateAnimationRoot(Transform observerRoot)
         {
             if (observerRoot == null) return null;
-
-            const string anchorName = "AnimationRoot";
-            var existing = observerRoot.Find(anchorName);
-            if (existing == null)
-            {
-                var go = new GameObject(anchorName);
-                existing = go.transform;
-                existing.SetParent(observerRoot, false);
-            }
-
-            existing.localPosition = Vector3.zero;
-            existing.localRotation = Quaternion.identity;
-            existing.localScale = Vector3.one;
-            return existing;
+            var root = GetOrCreateNamedChild(observerRoot, "AnimationRoot");
+            root.localPosition = Vector3.zero;
+            root.localRotation = Quaternion.identity;
+            root.localScale = Vector3.one;
+            return root;
         }
 
-        private static bool IsImageTargetStep(StepActivationDto activation) =>
-            activation != null &&
-            (string.Equals(activation.AnchorType, "image-target", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(activation.AnchorType, "ImageTarget", StringComparison.OrdinalIgnoreCase));
+        private Transform GetOrCreateModelAnchor(Transform animationRoot)
+        {
+            if (animationRoot == null) return null;
+            var t = GetOrCreateNamedChild(animationRoot, "ModelAnchor");
+            t.localPosition = animationOffsetLocalPosition;
+            t.localRotation = Quaternion.Euler(animationOffsetLocalEulerAngles);
+            t.localScale = Vector3.one;
+            return t;
+        }
+
+        private Transform GetOrCreateOverlayAnchor(Transform animationRoot)
+        {
+            if (animationRoot == null) return null;
+            var t = GetOrCreateNamedChild(animationRoot, "OverlayAnchor");
+            t.localPosition = overlayOffsetLocalPosition;
+            t.localRotation = Quaternion.Euler(overlayOffsetLocalEulerAngles);
+            t.localScale = Vector3.one;
+            return t;
+        }
+
+        private static Transform GetOrCreateNamedChild(Transform parent, string name)
+        {
+            var existing = parent.Find(name);
+            if (existing != null) return existing;
+            var go = new GameObject(name);
+            var t = go.transform;
+            t.SetParent(parent, false);
+            return t;
+        }
 
         private void UpdateTrackingHint()
         {
@@ -870,8 +849,6 @@ namespace Guidance.Runtime
         {
             Debug.Log("[AppBootstrap] Shutting down session safely...");
 #if VUFORIA_ENGINE
-            if (imageTargetObserver != null)
-                imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
             if (_modelTargetObserver != null)
                 _modelTargetObserver.OnTargetStatusChanged -= OnModelTargetStatusChanged;
 #endif

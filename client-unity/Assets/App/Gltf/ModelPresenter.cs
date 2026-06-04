@@ -96,7 +96,9 @@ namespace Guidance.Runtime
                 _activeModelRoot.transform.SetParent(parentTransform, worldPositionStays: false);
                 _activeModelRoot.transform.localPosition = Vector3.zero;
                 _activeModelRoot.transform.localRotation = Quaternion.identity;
-                _activeModelRoot.transform.localScale    = Vector3.one;
+                // GLBs exported from Omniverse come in at ~10x the size needed in Unity,
+                // so we uniformly downscale to 0.1 on every axis.
+                _activeModelRoot.transform.localScale    = Vector3.one * 0.1f;
             }
 
             IModelLoader selectedLoader = null;
@@ -148,5 +150,6 @@ namespace Guidance.Runtime
             _activeModelRoot = null;
             Debug.Log("[ModelPresenter] Cleared active model");
         }
+
     }
 }
