@@ -14,6 +14,9 @@ namespace Guidance.Runtime
     /// </summary>
     public sealed class FixtureOverlay : MonoBehaviour
     {
+        [Tooltip("Uniform scale applied to the fixture overlay prefab when instantiated. Use 1 if the OBJ is already at real-world scale, smaller if it was modeled larger than the physical fixture.")]
+        [SerializeField] private float overlayScale = 1f;
+
         private const float RevealDuration = 0.7f;
         private const float HideDebounceSeconds = 0.3f;
         private const string RevealShaderName = "FixtureReveal";
@@ -70,7 +73,7 @@ namespace Guidance.Runtime
             _instance.name = "FixtureOverlay";
             _instance.transform.localPosition = Vector3.zero;
             _instance.transform.localRotation = Quaternion.identity;
-            _instance.transform.localScale = Vector3.one * 0.1f;
+            _instance.transform.localScale = Vector3.one * overlayScale;
             _instance.SetActive(false);
 
             _renderers = _instance.GetComponentsInChildren<Renderer>(includeInactive: true);
@@ -300,6 +303,18 @@ namespace Guidance.Runtime
             // No pulse / no heartbeat — fixture stays calm and consistent.
             _steadyHologramMaterial.SetFloat("_PulseAmount", 0f);
             _steadyHologramMaterial.SetFloat("_PulseSpeed", 0f);
+
+            // Distinct cool-cyan tint at lower opacity so the fixture overlay reads as
+            // "the static reference object" vs the bright step animations. Set the two
+            // common property names — Unity silently ignores the one the shader doesn't have.
+            var fixtureTint = new Color(0.35f, 0.75f, 1.0f, 0.45f);
+            if (_steadyHologramMaterial.HasProperty("_BaseColor"))
+                _steadyHologramMaterial.SetColor("_BaseColor", fixtureTint);
+            if (_steadyHologramMaterial.HasProperty("_Color"))
+                _steadyHologramMaterial.SetColor("_Color", fixtureTint);
+            // Lower the glow so it doesn't compete with the animated parts.
+            if (_steadyHologramMaterial.HasProperty("_GlowIntensity"))
+                _steadyHologramMaterial.SetFloat("_GlowIntensity", 0.8f);
             return _steadyHologramMaterial;
         }
 #else
