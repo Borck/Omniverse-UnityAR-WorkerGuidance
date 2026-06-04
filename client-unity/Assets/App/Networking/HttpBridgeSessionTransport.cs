@@ -229,6 +229,7 @@ namespace Guidance.Runtime
                         message.step_activated.step_id,
                         message.step_activated.part_id,
                         message.step_activated.display_name,
+                        message.step_activated.instructions_short,
                         message.step_activated.asset_version,
                         message.step_activated.target_id,
                         message.step_activated.target_version,
@@ -299,6 +300,7 @@ namespace Guidance.Runtime
                         message.step_activated.step_id,
                         message.step_activated.part_id,
                         message.step_activated.display_name,
+                        message.step_activated.instructions_short,
                         message.step_activated.asset_version,
                         message.step_activated.target_id,
                         message.step_activated.target_version,
@@ -368,6 +370,7 @@ namespace Guidance.Runtime
             public string step_id;
             public string part_id;
             public string display_name;
+            public string instructions_short;
             public string asset_version;
             public string target_id;
             public string target_version;

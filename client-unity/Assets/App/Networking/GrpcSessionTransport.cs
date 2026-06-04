@@ -281,6 +281,7 @@ namespace Guidance.Runtime
                                         message.StepActivated.StepId,
                                         message.StepActivated.PartId,
                                         message.StepActivated.DisplayName,
+                                        message.StepActivated.InstructionsShort,
                                         message.StepActivated.AssetVersion,
                                         message.StepActivated.TargetId,
                                         message.StepActivated.TargetVersion,

@@ -286,7 +286,7 @@ namespace Guidance.Runtime
             if (statusPanel != null)
             {
                 statusPanel.SetActiveStep(activation.StepId, activation.PartId);
-                statusPanel.SetInstruction(activation.DisplayName);
+                statusPanel.SetInstruction(string.IsNullOrEmpty(activation.InstructionsShort) ? activation.DisplayName : activation.InstructionsShort);
                 statusPanel.SetWarning(string.Empty);
             }
 
@@ -471,12 +471,12 @@ namespace Guidance.Runtime
 
         private void OnGUI()
         {
-            const float w = 220f;
+            const float w = 140f;
             const float h = 32f;
             var rect = new Rect(Screen.width - w - 16f, 16f, w, h);
 
             GUILayout.BeginArea(rect, GUI.skin.box);
-            var newValue = GUILayout.Toggle(showFixtureOverlay, " Show Fixture Overlay");
+            var newValue = GUILayout.Toggle(showFixtureOverlay, " Show Fixture");
             if (newValue != showFixtureOverlay)
                 SetFixtureOverlayVisible(newValue);
             GUILayout.EndArea();

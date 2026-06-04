@@ -265,3 +265,136 @@ jobs:
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
+  - jobId: pu-segment-assembly-instrutions
+    workflowVersion: "1.0.0"
+    timelineProfile:
+      startStep: 0
+      endStep: 600
+      fps: 30
+    steps:
+      - stepId: "step-001"
+        partId: plate_bottom_01
+        displayName: "Place bottom plate"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: plate_bottom_01_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_de369ee8bddc1bc7
+        instructionsShort: "Place bottom plate"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 1
+        animationStartStep: 0
+        animationEndStep: 100
+        keepVisibleUntilStep: 100
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-002"
+        partId: right_unit_phase_03
+        displayName: "Insert right unit"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: right_unit_phase_03_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_3d4b13cfda02dd8a
+        instructionsShort: "Insert right unit"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 2
+        animationStartStep: 100
+        animationEndStep: 200
+        keepVisibleUntilStep: 200
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-003"
+        partId: left_unit_phase_03
+        displayName: "Insert left unit"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: left_unit_phase_03_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_862a67c8355632b2
+        instructionsShort: "Insert left unit"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 3
+        animationStartStep: 200
+        animationEndStep: 300
+        keepVisibleUntilStep: 300
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-004"
+        partId: cores_001_002
+        displayName: "Place cores 001 and 002"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: cores_001_002_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_e1dc53315c69e139
+        instructionsShort: "Place cores 001 and 002"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 4
+        animationStartStep: 300
+        animationEndStep: 400
+        keepVisibleUntilStep: 400
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-005"
+        partId: plate_top_02
+        displayName: "Place top plate"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: plate_top_02_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_c979c00ecd2b2b8b
+        instructionsShort: "Place top plate"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 5
+        animationStartStep: 400
+        animationEndStep: 500
+        keepVisibleUntilStep: 500
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-006"
+        partId: schrauben_top_02
+        displayName: "Fasten top screws"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: schrauben_top_02_anim
+        anchorType: model-target
+        targetId: Fixture_detectors_12_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_552b4c489ce347f0
+        instructionsShort: "Fasten top screws"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 6
+        animationStartStep: 500
+        animationEndStep: 600
+        keepVisibleUntilStep: 600
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]

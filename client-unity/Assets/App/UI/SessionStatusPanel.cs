@@ -22,6 +22,7 @@ namespace Guidance.Runtime
         private string _targetStatus = string.Empty;
         private string _transportMode = string.Empty;
         private bool? _imageTargetFound = null;
+        private bool _showLogPanel = false;
 
         private void Awake()
         {
@@ -86,53 +87,64 @@ namespace Guidance.Runtime
             if (!visible) return;
 
             var panelWidth = Mathf.Min(Screen.width - 16f, 340f);
-            var btnWidth = GUILayout.Width((panelWidth - 20) / 3f);
+            var btnWidth2 = GUILayout.Width((panelWidth - 24) / 2f);
             var btnHeight = GUILayout.Height(30);
 
-            var extraLines = (string.IsNullOrEmpty(_warning) ? 0 : 1)
-                           + (string.IsNullOrEmpty(_pipelineStatus) ? 0 : 1)
-                           + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1)
-                           + (_imageTargetFound.HasValue ? 1 : 0);
-            var panelHeight = 265f + extraLines * 26f;
+            var extraLines = string.IsNullOrEmpty(_warning) ? 0 : 1;
+            var panelHeight = 170f + extraLines * 26f;
 
+            // Main status panel (top-left)
             GUILayout.BeginArea(new Rect(8, 8, panelWidth, panelHeight), GUI.skin.box);
-
             GUILayout.Label("<b>Guidance Runtime Status</b>");
-            if (!string.IsNullOrEmpty(_transportMode))
-                GUILayout.Label($"Transport: {_transportMode}");
             GUILayout.Label($"Connection: {_connectionState}");
-            GUILayout.Label($"Step State: {_stepState}");
-            GUILayout.Label($"Active Step: {_activeStep}");
-            GUILayout.Label($"Active Part: {_activePart}");
             GUILayout.Label($"Instruction: {_instruction}");
 
             if (!string.IsNullOrEmpty(_warning))
                 GUILayout.Label($"Warning: {_warning}");
-            if (!string.IsNullOrEmpty(_pipelineStatus))
-                GUILayout.Label($"GLB: {_pipelineStatus}");
-            if (!string.IsNullOrEmpty(_targetStatus))
-                GUILayout.Label($"Target: {_targetStatus}");
-            if (_imageTargetFound.HasValue)
-                GUILayout.Label($"Target Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
 
             if (showControls && appBootstrap != null)
             {
                 GUILayout.Space(6);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Replay", btnWidth, btnHeight)) appBootstrap.ReplayActiveStep();
-                if (GUILayout.Button("Previous", btnWidth, btnHeight)) appBootstrap.PreviousStep();
-                if (GUILayout.Button("Confirm / Next", btnWidth, btnHeight)) appBootstrap.ConfirmActiveStep();
+                if (GUILayout.Button("Replay", btnWidth2, btnHeight)) appBootstrap.ReplayActiveStep();
+                if (GUILayout.Button("Previous", btnWidth2, btnHeight)) appBootstrap.PreviousStep();
                 GUILayout.EndHorizontal();
 
                 GUILayout.Space(4);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Help", btnWidth, btnHeight)) appBootstrap.ShowHelp();
-                if (GUILayout.Button("Diagnostics", btnWidth, btnHeight)) appBootstrap.ExportDiagnosticsBundle();
-                if (GUILayout.Button("Switch Mode", btnWidth, btnHeight)) appBootstrap.ReturnToJobSelector();
+                if (GUILayout.Button("Confirm / Next", btnWidth2, btnHeight)) appBootstrap.ConfirmActiveStep();
+                if (GUILayout.Button("Switch Mode", btnWidth2, btnHeight)) appBootstrap.ReturnToJobSelector();
                 GUILayout.EndHorizontal();
             }
-
             GUILayout.EndArea();
+
+            // Standalone Log/Status toggle button (bottom-left)
+            GUILayout.BeginArea(new Rect(8, Screen.height - 34f, 110f, 26f));
+            if (GUILayout.Button("Log / Status"))
+                _showLogPanel = !_showLogPanel;
+            GUILayout.EndArea();
+
+            // Log popup — appears just above the toggle button
+            if (_showLogPanel)
+            {
+                var logLines = 3
+                    + (string.IsNullOrEmpty(_pipelineStatus) ? 0 : 1)
+                    + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1)
+                    + (_imageTargetFound.HasValue ? 1 : 0);
+                var logHeight = logLines * 26f + 20f;
+
+                GUILayout.BeginArea(new Rect(8, Screen.height - logHeight - 42f, 280f, logHeight), GUI.skin.box);
+                GUILayout.Label("<b>Log / Status</b>");
+                GUILayout.Label($"Step State: {_stepState}");
+                GUILayout.Label($"Active Step: {_activeStep}");
+                if (!string.IsNullOrEmpty(_pipelineStatus))
+                    GUILayout.Label($"GLB: {_pipelineStatus}");
+                if (!string.IsNullOrEmpty(_targetStatus))
+                    GUILayout.Label($"Target: {_targetStatus}");
+                if (_imageTargetFound.HasValue)
+                    GUILayout.Label($"Target Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
+                GUILayout.EndArea();
+            }
         }
     }
 }

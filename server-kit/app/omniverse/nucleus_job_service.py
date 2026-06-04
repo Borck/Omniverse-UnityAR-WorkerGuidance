@@ -47,7 +47,7 @@ def _hash_glb(glb_path: Path) -> str:
 def prepare_job(
     nucleus_export_path: str,   # e.g. /Projects/DIREKT/.../Exports/demonstrator-26-02-25
     repo_root: Path,
-    target_id: str = "demonstrator_model_target",
+    target_id: str = "",
     target_version: str = "v1.0.0",
     target_file: str = "demonstrator.dat",
 ) -> dict[str, Any]:
@@ -58,6 +58,8 @@ def prepare_job(
     4. Writes step-definitions.yaml + manifest.json
     Returns: { "job_id": ..., "steps_synced": N }
     """
+    if not target_id:
+        target_id = Path(target_file).stem + "_model_target"
     nucleus_export_path = nucleus_export_path.rstrip("/")
 
     # ── 1. Read the export report from Nucleus ──────────────────────────────
@@ -120,7 +122,7 @@ def prepare_job(
             "sequenceIndex": part["sequence_index"],
             "assetVersion": asset_version,
             "glbFile": glb_out_name,
-            "instructionsShort": f"Install {part['display_name']}",
+            "instructionsShort": part['display_name'],
             "safetyNotes": [],
             "expectedDurationSec": 30,
         }
@@ -203,7 +205,7 @@ def _write_step_definitions_yaml(
             f"        targetId: {target_id}",
             f"        targetVersion: \"{target_version}\"",
             f"        assetVersion: {s['asset_version']}",
-            f"        instructionsShort: \"Install {s['display_name']}\"",
+            f"        instructionsShort: \"{s['display_name']}\"",
             "        safetyNotes: []",
             "        expectedDurationSec: 30",
             f"        sequenceIndex: {idx}",

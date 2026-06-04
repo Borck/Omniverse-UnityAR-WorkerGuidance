@@ -9,6 +9,7 @@ namespace Guidance.Runtime
         public string StepId { get; }
         public string PartId { get; }
         public string DisplayName { get; }
+        public string InstructionsShort { get; }
         public string AssetVersion { get; }
         public string TargetId { get; }
         public string TargetVersion { get; }
@@ -19,6 +20,7 @@ namespace Guidance.Runtime
             string stepId,
             string partId,
             string displayName,
+            string instructionsShort = "",
             string assetVersion = "",
             string targetId = "",
             string targetVersion = "",
@@ -28,6 +30,7 @@ namespace Guidance.Runtime
             StepId = stepId;
             PartId = partId;
             DisplayName = displayName;
+            InstructionsShort = instructionsShort;
             AssetVersion = assetVersion;
             TargetId = targetId;
             TargetVersion = targetVersion;
