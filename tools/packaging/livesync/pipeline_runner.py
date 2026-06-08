@@ -90,7 +90,7 @@ def main() -> int:
         return rc
 
     automate_cmd = (
-        f"\"{cfg['venv_python']}\" tools/packaging/automate_job.py --job-id {job_id}"
+        f"\"{cfg['venv_python']}\" server-kit/app/omniverse/extra/automate_job.py --job-id {job_id}"
     )
     rc = run_step("automate_job", automate_cmd, repo_root, cfg["pipeline_timeout_sec"], log_file)
     return rc

@@ -53,7 +53,7 @@ the actual export step.
 
    ```powershell
    cd D:\Omniverse\Omniverse_Apps\kit-app-template-109-0-3
-   .\repo.bat launch -- --no-window --exec D:\DIREKT\Worker guidance\Omniverse-UnityAR-WorkerGuidance\tools\packaging\export_glbs_from_usd.py
+   .\repo.bat launch -- --no-window --exec D:\DIREKT\Worker guidance\Omniverse-UnityAR-WorkerGuidance\server-kit\app\omniverse\export_glbs_from_usd.py
    ```
 
    If this exits cleanly and produces the GLBs + `_export_report.json` under

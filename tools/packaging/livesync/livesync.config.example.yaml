@@ -41,7 +41,7 @@ pipeline_timeout_sec: 600
 kit_app_dir: "D:/Omniverse/Omniverse_Apps/kit-app-template-109-0-3"
 kit_export_command: >
   cmd /c "cd /d {kit_app_dir} && repo.bat launch -- --no-window
-  --exec {repo_root}/tools/packaging/export_glbs_from_usd.py"
+  --exec {repo_root}/server-kit/app/omniverse/export_glbs_from_usd.py"
 
 # The venv used to run automate_job.py and build_runtime_packages.py.
 # Should be the same one the project uses for the FastAPI server.
