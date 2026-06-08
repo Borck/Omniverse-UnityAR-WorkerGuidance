@@ -1,0 +1,55 @@
+# Live-sync configuration. Copy this file to `livesync.config.yaml` (same dir)
+# and edit values for the host it runs on. The watcher reads only the .yaml
+# (without `.example`), so the template stays in git untouched.
+
+# Repo root on the host running the watcher. All other repo-relative paths
+# are resolved from here.
+repo_root: "D:/DIREKT/Worker guidance/Omniverse-UnityAR-WorkerGuidance"
+
+# The job to rebuild on every change. Must match a config under
+# tools/packaging/jobs/ and the JOB_CONFIG_NAME inside export_glbs_from_usd.py.
+job_id: "demonstrator-26-02-25"
+
+# Nucleus paths to watch. The watcher stats each one every poll_interval_sec
+# and triggers a rebuild when ANY of them gets a new modification time.
+# Include the master USD AND every per-part USD it sublayers in.
+watch_paths:
+  - "omniverse://localhost/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025/Demonstrator%2026.02.25.usd"
+  # Add the 7 part USDs here too, e.g.:
+  # - "omniverse://localhost/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025/PLATE_BOTTOM_01_001.usd"
+  # - "omniverse://localhost/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025/CORES_001.usd"
+  # ... etc
+
+# How often to check Nucleus for changes, in seconds.
+poll_interval_sec: 5
+
+# Quiet period after the LAST detected change before triggering a rebuild.
+# Prevents firing on every intermediate save during active editing.
+debounce_sec: 10
+
+# How long the pipeline_runner is allowed to take, in seconds, before the
+# watcher considers it stuck and logs an error. The export of 7 GLBs plus
+# automate_job typically finishes in ~60s; leave generous headroom.
+pipeline_timeout_sec: 600
+
+# Command that launches Kit headlessly and runs export_glbs_from_usd.py.
+# This is the line most likely to need adjustment on a new host.
+#
+# The repo.bat in kit-app-template-109-0-3 forwards `--` args through to the
+# underlying kit executable. Verify on AT21 by running it manually once;
+# if the syntax differs, adjust just this string.
+kit_app_dir: "D:/Omniverse/Omniverse_Apps/kit-app-template-109-0-3"
+kit_export_command: >
+  cmd /c "cd /d {kit_app_dir} && repo.bat launch -- --no-window
+  --exec {repo_root}/tools/packaging/export_glbs_from_usd.py"
+
+# The venv used to run automate_job.py and build_runtime_packages.py.
+# Should be the same one the project uses for the FastAPI server.
+venv_python: "D:/DIREKT/Worker guidance/Omniverse-UnityAR-WorkerGuidance/venv/Scripts/python.exe"
+
+# Where to write logs. Created if missing.
+log_dir: "D:/DIREKT/Worker guidance/Omniverse-UnityAR-WorkerGuidance/tools/packaging/livesync/logs"
+
+# Where to persist the last-seen modification times so a watcher restart
+# doesn't re-trigger a build for files that haven't actually changed.
+state_file: "D:/DIREKT/Worker guidance/Omniverse-UnityAR-WorkerGuidance/tools/packaging/livesync/.livesync_state.json"
