@@ -279,7 +279,7 @@ jobs:
         activePrimPath: /World
         animationName: plate_bottom_01_anim
         anchorType: model-target
-        targetId: Fixture_detectors_12_model_target
+        targetId: Segment_Assembly_Fixture_model_target
         targetVersion: "2026-03-10.1"
         assetVersion: sha256_de369ee8bddc1bc7
         instructionsShort: "Place bottom plate"
@@ -300,7 +300,7 @@ jobs:
         activePrimPath: /World
         animationName: right_unit_phase_03_anim
         anchorType: model-target
-        targetId: Fixture_detectors_12_model_target
+        targetId: Segment_Assembly_Fixture_model_target
         targetVersion: "2026-03-10.1"
         assetVersion: sha256_3d4b13cfda02dd8a
         instructionsShort: "Insert right unit"
@@ -321,7 +321,7 @@ jobs:
         activePrimPath: /World
         animationName: left_unit_phase_03_anim
         anchorType: model-target
-        targetId: Fixture_detectors_12_model_target
+        targetId: Segment_Assembly_Fixture_model_target
         targetVersion: "2026-03-10.1"
         assetVersion: sha256_862a67c8355632b2
         instructionsShort: "Insert left unit"
@@ -342,7 +342,7 @@ jobs:
         activePrimPath: /World
         animationName: cores_001_002_anim
         anchorType: model-target
-        targetId: Fixture_detectors_12_model_target
+        targetId: Segment_Assembly_Fixture_model_target
         targetVersion: "2026-03-10.1"
         assetVersion: sha256_e1dc53315c69e139
         instructionsShort: "Place cores 001 and 002"
@@ -363,7 +363,7 @@ jobs:
         activePrimPath: /World
         animationName: plate_top_02_anim
         anchorType: model-target
-        targetId: Fixture_detectors_12_model_target
+        targetId: Segment_Assembly_Fixture_model_target
         targetVersion: "2026-03-10.1"
         assetVersion: sha256_c979c00ecd2b2b8b
         instructionsShort: "Place top plate"
@@ -384,7 +384,7 @@ jobs:
         activePrimPath: /World
         animationName: schrauben_top_02_anim
         anchorType: model-target
-        targetId: Fixture_detectors_12_model_target
+        targetId: Segment_Assembly_Fixture_model_target
         targetVersion: "2026-03-10.1"
         assetVersion: sha256_552b4c489ce347f0
         instructionsShort: "Fasten top screws"

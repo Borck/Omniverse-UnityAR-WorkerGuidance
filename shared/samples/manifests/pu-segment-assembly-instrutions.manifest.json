@@ -9,7 +9,7 @@
       "glbFile": "part_plate_bottom_01_de369ee8.glb",
       "stepJsonFile": "step-001.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Fixture_detectors_12.dat",
+      "targetFile": "Segment_Assembly_Fixture.dat",
       "compression": "NONE"
     },
     {
@@ -19,7 +19,7 @@
       "glbFile": "part_right_unit_phase_03_3d4b13cf.glb",
       "stepJsonFile": "step-002.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Fixture_detectors_12.dat",
+      "targetFile": "Segment_Assembly_Fixture.dat",
       "compression": "NONE"
     },
     {
@@ -29,7 +29,7 @@
       "glbFile": "part_left_unit_phase_03_862a67c8.glb",
       "stepJsonFile": "step-003.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Fixture_detectors_12.dat",
+      "targetFile": "Segment_Assembly_Fixture.dat",
       "compression": "NONE"
     },
     {
@@ -39,7 +39,7 @@
       "glbFile": "part_cores_001_002_e1dc5331.glb",
       "stepJsonFile": "step-004.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Fixture_detectors_12.dat",
+      "targetFile": "Segment_Assembly_Fixture.dat",
       "compression": "NONE"
     },
     {
@@ -49,7 +49,7 @@
       "glbFile": "part_plate_top_02_c979c00e.glb",
       "stepJsonFile": "step-005.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Fixture_detectors_12.dat",
+      "targetFile": "Segment_Assembly_Fixture.dat",
       "compression": "NONE"
     },
     {
@@ -59,7 +59,7 @@
       "glbFile": "part_schrauben_top_02_552b4c48.glb",
       "stepJsonFile": "step-006.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Fixture_detectors_12.dat",
+      "targetFile": "Segment_Assembly_Fixture.dat",
       "compression": "NONE"
     }
   ]

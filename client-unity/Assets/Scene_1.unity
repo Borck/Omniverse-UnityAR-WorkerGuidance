@@ -146,8 +146,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d68ed93784bb5fd40af17fa35eb4ad05, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   defaultGrpcPort: 50051
   defaultHttpPort: 8080
   discoveryPort: 45454
@@ -194,10 +194,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cc0702785bd36a34db40346b3ab35003, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  modelTargetJobId: pu-segment-assembly-instrutions
-  imageTargetJobId: demonstrator-26-02-25-img
+  m_Name: 
+  m_EditorClassIdentifier: 
+  jobId: pu-segment-assembly-instrutions
 --- !u!4 &599964137
 Transform:
   m_ObjectHideFlags: 0
@@ -259,8 +258,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2395664cd44d4ce4bb52ede6b7904bbd, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   visible: 1
   showControls: 1
   appBootstrap: {fileID: 1369277005}
@@ -292,8 +291,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76c392e42b5098c458856cdf6ecaaaa1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
   m_DragThreshold: 10
@@ -322,8 +321,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01614664b831546d2ae94a42149d80ac, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_SendPointerHoverToParent: 1
   m_MoveRepeatDelay: 0.5
   m_MoveRepeatRate: 0.1
@@ -370,8 +369,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aabcb7c317dbd174cbe36d024149135c, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   grpcTarget: 141.43.71.89:50051
   httpBridgeBaseUrl: 141.43.71.89:8080
   desiredJobId: pu-segment-assembly-instrutions
@@ -391,6 +390,10 @@ MonoBehaviour:
   discoveryPort: 45454
   serviceTagFilter: antillen
   discoveryTimeoutSeconds: 3
+  animationOffsetLocalPosition: {x: 0, y: -0.05, z: 0}
+  animationOffsetLocalEulerAngles: {x: 0, y: 0, z: 0}
+  overlayOffsetLocalPosition: {x: 0, y: 0, z: 0}
+  overlayOffsetLocalEulerAngles: {x: 0, y: 0, z: 0}
   statusPanel: {fileID: 858389738}
   trackingDirectionHint: {fileID: 0}
   jobSelectorPanel: {fileID: 599964136}
@@ -439,8 +442,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
   m_BlockingMask:
@@ -456,8 +459,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   m_UiScaleMode: 0
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
@@ -542,8 +545,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c47f92041efbb4b429a4eafca855ebe3, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &1484046095
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -554,8 +557,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: -1826476478, guid: 8a9a760f95896c34689febc965510927, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   mWorldCenterMode: 1
   mWorldCenter: {fileID: 0}
 --- !u!81 &1484046096
