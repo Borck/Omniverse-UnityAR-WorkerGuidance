@@ -38,9 +38,9 @@ import omni.client
 
 # ── JOB 2: PU Segment Assembly (6 individual USD files in Animation_PU_Segment/) ──
 # To use: comment out Job 1 above and uncomment the 3 lines below.
-JOB_ID = "pu-segment-assembly-instrutions"
-NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/Project%20Assembly/Source/Animation_PU_Segment"
-NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
+JOB_ID = "Segment_Assembly"
+NUCLEUS_BASE = "omniverse://141.43.76.21/Users/abdul/Animation Chesco"
+NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/abdul"
 
 
 @dataclass(frozen=True)
@@ -68,12 +68,11 @@ class PartSpec:
 # exports it as a GLB. The -Position.usd companion layers are sublayers of
 # each part USD so they get baked in automatically during flatten+export.
 PARTS: list[PartSpec] = [
-    PartSpec("step-001", "plate_bottom_01",     "Place bottom plate",       "PLATE_BOTTOM_01_001",     1),
-    PartSpec("step-002", "right_unit_phase_03", "Insert right unit",        "RIGHT_UNIT_PHASE_03_001", 2),
-    PartSpec("step-003", "left_unit_phase_03",  "Insert left unit",         "LEFT_UNIT_PHASE_03_001",  3),
-    PartSpec("step-004", "cores_001_002",       "Place cores 001 and 002",  "CORES_001 CORES_002",     4),
-    PartSpec("step-005", "plate_top_02",        "Place top plate",          "PLATE_TOP_02_002",        5),
-    PartSpec("step-006", "schrauben_top_02",    "Fasten top screws",        "Schrauben_TOP_02_002",    6),
+    PartSpec("step-001", "Plate_Bottom",     "Place bottom plate",         "Plate_Bottom",      1),
+    PartSpec("step-002", "Core&Coils",       "Place Cores & Coils",        "Core&Coils",        2),
+    PartSpec("step-003", "Bracket-Right",    "Place the right bracket",    "Bracket-Right",     3),
+    PartSpec("step-004", "Bracket-Left",     "Place the left bracket",     "Bracket-Left",      4),
+    PartSpec("step-005", "Plate_Top",        "Place top plate",            "Plate_Top",         5)
 ]
 
 # glTFast-friendly settings: disable materials, lights, cameras. Keep animations.

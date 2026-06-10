@@ -9,7 +9,7 @@ REM for the GLB export step.
 
 setlocal
 
-set VENV_PYTHON=D:\DIREKT\Worker guidance\Omniverse-UnityAR-WorkerGuidance\venv\Scripts\python.exe
+set VENV_PYTHON=D:\Users\Abdul\Omniverse-UnityAR-WorkerGuidance\Omniverse-UnityAR-WorkerGuidance\.venv\Scripts\python.exe
 set RUNNER=%~dp0pipeline_runner.py
 
 if not exist "%VENV_PYTHON%" (
