@@ -43,8 +43,23 @@ kit_export_command: >
   cmd /c "cd /d {kit_app_dir} && repo.bat launch -- --no-window
   --exec {repo_root}/server-kit/app/omniverse/export_glbs_from_usd.py"
 
-# The venv used to run automate_job.py and build_runtime_packages.py.
-# Should be the same one the project uses for the FastAPI server.
+# Nucleus path (under SERVER from app.core.config) where the Kit exporter
+# drops GLBs and _export_report.json. Matches NUCLEUS_OUTPUT_ROOT inside
+# export_glbs_from_usd.py. The final URL prepare_job() looks at is:
+#     <SERVER><nucleus_export_root>/<job_id>/_export_report.json
+# So for NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
+# this should be "/Users/shahan".
+nucleus_export_root: "/Users/shahan"
+
+# Vuforia Model Target identifying info, passed through to prepare_job().
+# target_id is optional; if empty, prepare_job derives it from target_file.
+target_id: ""
+target_version: "v1.0.0"
+target_file: "Fixture_detectors_1.dat"
+
+# Optional: the venv used to manually run automate_job.py / build_runtime_packages.py.
+# NOT used by the live-sync pipeline anymore (prepare_job replaces both).
+# Kept for reference if you ever want to invoke them by hand.
 venv_python: "D:/DIREKT/Worker guidance/Omniverse-UnityAR-WorkerGuidance/venv/Scripts/python.exe"
 
 # Where to write logs. Created if missing.
