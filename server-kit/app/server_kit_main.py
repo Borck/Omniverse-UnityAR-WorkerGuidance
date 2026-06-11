@@ -10,7 +10,19 @@ from fastapi.responses import JSONResponse
 from fastapi import status
 from pathlib import Path
 import app
-from app.omniverse.router import router as omniverse_router
+
+# The omniverse router imports omni.client (Kit-only). On hosts where the
+# Omniverse SDK isn't installed in the FastAPI venv (e.g. AT21 with a clean
+# pip venv), let the server still boot -- the /omni HTTP endpoints just
+# won't be available. The live-sync gRPC path doesn't depend on them.
+try:
+    from app.omniverse.router import router as omniverse_router
+    _OMNIVERSE_ROUTER_AVAILABLE = True
+    _OMNIVERSE_ROUTER_IMPORT_ERROR = None
+except ImportError as _exc:
+    omniverse_router = None  # type: ignore[assignment]
+    _OMNIVERSE_ROUTER_AVAILABLE = False
+    _OMNIVERSE_ROUTER_IMPORT_ERROR = str(_exc)
 # HTTP bridge / WebSocket transport disabled — gRPC only.
 # from app.unity.router import router as unity_router
 # from app.unity.router import connected_clients
@@ -196,7 +208,17 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   app = FastAPI(title="Guidance Server", version="0.2.0", lifespan=lifespan)
   app.state.config = resolved_config
   app.state.logger = logger
-  app.include_router(omniverse_router, prefix="/omni", tags=["Omniverse Connection"])
+  if _OMNIVERSE_ROUTER_AVAILABLE and omniverse_router is not None:
+    app.include_router(omniverse_router, prefix="/omni", tags=["Omniverse Connection"])
+  else:
+    logger.warning(
+      "omniverse router not loaded (omni.client unavailable in this venv); "
+      "/omni endpoints disabled. Reason: %s",
+      _OMNIVERSE_ROUTER_IMPORT_ERROR,
+      session_id="-",
+      step_id="-",
+      event="http.omni_router.skipped",
+    )
   api = APIRouter(tags=["Guidance API"])
 
   @api.get("/health")
