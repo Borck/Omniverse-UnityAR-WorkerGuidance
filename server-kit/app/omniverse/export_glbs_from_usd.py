@@ -213,11 +213,23 @@ async def run() -> None:
 
 
 async def _run_and_quit() -> None:
+    exit_code = 0
     try:
         await run()
+    except Exception as exc:
+        print(f"[export] FATAL: {exc}")
+        exit_code = 1
     finally:
-        import omni.kit.app
-        omni.kit.app.get_app().post_quit()
+        # Force-exit the process. omni.kit.app.post_quit() doesn't reliably
+        # shut down direkt.my_usd_composer.kit (too many background services
+        # keep the event loop busy), so the subprocess otherwise hangs until
+        # pipeline_runner's timeout. os._exit() skips Python finalizers but
+        # is safe here: all writes to Nucleus are already done synchronously.
+        import os
+        import sys
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(exit_code)
 
 
 asyncio.ensure_future(_run_and_quit())
