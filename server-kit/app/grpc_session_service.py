@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from concurrent import futures
 from pathlib import Path
+import queue
 import sys
 
 import grpc
@@ -14,12 +15,14 @@ try:
     from .generated import guidance_pb2_grpc
     from .guidance_server import SessionManager, SessionState
     from .logging_config import ContextAdapter
+    from .session_channels import SessionChannels
     from .step_definition_repository import StepDefinition, StepDefinitionRepository
 except ImportError:
     from generated import guidance_pb2
     from generated import guidance_pb2_grpc
     from guidance_server import SessionManager, SessionState
     from logging_config import ContextAdapter
+    from session_channels import SessionChannels
     from step_definition_repository import StepDefinition, StepDefinitionRepository
 
 
@@ -32,11 +35,16 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
         logger: ContextAdapter,
         step_repository: StepDefinitionRepository | None = None,
         default_job_id: str = "job-mock-001",
+        session_channels: SessionChannels | None = None,
     ) -> None:
         self._session_manager = session_manager
         self._logger = logger
         self._step_repository = step_repository
         self._default_job_id = default_job_id
+        # Optional: if None, no server-pushed messages (manifest updates, etc.)
+        # will be delivered -- the stream still works for the normal request/
+        # response flow. Pass a real SessionChannels to enable live-sync push.
+        self._session_channels = session_channels
 
     def _set_session_state_with_log(self, session_id: str, next_state: SessionState, reason: str, step_id: str = "-") -> None:
         previous = self._session_manager.get(session_id)
@@ -59,6 +67,7 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
         active_job_id = self._default_job_id
         handshake_done = False
         processed_step_completions: set[tuple[str, str, int]] = set()
+        outbound: queue.Queue | None = None  # attached after hello
 
         for message in request_iterator:
             payload_name = message.WhichOneof("payload")
@@ -89,6 +98,11 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                     session_id=session_id,
                     step_id="-",
                 )
+
+                # Register the outbound push channel for this session so the
+                # ManifestWatcher can deliver server-driven events here.
+                if self._session_channels is not None:
+                    outbound = self._session_channels.attach(session_id, active_job_id)
 
                 yield guidance_pb2.ServerMessage(
                     hello_response=guidance_pb2.HelloResponse(
@@ -202,6 +216,21 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                     correlation_id=message.fault.correlation_id or "-",
                 )
 
+            # Drain any pending server-pushed messages (manifest updates etc.).
+            # Runs at the end of every iteration so pushes deliver no later than
+            # one client message round-trip after they're queued.
+            if outbound is not None:
+                while True:
+                    try:
+                        push_msg = outbound.get_nowait()
+                    except queue.Empty:
+                        break
+                    yield push_msg
+
+        # Stream closed by the client. Drop the channel so we don't leak queues
+        # or keep broadcasting to a dead session.
+        if outbound is not None and session_id and self._session_channels is not None:
+            self._session_channels.detach(session_id)
         self._logger.info("session stream closed", session_id=session_id or "-", step_id="-")
 
     @staticmethod
