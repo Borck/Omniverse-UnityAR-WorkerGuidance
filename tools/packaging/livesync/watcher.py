@@ -68,9 +68,12 @@ def save_state(state_file: Path, state: dict[str, float]) -> None:
 
 
 def stat_nucleus_mtime(path: str, logger: logging.Logger) -> float | None:
-    """Return the modified-time of a Nucleus path, or None on failure.
+    """Return the modified-time of a Nucleus path as Unix seconds, or None on failure.
 
     omni.client.stat() is synchronous and returns (Result, ListEntry).
+    The mtime attribute name and type vary by Kit version:
+      - older: entry.modified_time_ns (int, nanoseconds)
+      - newer: entry.modified_time    (datetime, or float seconds)
     """
     import omni.client  # imported lazily so the help text works without Kit Python
 
@@ -78,7 +81,18 @@ def stat_nucleus_mtime(path: str, logger: logging.Logger) -> float | None:
     if result != omni.client.Result.OK or entry is None:
         logger.warning("stat failed for %s: %s", path, result)
         return None
-    return float(entry.modified_time_ns) / 1e9
+
+    ns = getattr(entry, "modified_time_ns", None)
+    if ns is not None:
+        return float(ns) / 1e9
+
+    mt = getattr(entry, "modified_time", None)
+    if mt is None:
+        logger.warning("ListEntry has neither modified_time_ns nor modified_time for %s", path)
+        return None
+    if hasattr(mt, "timestamp"):
+        return mt.timestamp()
+    return float(mt)
 
 
 def detect_changes(
