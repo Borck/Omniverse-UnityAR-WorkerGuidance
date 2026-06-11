@@ -210,4 +210,14 @@ async def run() -> None:
     for row in report_data:
         mark = "OK  " if row["ok"] else "FAIL"
         print(f"{mark} {row['step_id']}  {row['part_id']}")
-asyncio.ensure_future(run())
+
+
+async def _run_and_quit() -> None:
+    try:
+        await run()
+    finally:
+        import omni.kit.app
+        omni.kit.app.get_app().post_quit()
+
+
+asyncio.ensure_future(_run_and_quit())
