@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import sys
 import time
@@ -112,11 +113,29 @@ def detect_changes(
     return changed
 
 
-def run_pipeline(cfg: dict, logger: logging.Logger) -> int:
-    cmd = [cfg["venv_python"], str(PIPELINE_RUNNER), "--config", str(CONFIG_PATH)]
-    logger.info("Triggering pipeline: %s", " ".join(cmd))
+def run_pipeline(
+    cfg: dict,
+    logger: logging.Logger,
+    changed_urls: list[str],
+) -> int:
+    # Use the SAME Python that runs the watcher (Kit's bundled Python). The
+    # pipeline_runner imports omni.client via nucleus_job_service, which is
+    # only available in Kit's Python, not the project venv.
+    cmd = [sys.executable, str(PIPELINE_RUNNER), "--config", str(CONFIG_PATH)]
+
+    # Pass the list of changed Nucleus URLs through env var. The Kit subprocess
+    # will read this same var (it's inherited) and skip re-exporting parts whose
+    # source USD wasn't touched. Empty / unset = full rebuild (manual trigger_now).
+    env = os.environ.copy()
+    env["LIVESYNC_CHANGED_URLS"] = "|".join(changed_urls)
+
+    logger.info(
+        "Triggering pipeline (incremental: %d changed path(s)): %s",
+        len(changed_urls),
+        " ".join(cmd),
+    )
     try:
-        proc = subprocess.run(cmd, timeout=cfg["pipeline_timeout_sec"])
+        proc = subprocess.run(cmd, timeout=cfg["pipeline_timeout_sec"], env=env)
     except subprocess.TimeoutExpired:
         logger.error("Pipeline exceeded %ss timeout", cfg["pipeline_timeout_sec"])
         return 124
@@ -137,6 +156,10 @@ def main() -> int:
     poll = int(cfg["poll_interval_sec"])
     debounce = int(cfg["debounce_sec"])
     last_change_at: float | None = None
+    # URLs that changed since the last successful pipeline trigger. Accumulates
+    # across multiple polls within a debounce window so an artist saving two
+    # files in quick succession produces ONE pipeline run that rebuilds both.
+    pending_changes: set[str] = set()
 
     while True:
         try:
@@ -149,13 +172,20 @@ def main() -> int:
         if changed:
             for p in changed:
                 logger.info("Change detected: %s", p)
+                pending_changes.add(p)
             save_state(state_file, last_seen)
             last_change_at = time.monotonic()
 
         if last_change_at is not None and time.monotonic() - last_change_at >= debounce:
-            logger.info("Debounce window elapsed (%ss quiet); running pipeline", debounce)
+            logger.info(
+                "Debounce window elapsed (%ss quiet); running pipeline for %d changed path(s)",
+                debounce,
+                len(pending_changes),
+            )
+            urls_to_rebuild = sorted(pending_changes)
+            pending_changes.clear()
             last_change_at = None
-            rc = run_pipeline(cfg, logger)
+            rc = run_pipeline(cfg, logger, urls_to_rebuild)
             if rc != 0:
                 logger.error("Pipeline reported failure (exit %s); will retry on next change", rc)
 

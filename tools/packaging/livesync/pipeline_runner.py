@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import subprocess
 import sys
 import time
@@ -134,6 +135,17 @@ def main() -> int:
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_file = log_dir / f"pipeline-{stamp}.log"
     print(f"[pipeline_runner] Log: {log_file}", flush=True)
+
+    # The watcher sets LIVESYNC_CHANGED_URLS to a pipe-separated list of Nucleus
+    # URLs that changed. The Kit subprocess inherits this env var and skips
+    # re-exporting parts whose source USD wasn't touched. Empty/unset = full
+    # rebuild (manual trigger_now.bat).
+    changed_env = os.environ.get("LIVESYNC_CHANGED_URLS", "")
+    if changed_env:
+        n = sum(1 for u in changed_env.split("|") if u)
+        print(f"[pipeline_runner] Incremental rebuild: {n} changed Nucleus URL(s)", flush=True)
+    else:
+        print("[pipeline_runner] Full rebuild (no LIVESYNC_CHANGED_URLS)", flush=True)
 
     kit_cmd = format_command(cfg["kit_export_command"], cfg)
     rc = run_subprocess_step("Kit GLB export", kit_cmd, repo_root, cfg["pipeline_timeout_sec"], log_file)

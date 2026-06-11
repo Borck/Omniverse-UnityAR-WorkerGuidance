@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -116,6 +117,39 @@ def _encode_url(basename: str) -> str:
     return basename.replace(" ", "%20")
 
 
+def _load_changed_urls() -> set[str]:
+    """Read the watcher's LIVESYNC_CHANGED_URLS env var.
+
+    Returns a set of Nucleus URLs that the watcher detected as changed.
+    Empty set = full rebuild (env var unset or empty -- this is the case for
+    manual trigger_now.bat runs and the very first watcher run after startup).
+    """
+    raw = os.environ.get("LIVESYNC_CHANGED_URLS", "")
+    if not raw:
+        return set()
+    return {u for u in raw.split("|") if u}
+
+
+def _part_url(part: PartSpec) -> str:
+    """The Nucleus URL of a part's source USD. Same format the watcher uses."""
+    return f"{NUCLEUS_BASE}/{_encode_url(part.usd_basename)}.usd"
+
+
+def _part_was_changed(part: PartSpec, changed_urls: set[str]) -> bool:
+    """True if this part's source URL is among the changed set.
+
+    Comparison is tolerant of %20 vs literal space, since the watcher's URLs
+    come straight from livesync.config.yaml (likely literal spaces) while
+    _encode_url() produces %20 form.
+    """
+    if not changed_urls:
+        # No filter set: rebuild everything (manual trigger_now or first run).
+        return True
+    encoded = _part_url(part)
+    decoded = encoded.replace("%20", " ")
+    return encoded in changed_urls or decoded in changed_urls
+
+
 def _apply_converter_settings(context: Any) -> None:
     for key, value in CONVERTER_SETTINGS.items():
         if hasattr(context, key):
@@ -171,22 +205,49 @@ async def run() -> None:
     # Build the full Nucleus job path
     output_dir_url = f"{NUCLEUS_OUTPUT_ROOT}/{JOB_ID}"
 
-    print(f"=== Exporting {len(PARTS)} parts for job '{JOB_ID}' ===")
+    changed_urls = _load_changed_urls()
+    if changed_urls:
+        print(f"=== Incremental export: {len(changed_urls)} changed URL(s) ===")
+        for u in sorted(changed_urls):
+            print(f"    {u}")
+    else:
+        print("=== Full export (no LIVESYNC_CHANGED_URLS filter) ===")
+
+    print(f"=== Job '{JOB_ID}' has {len(PARTS)} part(s) ===")
     print(f"=== Output Nucleus: {output_dir_url} ===\n")
 
     report_data: list[dict[str, Any]] = []
 
     for part in PARTS:
-        ok, detail = await export_part_glb(part, output_dir_url)
-        report_data.append({
-            "step_id": part.step_id,
-            "part_id": part.part_id,
-            "display_name": part.display_name,
-            "sequence_index": part.sequence_index,
-            "glb_url": detail if ok else None,
-            "ok": ok,
-            "detail": detail,
-        })
+        if _part_was_changed(part, changed_urls):
+            ok, detail = await export_part_glb(part, output_dir_url)
+            report_data.append({
+                "step_id": part.step_id,
+                "part_id": part.part_id,
+                "display_name": part.display_name,
+                "sequence_index": part.sequence_index,
+                "glb_url": detail if ok else None,
+                "ok": ok,
+                "skipped": False,
+                "detail": detail,
+            })
+        else:
+            # Source USD wasn't touched; the GLB already on Nucleus from the
+            # previous run is still correct. Report it with the existing URL
+            # so prepare_job downloads, hashes, and produces the same
+            # assetVersion -- no manifest churn for this part.
+            existing_glb_url = f"{output_dir_url}/{part.part_id}.glb"
+            print(f"[{part.step_id}] SKIP (unchanged) -> {existing_glb_url}")
+            report_data.append({
+                "step_id": part.step_id,
+                "part_id": part.part_id,
+                "display_name": part.display_name,
+                "sequence_index": part.sequence_index,
+                "glb_url": existing_glb_url,
+                "ok": True,
+                "skipped": True,
+                "detail": "unchanged; reusing existing GLB on Nucleus",
+            })
 
     # --- NEW: Write the JSON report to Nucleus ---
     report_path_url = f"{output_dir_url}/_export_report.json"
@@ -207,8 +268,17 @@ async def run() -> None:
         print(f"Error: Failed to write report to Nucleus (Result: {result})")
 
     print("\n=== Summary ===")
+    exported = sum(1 for r in report_data if r["ok"] and not r.get("skipped"))
+    skipped = sum(1 for r in report_data if r.get("skipped"))
+    failed = sum(1 for r in report_data if not r["ok"])
+    print(f"exported={exported}  skipped={skipped}  failed={failed}")
     for row in report_data:
-        mark = "OK  " if row["ok"] else "FAIL"
+        if not row["ok"]:
+            mark = "FAIL"
+        elif row.get("skipped"):
+            mark = "SKIP"
+        else:
+            mark = "OK  "
         print(f"{mark} {row['step_id']}  {row['part_id']}")
 
 
