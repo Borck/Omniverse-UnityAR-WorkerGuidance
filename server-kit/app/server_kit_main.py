@@ -195,15 +195,23 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
       step_id="-",
       event="server.start",
     )
-    import omni.client
-    omni.client.initialize()
+    # omni.client init is only relevant when the /omni endpoints are loaded.
+    # On hosts without the Omniverse SDK in this venv, skip cleanly.
+    omni_client = None
+    if _OMNIVERSE_ROUTER_AVAILABLE:
+      try:
+        import omni.client as omni_client  # type: ignore[no-redef]
+        omni_client.initialize()
+      except ImportError:
+        omni_client = None
     beacon = start_beacon_from_config(resolved_config, logger=logger)
     try:
       yield
     finally:
       if beacon is not None:
         beacon.stop()
-      omni.client.shutdown()
+      if omni_client is not None:
+        omni_client.shutdown()
 
   app = FastAPI(title="Guidance Server", version="0.2.0", lifespan=lifespan)
   app.state.config = resolved_config
