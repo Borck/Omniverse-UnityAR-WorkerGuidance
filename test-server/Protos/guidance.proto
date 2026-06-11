@@ -35,6 +35,7 @@ message ServerMessage {
     CancelStep cancel_step = 4;
     Ping ping = 5;
     Fault fault = 6;
+    ManifestUpdated manifest_updated = 7;
   }
 }
 
@@ -103,6 +104,23 @@ message CancelStep {
   string job_id = 1;
   string step_id = 2;
   string reason = 3;
+}
+
+// Pushed by the server when the live-sync pipeline produces a new manifest.
+// `changed_steps` maps step_id -> new asset_version (sha256_xxx) for ONLY
+// the steps whose content actually changed; unchanged steps are omitted.
+// Empty map means the manifest was rewritten but no content changed
+// (e.g. a no-op save) -- clients should ignore.
+//
+// Client behavior (per agreed design):
+//   - If any changed step matches the worker's CURRENT step, interrupt and
+//     re-fetch immediately, then re-render under the live Vuforia anchor.
+//   - For other changed steps, invalidate the cached asset_version so the
+//     next navigation to that step refetches from StreamStepAsset.
+message ManifestUpdated {
+  string job_id = 1;
+  string new_workflow_version = 2;
+  map<string, string> changed_steps = 3;
 }
 
 message ManifestRequest {
