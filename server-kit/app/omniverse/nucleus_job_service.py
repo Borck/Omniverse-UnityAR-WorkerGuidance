@@ -86,11 +86,12 @@ def prepare_job(
         part["_resolved_glb"] = glb_filename
         glb_nucleus = f"{nucleus_export_path}/{glb_filename}"
         glb_local = raw_dir / glb_filename
-        if not glb_local.exists():
-            logger.info(f"[NucleusJobService] Downloading {glb_filename}")
-            _omni_copy_to_local(glb_nucleus, glb_local)
-        else:
-            logger.info(f"[NucleusJobService] Cached: {glb_filename}")
+        # Always download. In live-sync the filename on Nucleus is stable
+        # ("Plate_Bottom.glb"), but its content changes on every USD save.
+        # Skipping based on glb_local.exists() would keep serving stale bytes.
+        # _omni_copy_to_local uses CopyBehavior.OVERWRITE, so this is safe.
+        logger.info(f"[NucleusJobService] Downloading {glb_filename}")
+        _omni_copy_to_local(glb_nucleus, glb_local)
 
 
     # ── 3. Hash GLBs → versioned asset directories ──────────────────────────
