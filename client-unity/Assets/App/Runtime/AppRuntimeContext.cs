@@ -46,9 +46,9 @@ namespace Guidance.Runtime
         /// Creates a default runtime graph with either native gRPC or HTTP bridge transport.
         /// </summary>
         public static AppRuntimeContext CreateDefault(
-            bool useNativeGrpcTransport,
+            // bool useNativeGrpcTransport,  // HTTP bridge disabled — gRPC only
             string grpcTarget,
-            string httpBridgeBaseUrl,
+            string httpBridgeBaseUrl,         // kept for StepAssetManifestClient (HTTP asset/manifest fetching)
             bool supportsDraco,
             string desiredJobId = "")
         {
@@ -57,22 +57,16 @@ namespace Guidance.Runtime
                 ? httpBridgeBaseUrl
                 : $"http://{httpBridgeBaseUrl}";
 
-            ISessionTransport transport = useNativeGrpcTransport
-                ? new GrpcSessionTransport(
-                    target: grpcTarget,
-                    deviceId: SystemInfo.deviceUniqueIdentifier,
-                    appVersion: Application.version,
-                    desiredJobId: desiredJobId
-                )
-                : new HttpBridgeSessionTransport(
-                    baseUrl: httpBase,
-                    deviceId: SystemInfo.deviceUniqueIdentifier,
-                    appVersion: Application.version
-                );
+            // gRPC is the only active session transport. HttpBridgeSessionTransport is disabled.
+            ISessionTransport transport = new GrpcSessionTransport(
+                target: grpcTarget,
+                deviceId: SystemInfo.deviceUniqueIdentifier,
+                appVersion: Application.version,
+                desiredJobId: desiredJobId
+            );
+            // Disabled: new HttpBridgeSessionTransport(baseUrl: httpBase, deviceId: ..., appVersion: ...)
 
-            var grpcAssetTransfer = useNativeGrpcTransport
-                ? new GrpcAssetTransferClient(grpcTarget)
-                : null;
+            var grpcAssetTransfer = new GrpcAssetTransferClient(grpcTarget);
 
             return new AppRuntimeContext(
                 sessionClient: new SessionClient(supportsDraco: supportsDraco, transport: transport),

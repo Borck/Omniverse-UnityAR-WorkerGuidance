@@ -5,7 +5,7 @@ import warnings
 
 import guidance_pb2 as guidance__pb2
 
-GRPC_GENERATED_VERSION = '1.80.0'
+GRPC_GENERATED_VERSION = '1.81.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class GuidanceSessionServiceStub(object):
+class GuidanceSessionServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -41,7 +41,7 @@ class GuidanceSessionServiceStub(object):
                 _registered_method=True)
 
 
-class GuidanceSessionServiceServicer(object):
+class GuidanceSessionServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
     def Connect(self, request_iterator, context):
@@ -66,7 +66,7 @@ def add_GuidanceSessionServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class GuidanceSessionService(object):
+class GuidanceSessionService:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -97,7 +97,7 @@ class GuidanceSessionService(object):
             _registered_method=True)
 
 
-class AssetQueryServiceStub(object):
+class AssetQueryServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -113,7 +113,7 @@ class AssetQueryServiceStub(object):
                 _registered_method=True)
 
 
-class AssetQueryServiceServicer(object):
+class AssetQueryServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
     def GetManifest(self, request, context):
@@ -138,7 +138,7 @@ def add_AssetQueryServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class AssetQueryService(object):
+class AssetQueryService:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -169,7 +169,7 @@ class AssetQueryService(object):
             _registered_method=True)
 
 
-class AssetTransferServiceStub(object):
+class AssetTransferServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -185,7 +185,7 @@ class AssetTransferServiceStub(object):
                 _registered_method=True)
 
 
-class AssetTransferServiceServicer(object):
+class AssetTransferServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
     def StreamStepAsset(self, request, context):
@@ -210,7 +210,7 @@ def add_AssetTransferServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class AssetTransferService(object):
+class AssetTransferService:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod

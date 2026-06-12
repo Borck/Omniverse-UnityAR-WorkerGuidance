@@ -26,7 +26,8 @@ logger = configure_logging("INFO")
 ASSET_DIR = Path(__file__).resolve().parent / "assets"
 
 
-connected_clients = []   # keeps track of Unity devices that are connected
+# HTTP bridge / WebSocket transport disabled — gRPC only.
+# connected_clients = []
 
 
 @router.get("/health")
@@ -83,12 +84,12 @@ async def get_asset_test(step_id: str):
 #       logger.exception(f"An unexpected error occurred in websocket: {e}")
 
 
-  # test func for sending a broadcast to all connected devices.
-async def broadcast(message: dict):
-    logger.info(f"Broadcasting message to {len(connected_clients)} clients: {message}")
-    for client in connected_clients:
-      await client.send_text(json.dumps(message))
-      try:
-        await client.send_text(json.dumps(message))
-      except Exception as e:
-        logger.error(f"Failed to send message to client {client}: {e}")
+# WebSocket broadcast disabled — gRPC only transport.
+# async def broadcast(message: dict):
+#     logger.info(f"Broadcasting message to {len(connected_clients)} clients: {message}")
+#     for client in connected_clients:
+#       await client.send_text(json.dumps(message))
+#       try:
+#         await client.send_text(json.dumps(message))
+#       except Exception as e:
+#         logger.error(f"Failed to send message to client {client}: {e}")

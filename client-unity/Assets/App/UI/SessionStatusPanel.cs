@@ -21,6 +21,7 @@ namespace Guidance.Runtime
         private string _pipelineStatus = string.Empty;
         private string _targetStatus = string.Empty;
         private string _transportMode = string.Empty;
+        private bool? _imageTargetFound = null;
 
         private void Awake()
         {
@@ -70,6 +71,16 @@ namespace Guidance.Runtime
             _transportMode = mode ?? string.Empty;
         }
 
+        public void SetImageTargetFound(bool found)
+        {
+            _imageTargetFound = found;
+        }
+
+        public void ClearImageTargetFound()
+        {
+            _imageTargetFound = null;
+        }
+
         private void OnGUI()
         {
             if (!visible) return;
@@ -80,7 +91,8 @@ namespace Guidance.Runtime
 
             var extraLines = (string.IsNullOrEmpty(_warning) ? 0 : 1)
                            + (string.IsNullOrEmpty(_pipelineStatus) ? 0 : 1)
-                           + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1);
+                           + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1)
+                           + (_imageTargetFound.HasValue ? 1 : 0);
             var panelHeight = 265f + extraLines * 26f;
 
             GUILayout.BeginArea(new Rect(8, 8, panelWidth, panelHeight), GUI.skin.box);
@@ -100,6 +112,8 @@ namespace Guidance.Runtime
                 GUILayout.Label($"GLB: {_pipelineStatus}");
             if (!string.IsNullOrEmpty(_targetStatus))
                 GUILayout.Label($"Target: {_targetStatus}");
+            if (_imageTargetFound.HasValue)
+                GUILayout.Label($"Target Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
 
             if (showControls && appBootstrap != null)
             {
@@ -114,7 +128,7 @@ namespace Guidance.Runtime
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Help", btnWidth, btnHeight)) appBootstrap.ShowHelp();
                 if (GUILayout.Button("Diagnostics", btnWidth, btnHeight)) appBootstrap.ExportDiagnosticsBundle();
-                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Switch Mode", btnWidth, btnHeight)) appBootstrap.ReturnToJobSelector();
                 GUILayout.EndHorizontal();
             }
 

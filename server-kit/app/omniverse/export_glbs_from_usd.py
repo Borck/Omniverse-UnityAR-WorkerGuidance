@@ -29,11 +29,19 @@ from pathlib import Path
 from typing import Any
 import omni.client
 # --- CONFIGURATION ---------------------------------------------------------
+# To run for a different job: comment out the active block and uncomment the other.
 
-JOB_ID = "demonstrator-26-02-25"
-NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025"
-# REPO_ROOT = Path(r"D:\Users\Abdul\Omniverse-UnityAR-WorkerGuidance\Omniverse-UnityAR-WorkerGuidance")
+# ── JOB 1: Demonstrator (7 separate USD files, one per part) ───────────────
+# JOB_ID = "demonstrator-26-02-25"
+# NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025"
+# NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
+
+# ── JOB 2: PU Segment Assembly (6 individual USD files in Animation_PU_Segment/) ──
+# To use: comment out Job 1 above and uncomment the 3 lines below.
+JOB_ID = "pu-segment-assembly-test"
+NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/Project%20Assembly/Source/Animation_PU_Segment"
 NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
+
 
 @dataclass(frozen=True)
 class PartSpec:
@@ -44,14 +52,28 @@ class PartSpec:
     sequence_index: int    # assembly order (1-based)
 
 
+# ── PARTS for Job 1: Demonstrator ─────────────────────────────────────────
+# PARTS: list[PartSpec] = [
+#     PartSpec("step-001", "plate_bottom_01",     "PLATE_BOTTOM_01_001",                     "PLATE_BOTTOM_01_001",                     1),
+#     PartSpec("step-002", "cores_001_002",       "CORES_001 CORES_002",                     "CORES_001 CORES_002",                     2),
+#     PartSpec("step-003", "left_unit_phase_03",  "LEFT_UNIT_PHASE_03_001",                  "LEFT_UNIT_PHASE_03_001",                  3),
+#     PartSpec("step-004", "right_unit_phase_03", "RIGHT_UNIT_PHASE_03_001",                 "RIGHT_UNIT_PHASE_03_001",                 4),
+#     PartSpec("step-005", "plate_top_02",        "PLATE_TOP_02_002",                        "PLATE_TOP_02_002",                        5),
+#     PartSpec("step-006", "frame_ring_03_004",   "TestFrameRing03_004",                     "TestFrameRing03_004",                     6),
+#     PartSpec("step-007", "frame_ring_03_multi", "TestFrameRing03_003-005-006-007-010-011", "TestFrameRing03_003-005-006-007-010-011", 7),
+# ]
+
+# ── PARTS for Job 2: PU Segment Assembly ──────────────────────────────────
+# Each entry opens the individual part USD from Animation_PU_Segment/ and
+# exports it as a GLB. The -Position.usd companion layers are sublayers of
+# each part USD so they get baked in automatically during flatten+export.
 PARTS: list[PartSpec] = [
-    PartSpec("step-001", "plate_bottom_01",     "PLATE_BOTTOM_01_001",                              "PLATE_BOTTOM_01_001",                              1),
-    PartSpec("step-002", "cores_001_002",       "CORES_001 CORES_002",                              "CORES_001 CORES_002",                              2),
-    PartSpec("step-003", "left_unit_phase_03",  "LEFT_UNIT_PHASE_03_001",                           "LEFT_UNIT_PHASE_03_001",                           3),
-    PartSpec("step-004", "right_unit_phase_03", "RIGHT_UNIT_PHASE_03_001",                          "RIGHT_UNIT_PHASE_03_001",                          4),
-    PartSpec("step-005", "plate_top_02",        "PLATE_TOP_02_002",                                 "PLATE_TOP_02_002",                                 5),
-    PartSpec("step-006", "frame_ring_03_004",   "TestFrameRing03_004",                              "TestFrameRing03_004",                              6),
-    PartSpec("step-007", "frame_ring_03_multi", "TestFrameRing03_003-005-006-007-010-011",          "TestFrameRing03_003-005-006-007-010-011",          7),
+    PartSpec("step-001", "plate_bottom_01",     "PLATE BOTTOM 01",     "PLATE_BOTTOM_01_001",     1),
+    PartSpec("step-002", "right_unit_phase_03", "RIGHT UNIT PHASE 03", "RIGHT_UNIT_PHASE_03_001", 2),
+    PartSpec("step-003", "left_unit_phase_03",  "LEFT UNIT PHASE 03",  "LEFT_UNIT_PHASE_03_001",  3),
+    PartSpec("step-004", "cores_001_002",       "CORES 001 + 002",     "CORES_001 CORES_002",     4),
+    PartSpec("step-005", "plate_top_02",        "PLATE TOP 02",        "PLATE_TOP_02_002",        5),
+    PartSpec("step-006", "schrauben_top_02",    "SCHRAUBEN TOP 02",    "Schrauben_TOP_02_002",    6),
 ]
 
 # glTFast-friendly settings: disable materials, lights, cameras. Keep animations.

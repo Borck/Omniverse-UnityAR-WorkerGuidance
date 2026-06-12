@@ -11,13 +11,15 @@ from fastapi import status
 from pathlib import Path
 import app
 from app.omniverse.router import router as omniverse_router
-from app.unity.router import router as unity_router
-from app.unity.router import connected_clients
-import json as _json
+# HTTP bridge / WebSocket transport disabled — gRPC only.
+# from app.unity.router import router as unity_router
+# from app.unity.router import connected_clients
+# import json as _json
 
 
 try:
   from .config import AppConfig
+  from .discovery_beacon import start_beacon_from_config
   from .draco_codec import DracoCodec
   from .draco_codec import DracoCodecConfig
   from .export_job_service import ExportJobService
@@ -27,6 +29,7 @@ try:
   from .layer_stack_resolver import LayerStackResolver
 except ImportError:
   from config import AppConfig
+  from discovery_beacon import start_beacon_from_config
   from draco_codec import DracoCodec
   from draco_codec import DracoCodecConfig
   from export_job_service import ExportJobService
@@ -182,8 +185,13 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     )
     import omni.client
     omni.client.initialize()
-    yield
-    omni.client.shutdown()
+    beacon = start_beacon_from_config(resolved_config, logger=logger)
+    try:
+      yield
+    finally:
+      if beacon is not None:
+        beacon.stop()
+      omni.client.shutdown()
 
   app = FastAPI(title="Guidance Server", version="0.2.0", lifespan=lifespan)
   app.state.config = resolved_config
@@ -322,15 +330,15 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     next_step = _next_step(completion.job_id, completion.step_id)
     if next_step is None:
       return JSONResponse(content={"ack": {"duplicate": False}})
-    if next_step is not None:
-        # Push via WebSocket to any connected AxisAlign/WS clients simultaneously
-        step_msg = _json.dumps({"action": "load_step", "step_id": next_step.step_id})
-        for ws_client in list(connected_clients):
-            try:
-                import asyncio
-                asyncio.create_task(ws_client.send_text(step_msg))
-            except Exception:
-                connected_clients.remove(ws_client)
+    # WebSocket broadcast disabled — gRPC only transport.
+    # if next_step is not None:
+    #     step_msg = _json.dumps({"action": "load_step", "step_id": next_step.step_id})
+    #     for ws_client in list(connected_clients):
+    #         try:
+    #             import asyncio
+    #             asyncio.create_task(ws_client.send_text(step_msg))
+    #         except Exception:
+    #             connected_clients.remove(ws_client)
     _set_session_state_with_log(
       session_id=completion.session_id,
       next_state=SessionState.STEP_READY,

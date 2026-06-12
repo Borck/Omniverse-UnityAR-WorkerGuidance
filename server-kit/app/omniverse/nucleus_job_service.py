@@ -216,15 +216,19 @@ def _write_step_definitions_yaml(
             "        targetPosition: [0.0, 0.0, 0.0]",
         ]
 
-    # Load existing YAML, replace or append this job
+    # Load existing YAML, replace or append this job.
+    # Normalise to LF so the regex works consistently on Windows (CRLF) and Linux (LF).
     existing = ""
     if yaml_path.exists():
-        existing = yaml_path.read_text(encoding="utf-8")
+        existing = yaml_path.read_text(encoding="utf-8").replace("\r\n", "\n")
 
-    # Remove existing entry for this job_id if present
+    # Remove existing entry for this job_id if present.
+    # (?=[\r\n]) (now just \n after normalisation) ensures exact job-id match —
+    # without it "demonstrator-26-02-25" is a prefix of "demonstrator-26-02-25-img"
+    # and strips that block too.
     import re
     existing = re.sub(
-        rf"  - jobId: {re.escape(job_id)}.+?(?=  - jobId:|\Z)",
+        rf"  - jobId: {re.escape(job_id)}\n.+?(?=  - jobId:|\Z)",
         "",
         existing,
         flags=re.DOTALL,
