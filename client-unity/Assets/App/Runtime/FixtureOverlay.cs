@@ -63,6 +63,12 @@ namespace Guidance.Runtime
 #if VUFORIA_ENGINE
         private ObserverBehaviour _observer;
 
+        /// <summary>
+        /// The instantiated fixture mesh transform. Arrows / annotations parented here ride
+        /// the fixture exactly, in the same local space it was authored in. Null until Initialize.
+        /// </summary>
+        public Transform OverlayInstance => _instance != null ? _instance.transform : null;
+
         public void Initialize(GameObject prefab, ObserverBehaviour observer, Transform parentOverride = null)
         {
             if (prefab == null || observer == null) return;

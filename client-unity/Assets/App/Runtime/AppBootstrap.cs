@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Guidance.V1;
+using App.Runtime;
 
 namespace Guidance.Runtime
 {
@@ -56,6 +57,7 @@ namespace Guidance.Runtime
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
         [SerializeField] private JobSelectorPanel jobSelectorPanel;
+        [SerializeField] private StepArrowManager stepArrowManager;
 #if VUFORIA_ENGINE
         private Vuforia.ObserverBehaviour _modelTargetObserver;
 #endif
@@ -76,6 +78,7 @@ namespace Guidance.Runtime
         private Transform _modelSpawnAnchor;
         private bool _vuforiaTargetLoaded;
         private Transform _activeObserverTransform;
+        private Transform _overlayAnchor;
         private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
         private FixtureOverlay _activeFixtureOverlay;
 
@@ -294,12 +297,17 @@ namespace Guidance.Runtime
             {
                 StartCoroutine(ResolveAndPresentStepAsset(activation));
             }
+
+            // Swap arrows to this step's placement. If the observer isn't ready yet (first step),
+            // ArrowParent() is null and this no-ops; onLoaded spawns it once tracking is up.
+            stepArrowManager?.ShowArrowsForStep(activation.StepId, ArrowParent());
         }
 
         private void OnSessionWorkflowCompleted()
         {
             Debug.Log("[AppBootstrap] Workflow complete — all steps done.");
             _runtime.StepCoordinator.RegisterFault("workflow-complete");
+            stepArrowManager?.ClearArrows();
             if (statusPanel != null)
             {
                 statusPanel.SetActiveStep("-", "-");
@@ -371,6 +379,7 @@ namespace Guidance.Runtime
             _lastTargetPayloadPath = string.Empty;
             _lastTargetVersion = string.Empty;
             _activeObserverTransform = null;
+            _overlayAnchor = null;
             _modelSpawnAnchor = null;
             _runtime = null;
 
@@ -467,6 +476,9 @@ namespace Guidance.Runtime
                 statusPanel.SetInstruction(previousActivation.DisplayName);
                 statusPanel.SetWarning(string.Empty);
             }
+
+            // Swap arrows to the previous step's placement (mirrors OnSessionStepActivated).
+            stepArrowManager?.ShowArrowsForStep(previousActivation.StepId, ArrowParent());
 
             StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
         }
@@ -625,6 +637,7 @@ namespace Guidance.Runtime
                         _activeObserverTransform = animRoot;
                         _modelSpawnAnchor = animRoot != null ? GetOrCreateModelAnchor(animRoot) : null;
                         var overlayAnchor = animRoot != null ? GetOrCreateOverlayAnchor(animRoot) : null;
+                        _overlayAnchor = overlayAnchor;
                         _vuforiaTargetLoaded = true;
 #if VUFORIA_ENGINE
                         _modelTargetObserver = observer;
@@ -637,20 +650,26 @@ namespace Guidance.Runtime
                             if (_activeObserverTransform != null)
                                 _activeObserverTransform.gameObject.SetActive(false);
 
+                            // Create the fixture overlay first so its mesh transform exists —
+                            // arrows are parented to it (same local space they were authored in).
+                            if (fixtureOverlayPrefab != null)
+                            {
+                                var overlay = observer.gameObject.AddComponent<FixtureOverlay>();
+                                overlay.Initialize(fixtureOverlayPrefab, observer, overlayAnchor);
+                                overlay.OverlayEnabled = showFixtureOverlay;
+                                _activeFixtureOverlay = overlay;
+                            }
+
                             observer.OnTargetStatusChanged -= OnModelTargetStatusChanged;
                             observer.OnTargetStatusChanged += OnModelTargetStatusChanged;
                             OnModelTargetStatusChanged(observer, observer.TargetStatus);
+
+                            // Step may have activated before the observer was ready — spawn now.
+                            if (_lastActivation != null)
+                                stepArrowManager?.ShowArrowsForStep(_lastActivation.StepId, ArrowParent());
                         }
 #endif
                         statusPanel?.SetTargetStatus(observer != null ? "ACTIVE in Vuforia (from FastAPI)" : "ERROR: Vuforia returned null observer");
-
-                        if (observer != null && fixtureOverlayPrefab != null)
-                        {
-                            var overlay = observer.gameObject.AddComponent<FixtureOverlay>();
-                            overlay.Initialize(fixtureOverlayPrefab, observer, overlayAnchor);
-                            overlay.OverlayEnabled = showFixtureOverlay;
-                            _activeFixtureOverlay = overlay;
-                        }
                     },
                     onError: err => vuforiaError = err
                 );
@@ -746,8 +765,23 @@ namespace Guidance.Runtime
             if (_activeObserverTransform.gameObject.activeSelf != tracked)
                 _activeObserverTransform.gameObject.SetActive(tracked);
             statusPanel?.SetImageTargetFound(tracked);
+            if (tracked && _lastActivation != null)
+                stepArrowManager?.ShowArrowsForStep(_lastActivation.StepId, ArrowParent());
+            else
+                stepArrowManager?.SetVisible(false);
         }
 #endif
+
+        /// <summary>
+        /// The transform arrows are parented to: the OverlayAnchor, which sits in the same local
+        /// space as the fixture hologram but is NOT deactivated when the fixture overlay is toggled
+        /// off — so arrows stay visible (when tracked) regardless of "Show Fixture". Falls back to
+        /// the AnimationRoot if the anchor isn't ready yet.
+        /// </summary>
+        private Transform ArrowParent()
+        {
+            return _overlayAnchor != null ? _overlayAnchor : _activeObserverTransform;
+        }
 
         /// <summary>
         /// Identity-transform child of the Vuforia model-target observer. Used as

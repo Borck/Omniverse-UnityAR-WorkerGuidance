@@ -352,6 +352,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1369277006}
   - component: {fileID: 1369277005}
+  - component: {fileID: 1369277007}
   m_Layer: 0
   m_Name: AppBootstrap
   m_TagString: Untagged
@@ -397,6 +398,7 @@ MonoBehaviour:
   statusPanel: {fileID: 858389738}
   trackingDirectionHint: {fileID: 0}
   jobSelectorPanel: {fileID: 599964136}
+  stepArrowManager: {fileID: 1369277007}
 --- !u!4 &1369277006
 Transform:
   m_ObjectHideFlags: 0
@@ -413,6 +415,70 @@ Transform:
   - {fileID: 60848014}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1369277007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1369277004}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 210ee311854d4a84a8bcc36c1c76ee12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  roundArrowPrefab: {fileID: 919132149155446097, guid: 0e84e38c88dc10740b777fdba8f28f6d, type: 3}
+  straightArrowPrefab: {fileID: 6838923433237431476, guid: eef56f2b3c26d3246957b4736c9c6441, type: 3}
+  stepArrows:
+  - stepNumber: 1
+    note: centre
+    arrows:
+    - arrowType: 1
+      animated: 1
+      localPosition: {x: 0, y: 0.05, z: 0}
+      localEulerAngles: {x: 350.34, y: 329.4, z: 187.9}
+      localScale: {x: 1.333, y: 1.333, z: 1.333}
+  - stepNumber: 2
+    note: shifted right
+    arrows:
+    - arrowType: 1
+      animated: 1
+      localPosition: {x: -0.09, y: 0.05, z: 0}
+      localEulerAngles: {x: 350.34, y: 329.4, z: 187.9}
+      localScale: {x: 1.333, y: 1.333, z: 1.333}
+  - stepNumber: 3
+    note: shifted left
+    arrows:
+    - arrowType: 1
+      animated: 1
+      localPosition: {x: 0.09, y: 0.05, z: 0}
+      localEulerAngles: {x: 350.34, y: 329.4, z: 187.9}
+      localScale: {x: 1.333, y: 1.333, z: 1.333}
+  - stepNumber: 4
+    note: centre
+    arrows:
+    - arrowType: 1
+      animated: 1
+      localPosition: {x: 0, y: 0.05, z: 0}
+      localEulerAngles: {x: 350.34, y: 329.4, z: 187.9}
+      localScale: {x: 1.333, y: 1.333, z: 1.333}
+  - stepNumber: 5
+    note: centre
+    arrows:
+    - arrowType: 1
+      animated: 1
+      localPosition: {x: 0, y: 0.05, z: 0}
+      localEulerAngles: {x: 350.34, y: 329.4, z: 187.9}
+      localScale: {x: 1.333, y: 1.333, z: 1.333}
+  - stepNumber: 6
+    note: centre
+    arrows:
+    - arrowType: 1
+      animated: 1
+      localPosition: {x: 0, y: 0.05, z: 0}
+      localEulerAngles: {x: 350.34, y: 329.4, z: 187.9}
+      localScale: {x: 1.333, y: 1.333, z: 1.333}
+  livePreview: 1
 --- !u!1 &1378422017
 GameObject:
   m_ObjectHideFlags: 0
