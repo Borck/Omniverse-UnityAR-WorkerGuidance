@@ -16,6 +16,14 @@ service AssetTransferService {
   rpc StreamStepAsset(StepAssetStreamRequest) returns (stream StepAssetChunk);
 }
 
+// Lets an external system (dashboard, MES, supervisor tool) drive the step a
+// connected device is on, without being the device's session client. The server
+// resolves the target step and pushes StepActivated to the matching session(s)
+// over their existing Connect() stream via SessionChannels.
+service GuidanceControlService {
+  rpc ControlStep(ControlStepRequest) returns (ControlStepResponse);
+}
+
 message ClientMessage {
   oneof payload {
     HelloRequest hello = 1;
@@ -76,6 +84,24 @@ message StepCompleted {
   string job_id = 1;
   string step_id = 2;
   int64 completed_at_unix_ms = 3;
+}
+
+// External-control request. `action` selects how the target step is chosen:
+//   GOTO     -> jump to `step_id` (required for GOTO)
+//   NEXT     -> step after the session's current one (requires server-side
+//               current-step tracking; not implemented in the GOTO MVP)
+//   PREVIOUS -> step before the current one (same caveat as NEXT)
+message ControlStepRequest {
+  string job_id = 1;
+  ControlAction action = 2;
+  string step_id = 3;   // required when action == CONTROL_ACTION_GOTO
+}
+
+message ControlStepResponse {
+  bool ok = 1;
+  string activated_step_id = 2;
+  int32 sessions_notified = 3;   // number of device sessions the push reached
+  string message = 4;            // human-readable detail (esp. on failure)
 }
 
 message TrackingState {
@@ -195,4 +221,11 @@ enum AssetType {
   ASSET_TYPE_UNSPECIFIED = 0;
   ASSET_TYPE_GLB = 1;
   ASSET_TYPE_VUFORIA_TARGET = 2;
+}
+
+enum ControlAction {
+  CONTROL_ACTION_UNSPECIFIED = 0;
+  CONTROL_ACTION_NEXT = 1;
+  CONTROL_ACTION_PREVIOUS = 2;
+  CONTROL_ACTION_GOTO = 3;
 }

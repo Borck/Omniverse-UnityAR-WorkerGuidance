@@ -5,7 +5,7 @@ import warnings
 
 import guidance_pb2 as guidance__pb2
 
-GRPC_GENERATED_VERSION = '1.81.0'
+GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class GuidanceSessionServiceStub:
+class GuidanceSessionServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -41,7 +41,7 @@ class GuidanceSessionServiceStub:
                 _registered_method=True)
 
 
-class GuidanceSessionServiceServicer:
+class GuidanceSessionServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def Connect(self, request_iterator, context):
@@ -66,7 +66,7 @@ def add_GuidanceSessionServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class GuidanceSessionService:
+class GuidanceSessionService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -97,7 +97,7 @@ class GuidanceSessionService:
             _registered_method=True)
 
 
-class AssetQueryServiceStub:
+class AssetQueryServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -113,7 +113,7 @@ class AssetQueryServiceStub:
                 _registered_method=True)
 
 
-class AssetQueryServiceServicer:
+class AssetQueryServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetManifest(self, request, context):
@@ -138,7 +138,7 @@ def add_AssetQueryServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class AssetQueryService:
+class AssetQueryService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -169,7 +169,7 @@ class AssetQueryService:
             _registered_method=True)
 
 
-class AssetTransferServiceStub:
+class AssetTransferServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -185,7 +185,7 @@ class AssetTransferServiceStub:
                 _registered_method=True)
 
 
-class AssetTransferServiceServicer:
+class AssetTransferServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def StreamStepAsset(self, request, context):
@@ -210,7 +210,7 @@ def add_AssetTransferServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class AssetTransferService:
+class AssetTransferService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -230,6 +230,90 @@ class AssetTransferService:
             '/guidance.v1.AssetTransferService/StreamStepAsset',
             guidance__pb2.StepAssetStreamRequest.SerializeToString,
             guidance__pb2.StepAssetChunk.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class GuidanceControlServiceStub(object):
+    """Lets an external system (dashboard, MES, supervisor tool) drive the step a
+    connected device is on, without being the device's session client. The server
+    resolves the target step and pushes StepActivated to the matching session(s)
+    over their existing Connect() stream via SessionChannels.
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.ControlStep = channel.unary_unary(
+                '/guidance.v1.GuidanceControlService/ControlStep',
+                request_serializer=guidance__pb2.ControlStepRequest.SerializeToString,
+                response_deserializer=guidance__pb2.ControlStepResponse.FromString,
+                _registered_method=True)
+
+
+class GuidanceControlServiceServicer(object):
+    """Lets an external system (dashboard, MES, supervisor tool) drive the step a
+    connected device is on, without being the device's session client. The server
+    resolves the target step and pushes StepActivated to the matching session(s)
+    over their existing Connect() stream via SessionChannels.
+    """
+
+    def ControlStep(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_GuidanceControlServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'ControlStep': grpc.unary_unary_rpc_method_handler(
+                    servicer.ControlStep,
+                    request_deserializer=guidance__pb2.ControlStepRequest.FromString,
+                    response_serializer=guidance__pb2.ControlStepResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'guidance.v1.GuidanceControlService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('guidance.v1.GuidanceControlService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class GuidanceControlService(object):
+    """Lets an external system (dashboard, MES, supervisor tool) drive the step a
+    connected device is on, without being the device's session client. The server
+    resolves the target step and pushes StepActivated to the matching session(s)
+    over their existing Connect() stream via SessionChannels.
+    """
+
+    @staticmethod
+    def ControlStep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/guidance.v1.GuidanceControlService/ControlStep',
+            guidance__pb2.ControlStepRequest.SerializeToString,
+            guidance__pb2.ControlStepResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -11,6 +11,7 @@ This file tracks compatibility and implementation notes for `proto/guidance.prot
 - `GuidanceSessionService.Connect`: bidirectional control stream.
 - `AssetQueryService.GetManifest`: immutable asset manifest query.
 - `AssetTransferService.StreamStepAsset`: chunked GLB delivery over gRPC.
+- `GuidanceControlService.ControlStep`: external step control (GOTO). Pushes `StepActivated` to live sessions via `SessionChannels`; must run in the same process as the device's `Connect` stream. See [step-control-api.md](step-control-api.md).
 
 ## Implementation Notes
 - Client and server must treat duplicate `StepActivated`/`StepCompleted` as idempotent.
