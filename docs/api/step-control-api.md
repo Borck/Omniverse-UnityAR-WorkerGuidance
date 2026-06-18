@@ -1,5 +1,5 @@
 # External Step Control API
-
+<!-- Sa/changes -->
 How an external system drives which step a connected device (e.g. Vuzix) is on —
 **without** being the device's session client.
 
@@ -59,6 +59,7 @@ Port/host are configurable on the server via `GUIDANCE_GRPC_HOST` (default
 `0.0.0.0`) and `GUIDANCE_GRPC_PORT` (default `50051`).
 
 ### Generating stubs
+
 Your agent needs the proto to generate client stubs in its language:
 
 ```bash
@@ -66,6 +67,7 @@ Your agent needs the proto to generate client stubs in its language:
 python -m grpc_tools.protoc -I proto \
   --python_out=OUT --grpc_python_out=OUT proto/guidance.proto
 ```
+
 For other languages, point your language's protoc plugin at
 `proto/guidance.proto`. gRPC is cross-language — the controller does **not** have
 to be Python.
@@ -101,6 +103,7 @@ enum ControlAction {
 ```
 
 ### Behaviour
+
 - The server resolves `step_id` within `job_id` and pushes a `StepActivated` to
   every device session currently on that job.
 - The device renders the step exactly as if it had advanced normally — no device
@@ -125,6 +128,7 @@ with grpc.insecure_channel("HOST:50051") as channel:
 ```
 
 Interpreting the response:
+
 - `ok == True, sessions_notified >= 1` → delivered to that many devices.
 - `ok == True, sessions_notified == 0` → step is valid but **no device is on
   that job** (usually a `job_id` mismatch — see gotchas).
