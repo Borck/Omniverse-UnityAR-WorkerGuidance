@@ -49,37 +49,48 @@ namespace Guidance.Runtime
         {
             if (!_visible) return;
 
-            const float w = 460f;
-            const float h = 360f;
-            var rect = new Rect((Screen.width - w) / 2f, (Screen.height - h) / 2f, w, h);
+            ImguiTheme.Begin();
+
+            const float w = 760f;
+            const float h = 760f;
+            var rect = new Rect((ImguiTheme.VirtualWidth - w) / 2f, (ImguiTheme.VirtualHeight - h) / 2f, w, h);
 
             GUILayout.BeginArea(rect, GUI.skin.box);
+
+            // The content is shorter than the 760 px box, so center it vertically with
+            // FlexibleSpace top + bottom. This pulls the IP field down off the top edge
+            // and into the middle of the M4000's narrow FOV, where it is actually
+            // visible (the earlier clipping was vertical, not horizontal).
+            GUILayout.FlexibleSpace();
+
             GUILayout.Label("<b>Server Configuration</b>");
             GUILayout.Space(8);
 
             GUILayout.Label("Server IP / Host");
-            _host = GUILayout.TextField(_host ?? "", GUILayout.Height(28));
+            _host = GUILayout.TextField(_host ?? "", GUILayout.Height(ImguiTheme.ControlHeight));
+
+            // Ports kept, with modest separation above and below.
+            GUILayout.Space(ImguiTheme.ControlHeight * 0.4f);
 
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
             GUILayout.Label("gRPC port");
-            _grpcPort = GUILayout.TextField(_grpcPort ?? "", GUILayout.Height(28));
+            _grpcPort = GUILayout.TextField(_grpcPort ?? "", GUILayout.Height(ImguiTheme.ControlHeight));
             GUILayout.EndVertical();
             GUILayout.Space(8);
             GUILayout.BeginVertical();
             GUILayout.Label("HTTP port");
-            _httpPort = GUILayout.TextField(_httpPort ?? "", GUILayout.Height(28));
+            _httpPort = GUILayout.TextField(_httpPort ?? "", GUILayout.Height(ImguiTheme.ControlHeight));
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(4);
-            GUILayout.Label("Service tag filter (optional)");
-            _serviceTag = GUILayout.TextField(_serviceTag ?? "", GUILayout.Height(28));
-
-            GUILayout.Space(10);
+            // Service tag filter field removed (not required). _serviceTag stays ""
+            // so auto-discover just matches any beacon, and SaveAndContinue still
+            // persists it.
+            GUILayout.Space(ImguiTheme.ControlHeight * 0.4f);
 
             GUI.enabled = !_discovering;
-            if (GUILayout.Button(_discovering ? "Searching..." : "Auto-discover (UDP)", GUILayout.Height(36)))
+            if (GUILayout.Button(_discovering ? "Searching..." : "Auto-discover (UDP)", GUILayout.Height(ImguiTheme.ControlHeight)))
             {
                 StartCoroutine(RunDiscovery());
             }
@@ -88,7 +99,7 @@ namespace Guidance.Runtime
             GUILayout.Space(6);
 
             GUI.enabled = !_discovering && !string.IsNullOrWhiteSpace(_host);
-            if (GUILayout.Button("Save & Continue", GUILayout.Height(44)))
+            if (GUILayout.Button("Save & Continue", GUILayout.Height(ImguiTheme.ControlHeight)))
             {
                 SaveAndContinue();
             }
@@ -100,7 +111,11 @@ namespace Guidance.Runtime
                 GUILayout.Label(_status);
             }
 
+            GUILayout.FlexibleSpace();
+
             GUILayout.EndArea();
+
+            ImguiTheme.End();
         }
 
         private System.Collections.IEnumerator RunDiscovery()

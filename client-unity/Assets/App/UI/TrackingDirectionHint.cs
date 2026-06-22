@@ -33,9 +33,11 @@ namespace Guidance.Runtime
 
             var direction = _signedAngleDeg > 0f ? "rechts" : "links";
             var magnitude = Mathf.RoundToInt(Mathf.Abs(_signedAngleDeg));
-            GUILayout.BeginArea(new Rect(16, 148, 380, 60), GUI.skin.box);
+            ImguiTheme.Begin();
+            GUILayout.BeginArea(new Rect(16, 220, 760, 110), GUI.skin.box);
             GUILayout.Label($"Tracking verloren: bitte {direction} drehen ({magnitude} Grad)");
             GUILayout.EndArea();
+            ImguiTheme.End();
         }
     }
 }

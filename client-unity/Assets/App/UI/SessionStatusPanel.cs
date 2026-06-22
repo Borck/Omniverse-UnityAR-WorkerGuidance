@@ -86,12 +86,14 @@ namespace Guidance.Runtime
         {
             if (!visible) return;
 
-            var panelWidth = Mathf.Min(Screen.width - 16f, 340f);
+            ImguiTheme.Begin();
+
+            var panelWidth = Mathf.Min(ImguiTheme.VirtualWidth - 16f, 620f);
             var btnWidth2 = GUILayout.Width((panelWidth - 24) / 2f);
-            var btnHeight = GUILayout.Height(30);
+            var btnHeight = GUILayout.Height(ImguiTheme.ControlHeight);
 
             var extraLines = string.IsNullOrEmpty(_warning) ? 0 : 1;
-            var panelHeight = 170f + extraLines * 26f;
+            var panelHeight = 320f + extraLines * 44f;
 
             // Main status panel (top-left)
             GUILayout.BeginArea(new Rect(8, 8, panelWidth, panelHeight), GUI.skin.box);
@@ -119,7 +121,7 @@ namespace Guidance.Runtime
             GUILayout.EndArea();
 
             // Standalone Log/Status toggle button (bottom-left)
-            GUILayout.BeginArea(new Rect(8, Screen.height - 34f, 110f, 26f));
+            GUILayout.BeginArea(new Rect(8, ImguiTheme.VirtualHeight - (ImguiTheme.ControlHeight + 8f), 240f, ImguiTheme.ControlHeight));
             if (GUILayout.Button("Log / Status"))
                 _showLogPanel = !_showLogPanel;
             GUILayout.EndArea();
@@ -131,9 +133,9 @@ namespace Guidance.Runtime
                     + (string.IsNullOrEmpty(_pipelineStatus) ? 0 : 1)
                     + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1)
                     + (_imageTargetFound.HasValue ? 1 : 0);
-                var logHeight = logLines * 26f + 20f;
+                var logHeight = logLines * 44f + 30f;
 
-                GUILayout.BeginArea(new Rect(8, Screen.height - logHeight - 42f, 280f, logHeight), GUI.skin.box);
+                GUILayout.BeginArea(new Rect(8, ImguiTheme.VirtualHeight - logHeight - (ImguiTheme.ControlHeight + 16f), 480f, logHeight), GUI.skin.box);
                 GUILayout.Label("<b>Log / Status</b>");
                 GUILayout.Label($"Step State: {_stepState}");
                 GUILayout.Label($"Active Step: {_activeStep}");
@@ -145,6 +147,8 @@ namespace Guidance.Runtime
                     GUILayout.Label($"Target Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
                 GUILayout.EndArea();
             }
+
+            ImguiTheme.End();
         }
     }
 }

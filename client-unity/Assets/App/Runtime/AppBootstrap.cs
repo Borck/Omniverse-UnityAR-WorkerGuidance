@@ -480,15 +480,19 @@ namespace Guidance.Runtime
 
         private void OnGUI()
         {
-            const float w = 140f;
-            const float h = 32f;
-            var rect = new Rect(Screen.width - w - 16f, 16f, w, h);
+            ImguiTheme.Begin();
+
+            const float w = 320f;
+            const float h = 70f;
+            var rect = new Rect(ImguiTheme.VirtualWidth - w - 16f, 16f, w, h);
 
             GUILayout.BeginArea(rect, GUI.skin.box);
             var newValue = GUILayout.Toggle(showFixtureOverlay, " Show Fixture");
             if (newValue != showFixtureOverlay)
                 SetFixtureOverlayVisible(newValue);
             GUILayout.EndArea();
+
+            ImguiTheme.End();
         }
 
         public void ShowHelp()

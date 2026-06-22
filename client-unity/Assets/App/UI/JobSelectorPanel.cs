@@ -25,9 +25,11 @@ namespace Guidance.Runtime
         {
             if (!_visible) return;
 
-            const float w = 320f;
-            const float h = 140f;
-            var rect = new Rect((Screen.width - w) / 2f, (Screen.height - h) / 2f, w, h);
+            ImguiTheme.Begin();
+
+            const float w = 560f;
+            const float h = 300f;
+            var rect = new Rect((ImguiTheme.VirtualWidth - w) / 2f, (ImguiTheme.VirtualHeight - h) / 2f, w, h);
 
             GUILayout.BeginArea(rect, GUI.skin.box);
             GUILayout.Label("<b>Ready to start</b>");
@@ -35,13 +37,15 @@ namespace Guidance.Runtime
             GUILayout.Label($"Job: {jobId}");
             GUILayout.Space(12);
 
-            if (GUILayout.Button("Start", GUILayout.Height(48)))
+            if (GUILayout.Button("Start", GUILayout.Height(ImguiTheme.ControlHeight)))
             {
                 _visible = false;
                 _bootstrap.InitializeWithJob(jobId);
             }
 
             GUILayout.EndArea();
+
+            ImguiTheme.End();
         }
     }
 }
