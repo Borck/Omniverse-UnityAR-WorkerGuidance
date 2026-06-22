@@ -16,27 +16,31 @@ Shader "Guidance/Hologram"
 
     SubShader
     {
+        // RenderPipeline tag tells URP this SubShader is for it.
         Tags
         {
             "RenderType"      = "Transparent"
             "Queue"           = "Transparent"
+            "RenderPipeline"  = "UniversalPipeline"
             "IgnoreProjector" = "True"
         }
 
         Pass
         {
             Name "HologramForward"
-            Tags { "LightMode" = "ForwardBase" }
+            // UniversalForward is the LightMode URP renders. ForwardBase (the
+            // old Built-in tag) is silently skipped by URP -> invisible model.
+            Tags { "LightMode" = "UniversalForward" }
 
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
             Cull Off
 
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex   vert
             #pragma fragment frag
 
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             struct appdata
             {
@@ -46,38 +50,42 @@ Shader "Guidance/Hologram"
 
             struct v2f
             {
-                float4 pos        : SV_POSITION;
-                float3 worldPos   : TEXCOORD0;
-                float3 worldNormal: TEXCOORD1;
+                float4 pos         : SV_POSITION;
+                float3 worldPos    : TEXCOORD0;
+                float3 worldNormal : TEXCOORD1;
             };
 
-            float4 _BaseColor;
-            float4 _RimColor;
-            float  _RimPower;
-            float  _RimIntensity;
-            float  _Alpha;
-            float  _ScanlineSpeed;
-            float  _ScanlineDensity;
-            float  _ScanlineIntensity;
-            float  _PulseSpeed;
-            float  _PulseAmount;
+            // SRP Batcher compatibility: all material properties in one CBUFFER.
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseColor;
+                float4 _RimColor;
+                float  _RimPower;
+                float  _RimIntensity;
+                float  _Alpha;
+                float  _ScanlineSpeed;
+                float  _ScanlineDensity;
+                float  _ScanlineIntensity;
+                float  _PulseSpeed;
+                float  _PulseAmount;
+            CBUFFER_END
 
             v2f vert (appdata v)
             {
                 v2f o;
-                o.pos         = UnityObjectToClipPos(v.vertex);
-                o.worldPos    = mul(unity_ObjectToWorld, v.vertex).xyz;
-                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.pos         = TransformObjectToHClip(v.vertex.xyz);
+                o.worldPos    = TransformObjectToWorld(v.vertex.xyz);
+                o.worldNormal = TransformObjectToWorldNormal(v.normal);
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag (v2f i) : SV_Target
             {
                 float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
                 float  ndotv   = saturate(dot(normalize(i.worldNormal), viewDir));
                 float  fresnel = pow(1.0 - ndotv, _RimPower) * _RimIntensity;
 
-                // Double-tap heartbeat: two close peaks (lub-dub), then a rest, repeating once per (1/_PulseSpeed) seconds.
+                // Double-tap heartbeat: two close peaks (lub-dub), then a rest,
+                // repeating once per (1/_PulseSpeed) seconds.
                 float phase = frac(_Time.y * _PulseSpeed);
                 float peak1 = exp(-pow((phase - 0.08) * 14.0, 2.0));
                 float peak2 = exp(-pow((phase - 0.24) * 14.0, 2.0));
@@ -87,14 +95,14 @@ Shader "Guidance/Hologram"
                 float scan     = sin((i.worldPos.y * _ScanlineDensity) - (_Time.y * _ScanlineSpeed * 6.2831853)) * 0.5 + 0.5;
                 float scanMask = lerp(1.0 - _ScanlineIntensity, 1.0, scan);
 
-                fixed3 body = _BaseColor.rgb * scanMask * pulse;
-                fixed3 rim  = _RimColor.rgb  * fresnel;
-                fixed3 col  = body + rim;
+                half3 body = _BaseColor.rgb * scanMask * pulse;
+                half3 rim  = _RimColor.rgb  * fresnel;
+                half3 col  = body + rim;
 
-                fixed alpha = saturate((_Alpha * scanMask + fresnel) * pulse);
-                return fixed4(col, alpha);
+                half alpha = saturate((_Alpha * scanMask + fresnel) * pulse);
+                return half4(col, alpha);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 

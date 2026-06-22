@@ -16,23 +16,26 @@ Shader "Guidance/FixtureReveal"
         {
             "RenderType"      = "Transparent"
             "Queue"           = "Transparent"
+            "RenderPipeline"  = "UniversalPipeline"
             "IgnoreProjector" = "True"
         }
 
         Pass
         {
             Name "FixtureRevealForward"
-            Tags { "LightMode" = "ForwardBase" }
+            // UniversalForward so URP renders this pass. ForwardBase (Built-in)
+            // is skipped by URP, which made the overlay invisible.
+            Tags { "LightMode" = "UniversalForward" }
 
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
             Cull Off
 
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex   vert
             #pragma fragment frag
 
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             struct appdata
             {
@@ -47,23 +50,25 @@ Shader "Guidance/FixtureReveal"
                 float3 worldNormal: TEXCOORD1;
             };
 
-            float4 _BaseColor;
-            float4 _GlowColor;
-            float  _RevealY;
-            float  _GlowBandWidth;
-            float  _BodyAlpha;
-            float  _GlowIntensity;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseColor;
+                float4 _GlowColor;
+                float  _RevealY;
+                float  _GlowBandWidth;
+                float  _BodyAlpha;
+                float  _GlowIntensity;
+            CBUFFER_END
 
             v2f vert (appdata v)
             {
                 v2f o;
-                o.pos         = UnityObjectToClipPos(v.vertex);
-                o.worldPos    = mul(unity_ObjectToWorld, v.vertex).xyz;
-                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.pos         = TransformObjectToHClip(v.vertex.xyz);
+                o.worldPos    = TransformObjectToWorld(v.vertex.xyz);
+                o.worldNormal = TransformObjectToWorldNormal(v.normal);
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag (v2f i) : SV_Target
             {
                 // Above the slice plane: clip pixels (they are not yet revealed).
                 if (i.worldPos.y > _RevealY)
@@ -78,15 +83,15 @@ Shader "Guidance/FixtureReveal"
                 if (dist < _GlowBandWidth)
                 {
                     float t = saturate(1.0 - (dist / _GlowBandWidth));
-                    fixed3 col = lerp(_BaseColor.rgb, _GlowColor.rgb * _GlowIntensity, t);
-                    fixed alpha = lerp(_BodyAlpha, 1.0, t);
-                    return fixed4(col, alpha);
+                    half3 col = lerp(_BaseColor.rgb, _GlowColor.rgb * _GlowIntensity, t);
+                    half alpha = lerp(_BodyAlpha, 1.0, t);
+                    return half4(col, alpha);
                 }
 
                 // Below the band: solid body at body alpha.
-                return fixed4(_BaseColor.rgb, _BodyAlpha);
+                return half4(_BaseColor.rgb, _BodyAlpha);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 
