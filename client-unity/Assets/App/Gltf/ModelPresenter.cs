@@ -97,7 +97,11 @@ namespace Guidance.Runtime
                 _activeModelRoot.transform.localPosition = Vector3.zero;
                 _activeModelRoot.transform.localRotation = Quaternion.identity;
                 // GLBs exported from Omniverse come in at ~10x the size needed in Unity,
-                // so we uniformly downscale to 0.1 on every axis.
+                // so we uniformly downscale to 0.1 on every axis. Note: scaling this
+                // root magnifies the GLB's own positional offset (parts are exported
+                // at their real assembly position, not centered), so increasing this
+                // value also shifts the model away from the anchor. To grow the model
+                // in place, scale around its bounds centre instead (see note below).
                 _activeModelRoot.transform.localScale    = Vector3.one * 0.1f;
             }
 

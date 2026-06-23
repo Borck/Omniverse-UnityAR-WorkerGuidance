@@ -56,6 +56,10 @@ namespace Guidance.Runtime
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
         [SerializeField] private JobSelectorPanel jobSelectorPanel;
+        [Header("FOV tuner (M4000 waveguide ~28°)")]
+        [SerializeField] private FovTunerPanel fovTunerPanel;
+        [Tooltip("Initial visibility of the FOV slider at the top of the view. Toggle on glass via the HUD checkbox.")]
+        [SerializeField] private bool tuneFovVisible = false;
 #if VUFORIA_ENGINE
         private Vuforia.ObserverBehaviour _modelTargetObserver;
 #endif
@@ -91,7 +95,22 @@ namespace Guidance.Runtime
         {
             HologramApplier.Enabled = useHologramShader;
 
+            EnsureCameraFovOverride();
+            if (fovTunerPanel != null) fovTunerPanel.Visible = tuneFovVisible;
+
             StartCoroutine(StartupFlow());
+        }
+
+        // CameraFovOverride lives on Camera.main and owns both the slider state
+        // and the per-frame projection-matrix write (URP beginCameraRendering)
+        // that actually performs the zoom. Attaching it here makes sure the
+        // FOV tuner panel can always find it by Camera.main.GetComponent<>().
+        private static void EnsureCameraFovOverride()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            if (cam.GetComponent<CameraFovOverride>() == null)
+                cam.gameObject.AddComponent<CameraFovOverride>();
         }
 
         private IEnumerator StartupFlow()
@@ -482,14 +501,23 @@ namespace Guidance.Runtime
         {
             ImguiTheme.Begin();
 
-            const float w = 320f;
-            const float h = 70f;
+            const float w = 340f;
+            const float h = 140f;
             var rect = new Rect(ImguiTheme.VirtualWidth - w - 16f, 16f, w, h);
 
             GUILayout.BeginArea(rect, GUI.skin.box);
-            var newValue = GUILayout.Toggle(showFixtureOverlay, " Show Fixture");
-            if (newValue != showFixtureOverlay)
-                SetFixtureOverlayVisible(newValue);
+
+            var newShowFixture = GUILayout.Toggle(showFixtureOverlay, " Show Fixture");
+            if (newShowFixture != showFixtureOverlay)
+                SetFixtureOverlayVisible(newShowFixture);
+
+            var newTuneFov = GUILayout.Toggle(tuneFovVisible, " Tune FOV");
+            if (newTuneFov != tuneFovVisible)
+            {
+                tuneFovVisible = newTuneFov;
+                if (fovTunerPanel != null) fovTunerPanel.Visible = tuneFovVisible;
+            }
+
             GUILayout.EndArea();
 
             ImguiTheme.End();

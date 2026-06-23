@@ -167,6 +167,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1369277006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &444537129
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 444537131}
+  - component: {fileID: 444537130}
+  m_Layer: 0
+  m_Name: FovTunerPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &444537130
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 444537129}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f3df7dd29df8fd4485afc749d76c7ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &444537131
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 444537129}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1369277006}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &599964135
 GameObject:
   m_ObjectHideFlags: 0
@@ -390,13 +434,15 @@ MonoBehaviour:
   discoveryPort: 45454
   serviceTagFilter: antillen
   discoveryTimeoutSeconds: 3
-  animationOffsetLocalPosition: {x: 0, y: -0.1, z: 0}
+  animationOffsetLocalPosition: {x: 0, y: -0.14, z: 0}
   animationOffsetLocalEulerAngles: {x: 0, y: 0, z: 0}
-  overlayOffsetLocalPosition: {x: 0, y: -0.04, z: 0}
+  overlayOffsetLocalPosition: {x: 0, y: 0, z: 0}
   overlayOffsetLocalEulerAngles: {x: 0, y: 0, z: 0}
   statusPanel: {fileID: 858389738}
   trackingDirectionHint: {fileID: 0}
   jobSelectorPanel: {fileID: 599964136}
+  fovTunerPanel: {fileID: 444537130}
+  tuneFovVisible: 1
 --- !u!4 &1369277006
 Transform:
   m_ObjectHideFlags: 0
@@ -411,6 +457,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 60848014}
+  - {fileID: 444537131}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1378422017
@@ -580,7 +627,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0.019607844}
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -588,7 +635,7 @@ Camera:
   m_ShutterSpeed: 0.005
   m_Aperture: 16
   m_FocusDistance: 10
-  m_FocalLength: 48.12937
+  m_FocalLength: 1375.0638
   m_BladeCount: 5
   m_Curvature: {x: 2, y: 11}
   m_BarrelClipping: 0.25
@@ -603,7 +650,7 @@ Camera:
     height: 1
   near clip plane: 0.2
   far clip plane: 2000
-  field of view: 28
+  field of view: 1
   orthographic: 0
   orthographic size: 5
   m_Depth: 1
