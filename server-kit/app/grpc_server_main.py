@@ -12,6 +12,7 @@ try:
     from .manifest_service import ManifestService
     from .manifest_watcher import ManifestWatcher
     from .generated import guidance_pb2_grpc
+    from .grpc_control_service import GuidanceControlService
     from .grpc_session_service import GuidanceSessionService
     from .guidance_server import SessionManager
     from .logging_config import configure_logging
@@ -26,6 +27,7 @@ except ImportError:
     from manifest_service import ManifestService
     from manifest_watcher import ManifestWatcher
     from generated import guidance_pb2_grpc
+    from grpc_control_service import GuidanceControlService
     from grpc_session_service import GuidanceSessionService
     from guidance_server import SessionManager
     from logging_config import configure_logging
@@ -73,6 +75,16 @@ def run_combined_grpc_server(config: AppConfig) -> None:
             target_root=target_root,
             logger=logger,
             draco_codec=draco_codec,
+        ),
+        server,
+    )
+    # External step control. Shares the SAME session_channels + step_repository as
+    # the session service so a control push lands on the live device's outbound queue.
+    guidance_pb2_grpc.add_GuidanceControlServiceServicer_to_server(
+        GuidanceControlService(
+            session_channels=session_channels,
+            step_repository=step_repository,
+            logger=logger,
         ),
         server,
     )
