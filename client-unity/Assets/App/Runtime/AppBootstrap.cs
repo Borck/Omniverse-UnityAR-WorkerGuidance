@@ -56,11 +56,18 @@ namespace Guidance.Runtime
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
         [SerializeField] private JobSelectorPanel jobSelectorPanel;
+        [Header("Control drawer")]
+        [Tooltip("Optional scene-wired FOV panel. If left empty, one is created at runtime.")]
+        [SerializeField] private FovTunerPanel fovTunerPanel;
 #if VUFORIA_ENGINE
         private Vuforia.ObserverBehaviour _modelTargetObserver;
 #endif
 
         private AppRuntimeContext _runtime;
+        private CameraFovOverride _fovOverride;
+        private EyeOffsetCalibration _eyeOffset;
+        private EyeOffsetPanel _eyeOffsetPanel;
+        private ControlDrawer _drawer;
         private StepActivationDto _lastActivation;
         private float _nextHeartbeatAt;
         private float _nextReconnectAt;
@@ -91,7 +98,70 @@ namespace Guidance.Runtime
         {
             HologramApplier.Enabled = useHologramShader;
 
+            EnsureCameraFovOverride();
+            EnsureEyeOffset();
+
+            if (fovTunerPanel == null) fovTunerPanel = gameObject.AddComponent<FovTunerPanel>();
+            _eyeOffsetPanel = gameObject.AddComponent<EyeOffsetPanel>();
+
+            _drawer = gameObject.AddComponent<ControlDrawer>();
+            _drawer.Bind(statusPanel, fovTunerPanel, _eyeOffsetPanel);
+            _drawer.enabled = false; // shown once a job is running
+
             StartCoroutine(StartupFlow());
+        }
+
+        // EyeOffsetCalibration lives on Camera.main and holds the persisted
+        // camera->eye offset used for optical see-through parallax correction.
+        private void EnsureEyeOffset()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            _eyeOffset = cam.GetComponent<EyeOffsetCalibration>();
+            if (_eyeOffset == null) _eyeOffset = cam.gameObject.AddComponent<EyeOffsetCalibration>();
+        }
+
+        // CameraFovOverride lives on Camera.main and owns both the slider state
+        // and the per-frame projection-matrix write (URP beginCameraRendering)
+        // that actually performs the zoom. Attaching it here makes sure the
+        // FOV tuner panel can always find it by Camera.main.GetComponent<>().
+        private void EnsureCameraFovOverride()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            _fovOverride = cam.GetComponent<CameraFovOverride>();
+            if (_fovOverride == null) _fovOverride = cam.gameObject.AddComponent<CameraFovOverride>();
+        }
+
+        // Feed the live tracked fixture anchor to the FOV override so its zoom
+        // magnifies around the fixture (no off-axis drift) rather than around
+        // the principal point. Null when no target is tracked -> override falls
+        // back to principal-point magnification.
+        private void LateUpdate()
+        {
+            ApplyEyeOffset();
+            if (_fovOverride != null)
+                _fovOverride.AnchorTransform = _activeObserverTransform;
+        }
+
+        // Optical see-through parallax correction: shift the tracked content by
+        // the calibrated camera->eye offset, expressed in world space from the
+        // camera's current orientation. A fixed camera-space content shift is
+        // equivalent to translating the rendering viewpoint, so the correction
+        // is automatically distance-accurate (perspective handles near vs far).
+        // AnimationRoot starts at the observer origin (localPosition 0); we set
+        // its localPosition so its world position is observer + worldShift.
+        private void ApplyEyeOffset()
+        {
+            if (_eyeOffset == null || _activeObserverTransform == null) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            Vector3 worldShift = cam.transform.TransformVector(_eyeOffset.OffsetMeters);
+            var parent = _activeObserverTransform.parent;
+            _activeObserverTransform.localPosition = parent != null
+                ? parent.InverseTransformVector(worldShift)
+                : worldShift;
         }
 
         private IEnumerator StartupFlow()
@@ -205,6 +275,7 @@ namespace Guidance.Runtime
         public void InitializeWithJob(string jobId)
         {
             desiredJobId = jobId;
+            if (_drawer != null) _drawer.enabled = true;
             _runtime = AppRuntimeContext.CreateDefault(
                 grpcTarget: grpcTarget,
                 httpBridgeBaseUrl: httpBridgeBaseUrl,
@@ -337,6 +408,8 @@ namespace Guidance.Runtime
         public void ReturnToJobSelector()
         {
             if (jobSelectorPanel == null) return;
+
+            if (_drawer != null) _drawer.enabled = false;
 
             _loadCancellation?.Cancel();
             _loadCancellation?.Dispose();
@@ -471,28 +544,13 @@ namespace Guidance.Runtime
             StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
         }
 
+        public bool IsFixtureOverlayVisible => showFixtureOverlay;
+
         public void SetFixtureOverlayVisible(bool visible)
         {
             showFixtureOverlay = visible;
             if (_activeFixtureOverlay != null)
                 _activeFixtureOverlay.OverlayEnabled = visible;
-        }
-
-        private void OnGUI()
-        {
-            ImguiTheme.Begin();
-
-            const float w = 320f;
-            const float h = 70f;
-            var rect = new Rect(ImguiTheme.VirtualWidth - w - 16f, 16f, w, h);
-
-            GUILayout.BeginArea(rect, GUI.skin.box);
-            var newValue = GUILayout.Toggle(showFixtureOverlay, " Show Fixture");
-            if (newValue != showFixtureOverlay)
-                SetFixtureOverlayVisible(newValue);
-            GUILayout.EndArea();
-
-            ImguiTheme.End();
         }
 
         public void ShowHelp()

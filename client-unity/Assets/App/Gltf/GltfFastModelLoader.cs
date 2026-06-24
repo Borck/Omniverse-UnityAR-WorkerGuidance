@@ -433,19 +433,48 @@ namespace Guidance.Runtime
                 }
             }
 
-            // Play Animations
+            // Play Animations -- slow playback (0.25x) with a pause between
+            // repetitions instead of seamless looping, so the worker has time
+            // to read the on-glass instruction before the part moves again.
+            const float playbackSpeed       = 0.25f;
+            const float replayDelaySeconds  = 10f;
+
             Animation[] animations = offsetNode.GetComponentsInChildren<Animation>();
             foreach (Animation anim in animations)
             {
-                anim.wrapMode = WrapMode.Loop;
-                anim.Play();
+                anim.wrapMode = WrapMode.ClampForever;
+                anim.Stop();
+
+                // Critical for the first-GLB case: AnimationRoot is initially
+                // SetActive(false) until Vuforia acquires the fixture, which
+                // means StartCoroutine on the loop driver silently fails. If
+                // playAutomatically is still true, the bare Animation component
+                // takes over and loops at default settings the moment the parent
+                // is activated. Force it off here so OnEnable on the loop driver
+                // is the only thing that ever plays this animation.
+                anim.playAutomatically = false;
+
+                foreach (AnimationState s in anim)
+                {
+                    s.speed = playbackSpeed;
+                    s.time  = 0f;
+                }
+
+                var loop = anim.gameObject.AddComponent<AnimationReplayLoop>();
+                loop.Initialize(anim, replayDelaySeconds, playbackSpeed);
             }
 
             Animator[] animators = offsetNode.GetComponentsInChildren<Animator>();
             foreach (Animator animator in animators)
             {
                 animator.enabled = true;
+                // AnimatorReplayLoop owns the play / hold-last-frame / wait /
+                // replay cycle so the delay applies to Animator-driven GLBs too.
+                var loop = animator.gameObject.AddComponent<AnimatorReplayLoop>();
+                loop.Initialize(animator, replayDelaySeconds, playbackSpeed);
             }
+
+            Debug.Log($"[GltfFastModelLoader] Animation drivers found: Animation={animations.Length}, Animator={animators.Length}");
         }
     
     }

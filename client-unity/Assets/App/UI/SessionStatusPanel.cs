@@ -3,11 +3,12 @@ using UnityEngine;
 namespace Guidance.Runtime
 {
     /// <summary>
-    /// Lightweight immediate-mode HUD showing session/step status and operator actions.
+    /// Holds session/step status and renders the "Runtime Status" section of the
+    /// ControlDrawer accordion. It no longer draws its own window -- ControlDrawer
+    /// calls <see cref="DrawContent"/> inside the drawer layout.
     /// </summary>
     public sealed class SessionStatusPanel : MonoBehaviour
     {
-        [SerializeField] private bool visible = true;
         [SerializeField] private bool showControls = true;
         [SerializeField] private AppBootstrap appBootstrap;
 
@@ -17,30 +18,26 @@ namespace Guidance.Runtime
         private string _activePart = "-";
         private string _instruction = "-";
         private string _warning = string.Empty;
-
         private string _pipelineStatus = string.Empty;
         private string _targetStatus = string.Empty;
         private string _transportMode = string.Empty;
         private bool? _imageTargetFound = null;
-        private bool _showLogPanel = false;
 
         private void Awake()
         {
             if (appBootstrap == null)
-            {
                 appBootstrap = FindFirstObjectByType<AppBootstrap>();
-            }
         }
 
-        public void SetConnectionState(SessionConnectionState state)
-        {
-            _connectionState = state;
-        }
-
-        public void SetStepState(StepCoordinatorState state)
-        {
-            _stepState = state;
-        }
+        public void SetConnectionState(SessionConnectionState state) => _connectionState = state;
+        public void SetStepState(StepCoordinatorState state) => _stepState = state;
+        public void SetInstruction(string instruction) => _instruction = string.IsNullOrEmpty(instruction) ? "-" : instruction;
+        public void SetWarning(string warning) => _warning = warning ?? string.Empty;
+        public void SetPipelineStatus(string status) => _pipelineStatus = status ?? string.Empty;
+        public void SetTargetStatus(string status) => _targetStatus = status ?? string.Empty;
+        public void SetTransportMode(string mode) => _transportMode = mode ?? string.Empty;
+        public void SetImageTargetFound(bool found) => _imageTargetFound = found;
+        public void ClearImageTargetFound() => _imageTargetFound = null;
 
         public void SetActiveStep(string stepId, string partId)
         {
@@ -48,107 +45,41 @@ namespace Guidance.Runtime
             _activePart = string.IsNullOrEmpty(partId) ? "-" : partId;
         }
 
-        public void SetInstruction(string instruction)
+        /// <summary>Drawn by ControlDrawer inside the accordion (no own OnGUI).</summary>
+        public void DrawContent()
         {
-            _instruction = string.IsNullOrEmpty(instruction) ? "-" : instruction;
-        }
+            var bh = GUILayout.Height(ImguiTheme.ControlHeight);
 
-        public void SetWarning(string warning)
-        {
-            _warning = warning ?? string.Empty;
-        }
-        public void SetPipelineStatus(string status)
-        {
-            _pipelineStatus = status ?? string.Empty;
-        }
-
-        public void SetTargetStatus(string status)
-        {
-            _targetStatus = status ?? string.Empty;
-        }
-
-        public void SetTransportMode(string mode)
-        {
-            _transportMode = mode ?? string.Empty;
-        }
-
-        public void SetImageTargetFound(bool found)
-        {
-            _imageTargetFound = found;
-        }
-
-        public void ClearImageTargetFound()
-        {
-            _imageTargetFound = null;
-        }
-
-        private void OnGUI()
-        {
-            if (!visible) return;
-
-            ImguiTheme.Begin();
-
-            var panelWidth = Mathf.Min(ImguiTheme.VirtualWidth - 16f, 620f);
-            var btnWidth2 = GUILayout.Width((panelWidth - 24) / 2f);
-            var btnHeight = GUILayout.Height(ImguiTheme.ControlHeight);
-
-            var extraLines = string.IsNullOrEmpty(_warning) ? 0 : 1;
-            var panelHeight = 320f + extraLines * 44f;
-
-            // Main status panel (top-left)
-            GUILayout.BeginArea(new Rect(8, 8, panelWidth, panelHeight), GUI.skin.box);
-            GUILayout.Label("<b>Guidance Runtime Status</b>");
             GUILayout.Label($"Connection: {_connectionState}");
+            GUILayout.Label($"Step: {_activeStep}    Part: {_activePart}");
             GUILayout.Label($"Instruction: {_instruction}");
-
             if (!string.IsNullOrEmpty(_warning))
-                GUILayout.Label($"Warning: {_warning}");
+                GUILayout.Label($"<b>Warning:</b> {_warning}");
+
+            // Compact diagnostics line(s), only when present.
+            if (!string.IsNullOrEmpty(_pipelineStatus))
+                GUILayout.Label($"GLB: {_pipelineStatus}");
+            if (!string.IsNullOrEmpty(_targetStatus))
+                GUILayout.Label($"Target: {_targetStatus}");
+            if (_imageTargetFound.HasValue)
+                GUILayout.Label($"Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
 
             if (showControls && appBootstrap != null)
             {
-                GUILayout.Space(6);
+                GUILayout.Space(8);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Replay", btnWidth2, btnHeight)) appBootstrap.ReplayActiveStep();
-                if (GUILayout.Button("Previous", btnWidth2, btnHeight)) appBootstrap.PreviousStep();
+                if (GUILayout.Button("◀ Previous", bh)) appBootstrap.PreviousStep();
+                if (GUILayout.Button("Replay", bh)) appBootstrap.ReplayActiveStep();
+                if (GUILayout.Button("Next ▶", bh)) appBootstrap.ConfirmActiveStep();
                 GUILayout.EndHorizontal();
 
                 GUILayout.Space(4);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Confirm / Next", btnWidth2, btnHeight)) appBootstrap.ConfirmActiveStep();
-                if (GUILayout.Button("Switch Mode", btnWidth2, btnHeight)) appBootstrap.ReturnToJobSelector();
+                if (GUILayout.Button("Switch Mode", bh)) appBootstrap.ReturnToJobSelector();
+                var show = GUILayout.Toggle(appBootstrap.IsFixtureOverlayVisible, " Show Fixture", bh);
+                if (show != appBootstrap.IsFixtureOverlayVisible) appBootstrap.SetFixtureOverlayVisible(show);
                 GUILayout.EndHorizontal();
             }
-            GUILayout.EndArea();
-
-            // Standalone Log/Status toggle button (bottom-left)
-            GUILayout.BeginArea(new Rect(8, ImguiTheme.VirtualHeight - (ImguiTheme.ControlHeight + 8f), 240f, ImguiTheme.ControlHeight));
-            if (GUILayout.Button("Log / Status"))
-                _showLogPanel = !_showLogPanel;
-            GUILayout.EndArea();
-
-            // Log popup — appears just above the toggle button
-            if (_showLogPanel)
-            {
-                var logLines = 3
-                    + (string.IsNullOrEmpty(_pipelineStatus) ? 0 : 1)
-                    + (string.IsNullOrEmpty(_targetStatus) ? 0 : 1)
-                    + (_imageTargetFound.HasValue ? 1 : 0);
-                var logHeight = logLines * 44f + 30f;
-
-                GUILayout.BeginArea(new Rect(8, ImguiTheme.VirtualHeight - logHeight - (ImguiTheme.ControlHeight + 16f), 480f, logHeight), GUI.skin.box);
-                GUILayout.Label("<b>Log / Status</b>");
-                GUILayout.Label($"Step State: {_stepState}");
-                GUILayout.Label($"Active Step: {_activeStep}");
-                if (!string.IsNullOrEmpty(_pipelineStatus))
-                    GUILayout.Label($"GLB: {_pipelineStatus}");
-                if (!string.IsNullOrEmpty(_targetStatus))
-                    GUILayout.Label($"Target: {_targetStatus}");
-                if (_imageTargetFound.HasValue)
-                    GUILayout.Label($"Target Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
-                GUILayout.EndArea();
-            }
-
-            ImguiTheme.End();
         }
     }
 }
