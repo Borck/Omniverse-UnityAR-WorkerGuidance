@@ -59,7 +59,13 @@ namespace Guidance.Runtime
             if (_elapsed >= fadeInSeconds + displaySeconds + fadeOutSeconds)
             {
                 _done = true;
-                gameObject.SetActive(false);
+                // Disable ONLY this component, not the whole GameObject. The
+                // splash is wired onto AppBootstrap's GameObject, and the old
+                // gameObject.SetActive(false) was killing AppBootstrap, the
+                // dynamically-attached FOV override, eye offset, drawer, and
+                // every panel along with it -- black screen + session shutdown
+                // ~4 seconds after launch.
+                enabled = false;
             }
         }
 
