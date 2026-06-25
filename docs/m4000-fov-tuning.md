@@ -37,6 +37,184 @@ the same eye angle as the real part.
 | **28°** | 28° shown in 28° → **angular 1:1, true size** |
 | **< 28°** | narrow world shown in 28° → magnified / scope zoom |
 
+## 1b. The size relationship: real ↔ camera ↔ display (the math)
+
+This section is the theoretical foundation under everything else: a closed-form
+relationship between an object's **real-life** size, what the **camera**
+captures, and what the eye **sees** through the waveguide — and how it depends
+on distance. If you read one section to understand the device, read this one.
+
+### 1b.1 Everything is an angle, not a length
+
+The eye, the camera, and the display all perceive **angular size**, not absolute
+centimetres. An object of real height `H` at distance `D` from a viewpoint
+subtends an angle:
+
+```
+θ = 2 · atan( H / (2·D) )          (≈ H/D radians for small angles)
+```
+
+Every "size" below means angular size. This is the single abstraction that makes
+the whole system tractable.
+
+### 1b.2 The three viewpoints
+
+```
+   REAL PART ──(θ_cam)──►  CAMERA  ──render──►  FRAMEBUFFER  ──display──►  EYE
+        │                  FOV_cam               fraction f               FOV_display
+        └────────────────(θ_real, naked eye, distance D_eye)──────────────────┘
+```
+
+1. **Naked eye → real part** (the ground truth, "true size"):
+   ```
+   θ_real = 2 · atan( H / (2·D_eye) )
+   ```
+   where `D_eye` = eye-to-part distance.
+
+2. **Camera → part** (what is captured). The part subtends `θ_cam` at the camera
+   (distance `D_cam`), and fills this **fraction of the frame height**:
+   ```
+   f = tan(θ_cam / 2) / tan(FOV_render / 2)
+   ```
+   `FOV_render` is the FOV we actually render at — Vuforia's native camera FOV by
+   default (~37°), or the FOV-tuner slider value when the override is on.
+
+3. **Eye → display** (what you see). The display paints that fraction `f` across
+   the display FOV, so the eye perceives the hologram at angle `θ_seen`:
+   ```
+   tan(θ_seen / 2) = f · tan(FOV_display / 2)
+   ```
+
+### 1b.3 The master formula
+
+Chain the three together (substitute `f`, then `θ_cam ≈ H/D_cam` and
+`θ_real ≈ H/D_eye` for the small-angle ratio). The **magnification of what you
+see versus real life** is:
+
+```
+            what you SEE           tan(FOV_display / 2)        D_eye
+   M  =  ───────────────────  =  ───────────────────────  ×  ─────────
+              real life             tan(FOV_render / 2)         D_cam
+```
+
+Two factors, and they are the entire story:
+
+| Factor | Name | Distance-dependent? |
+|---|---|---|
+| `tan(FOV_display/2) / tan(FOV_render/2)` | **FOV ratio** — dominant term | **No** |
+| `D_eye / D_cam` = `1 + (forward_offset / D_cam)` | **Eye-offset term** — small | **Yes** |
+
+- **FOV ratio** is the baseline size mismatch and the *only* thing the FOV slider
+  changes. It does not depend on distance.
+- **Eye-offset term** comes from the eye sitting ~4–7 cm *behind* the camera
+  (`D_eye = D_cam + forward_offset`), so the eye is slightly farther from the
+  part. It makes the hologram slightly bigger than the FOV ratio alone predicts,
+  and it fades toward 1.0 as distance grows.
+
+### 1b.4 What the dominant term predicts
+
+With raw Vuforia (`FOV_render` = native **37°**), display **28°**, ignoring the
+small term:
+
+```
+M ≈ tan(14°) / tan(18.5°) = 0.249 / 0.335 ≈ 0.75
+```
+
+The hologram is **~75 % of real size, independent of distance** — that *is* the
+"everything looks small / far away" effect, and it is pure optics
+(`FOV_display / FOV_camera`).
+
+It also derives the **true-size point** directly: set `M = 1` (ignoring the small
+term) ⇒ `tan(FOV_render/2) = tan(FOV_display/2)` ⇒
+```
+FOV_render = FOV_display = 28°   →   hologram = real size
+```
+That is *why* 28° is special: it is the only render FOV where the display FOV
+cancels the render FOV.
+
+### 1b.5 The eye-offset (distance) term, quantified
+
+`D_eye/D_cam = 1 + forward_offset/D_cam`. For a 5 cm forward offset:
+
+| Distance to part `D_cam` | `D_eye / D_cam` | Extra size vs. FOV ratio |
+|---|---|---|
+| 30 cm | 1.17 | +17 % |
+| 50 cm | 1.10 | +10 % |
+| 1 m | 1.05 | +5 % |
+| 2 m | 1.025 | +2.5 % |
+
+So distance *does* matter — but as a **second-order ~10–17 % correction up
+close** that vanishes with distance, riding on top of the distance-independent
+FOV ratio.
+
+### 1b.6 Worked example
+
+Part `H` = 10 cm at `D_cam` = 50 cm; camera 37°, display 28°, eye 5 cm behind the
+camera (`D_eye` = 55 cm):
+
+| Quantity | Computation | Result |
+|---|---|---|
+| Real part (naked eye) | `2·atan(5/55)` | **10.4°** |
+| Hologram @ native 37° | `M = 0.745 × 1.10 = 0.82` | **8.5°** (smaller — "far away") |
+| Hologram @ 28° (true size) | `M = 1.00 × 1.10 = 1.10` | **11.4°** (~10 % bigger, from eye-offset) |
+| Hologram @ 18° (default) | `M = (tan14/tan9) × 1.10 = 1.57 × 1.10 = 1.73` | **18°** (zoomed for visibility) |
+
+### 1b.7 Two magnification references (a common point of confusion)
+
+"18° ≈ 2.1× zoom" (§5) and "18° ≈ 1.7× real" (above) are **both correct** — they
+use different reference points:
+
+- **2.1×** = hologram @ 18° vs. hologram @ **native 37°** =
+  `tan(18.5°)/tan(9°)`. This is the override's own zoom factor (what
+  `CameraFovOverride` multiplies the projection by).
+- **1.57–1.7×** = hologram @ 18° vs. **real life** =
+  `tan(14°)/tan(9°) × (D_eye/D_cam)`. This uses display 28° as the reference,
+  because true size happens at 28°.
+
+Mixing these two references is the classic source of "wait, which number is the
+zoom?" confusion.
+
+### 1b.8 Do we need the focal length / virtual-image distance?
+
+The M4000 waveguide does **not** image directly on the retina — a collimator
+forms a **virtual image at a fixed focal distance (~2 m)**. Natural question: is
+there another distance to put in the formula?
+
+**For angular size: no. The focal length is already inside `FOV_display`.**
+
+A waveguide is a **collimating** system: the microdisplay sits at the focal plane
+of a collimator of focal length `F`. A pixel at height `y` on the microdisplay
+exits at angle:
+```
+α = atan( y / F )
+```
+and the whole microdisplay (half-height `Y`) therefore spans:
+```
+FOV_display / 2 = atan( Y / F )
+```
+So `F` is precisely the factor that turns display pixels into angles — and the
+moment we express the result as a **FOV (28°)**, that conversion is already done.
+`FOV_display` *is* `2·atan(Y/F)`. Adding `F` again would double-count. Working in
+angles is exactly what absorbs the optics into one measured number.
+
+Likewise the **eye-to-display distance (eye relief)** does **not** enter the size
+math: a collimated display emits ~parallel rays per image point, so the eye sees
+the same angle wherever it sits in the eyebox (eye relief affects the *eyebox*
+and the swim, not size).
+
+**Where the ~2 m focal distance *does* matter — a different axis than size:**
+
+| Effect | Caused by the 2 m virtual image | Size impact |
+|---|---|---|
+| **Focus / accommodation** | Eye must focus at 2 m for the hologram, but at (e.g.) 50 cm for the real part — cannot be sharp on both at once (vergence–accommodation conflict) | none |
+| **"Floating far" depth *feel*** | Accommodation cue says "2 m" even when the hologram is correctly sized/registered on a near part | none (a depth cue, separate from the size shrink) |
+| **Comfort / eye strain** | Same conflict over long sessions | none |
+
+So "looks far away" has **two independent contributors**: the **size** shrink
+(FOV ratio, §1b.4) and the **focus depth** cue (fixed 2 m accommodation). Neither
+the focal length nor the eye relief belongs in the angular-size formula — both are
+absorbed by, or orthogonal to, `FOV_display`.
+
 ## 2. What didn't work — and why
 
 The textbook way to change the render FOV is to write to
@@ -298,6 +476,42 @@ Vuzix-provided calibration we could plug it into
 `VuforiaConfiguration.DeviceTrackerConfiguration.UseThirdPartySeethroughEyewear`
 for proper optical-see-through registration. Until then, this slider
 is the closest we get to true 1:1 at the 28° "true size" mark.
+
+### 8.4 In the Unity Editor (PC webcam) the source FOV is degenerate
+
+When you Play in the Editor, Vuforia uses the PC **webcam**, not the M4000
+camera. The webcam can report a near-degenerate projection — observed
+`vfov ≈ 1°` — and the diagnostic log then prints e.g.
+`[CameraFovOverride] Vuforia native vfov=1.0°, target=18.0°, scale=0.06x`.
+The override faithfully modulates whatever matrix is present, so in the Editor
+the result can look wrong / off-screen.
+
+**This is an editor-webcam artifact, not a device bug.** On the M4000 the source
+matrix is the real ~37° projection and the override behaves correctly. Do **not**
+add clamps or "sanity gates" that skip the override for extreme source FOVs — on
+the device those could clamp out or disturb the real calibrated Vuzix projection.
+Validate FOV behaviour **on glass**, not against the editor webcam.
+
+## 8b. Alternative approach explored: scaling the content transform
+
+Before the projection-matrix approach, we shipped a version that achieved the
+zoom by **scaling the tracked content transform** (`AnimationRoot.localScale`)
+instead of touching the camera. It is worth recording because it has different
+trade-offs and is preserved on the `abdul-FOv-control` branch history.
+
+- **How it worked:** a uniform `localScale = k` on the AR content, with
+  `k = tan(refFov/2)/tan(targetFov/2)`. No projection write at all, so the
+  Y-flip problem never arose.
+- **Pro:** rock-solid registration — the model grows *around the fixture anchor*
+  and stays locked to the part; no off-axis flow, no projection risk.
+- **Con:** it is **not** a true FOV change. It makes objects bigger but does not
+  reproduce the "projected" perspective feel (parallax amplification as the head
+  moves), and it scales *only* content parented under the AR anchor.
+- **Why we moved to projection:** on-glass testing judged the projection-matrix
+  zoom to give more accurate, more natural AR placement for the assembly task.
+  The two are geometrically equivalent for **angular size** but differ for
+  off-axis parallax. Transform-scaling remains a valid fallback if a future
+  Unity/URP/Vuforia change ever breaks the projection path.
 
 ## 9. Recovery if a future update breaks rendering
 

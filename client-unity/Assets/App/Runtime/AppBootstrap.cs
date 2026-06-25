@@ -142,6 +142,32 @@ namespace Guidance.Runtime
             ApplyEyeOffset();
             if (_fovOverride != null)
                 _fovOverride.AnchorTransform = _activeObserverTransform;
+            UpdateFixtureDistance();
+        }
+
+        // Live camera->fixture distance from Vuforia's tracked pose, pushed to
+        // the status panel. Uses the observer transform (the clean tracked pose),
+        // NOT the AnimationRoot (which carries the eye-offset shift). Reports a
+        // negative value when there is no current track so the panel shows "--".
+        private void UpdateFixtureDistance()
+        {
+            if (statusPanel == null) return;
+
+            var cam = Camera.main;
+            Transform observer = null;
+#if VUFORIA_ENGINE
+            if (_modelTargetObserver != null) observer = _modelTargetObserver.transform;
+#endif
+            if (observer == null && _activeObserverTransform != null)
+                observer = _activeObserverTransform.parent; // AnimationRoot's parent == the observer
+
+            bool tracked = _activeObserverTransform != null
+                           && _activeObserverTransform.gameObject.activeSelf; // tracking gate
+
+            if (cam != null && observer != null && tracked)
+                statusPanel.SetFixtureDistance(Vector3.Distance(cam.transform.position, observer.position));
+            else
+                statusPanel.SetFixtureDistance(-1f);
         }
 
         // Optical see-through parallax correction: shift the tracked content by

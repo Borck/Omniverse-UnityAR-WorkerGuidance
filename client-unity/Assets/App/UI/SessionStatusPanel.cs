@@ -22,6 +22,7 @@ namespace Guidance.Runtime
         private string _targetStatus = string.Empty;
         private string _transportMode = string.Empty;
         private bool? _imageTargetFound = null;
+        private float _fixtureDistanceMeters = -1f; // < 0 = unknown / not tracked
 
         private void Awake()
         {
@@ -38,6 +39,8 @@ namespace Guidance.Runtime
         public void SetTransportMode(string mode) => _transportMode = mode ?? string.Empty;
         public void SetImageTargetFound(bool found) => _imageTargetFound = found;
         public void ClearImageTargetFound() => _imageTargetFound = null;
+        /// <summary>Live camera→fixture distance in metres; pass a negative value when unknown/untracked.</summary>
+        public void SetFixtureDistance(float meters) => _fixtureDistanceMeters = meters;
 
         public void SetActiveStep(string stepId, string partId)
         {
@@ -63,6 +66,9 @@ namespace Guidance.Runtime
                 GUILayout.Label($"Target: {_targetStatus}");
             if (_imageTargetFound.HasValue)
                 GUILayout.Label($"Tracked: {(_imageTargetFound.Value ? "YES" : "NO")}");
+            GUILayout.Label(_fixtureDistanceMeters >= 0f
+                ? $"Fixture: {_fixtureDistanceMeters:F2} m"
+                : "Fixture: -- (not tracked)");
 
             if (showControls && appBootstrap != null)
             {
