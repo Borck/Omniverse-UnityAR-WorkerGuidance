@@ -3,8 +3,98 @@ import os
 from pathlib import Path
 
 #  ─── Omniverse Connection Config ────────────────────────────────────────────────
-SERVER = "omniverse://141.43.76.21"
 REPO_ROOT = Path(__file__).resolve().parents[3]  # → Omniverse-UnityAR-WorkerGuidance/
+
+
+def load_dotenv_file(path: "Path | None" = None) -> None:
+    """Load KEY=VALUE pairs from the repo-root .env into os.environ.
+
+    Dependency-free (no python-dotenv). Real environment variables always win:
+    a key already present in os.environ is never overwritten, so container/CI
+    config takes precedence over the committed .env. Quotes around values are
+    stripped; blank lines and `#` comments are ignored.
+    """
+    env_path = path or (REPO_ROOT / ".env")
+    if not env_path.is_file():
+        return
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        value = value.strip().strip('"').strip("'")
+        os.environ[key] = value
+
+
+# Load .env once at import so every os.getenv below (and AppConfig.from_env)
+# sees the file-backed values.
+load_dotenv_file()
+
+# Keys of the Nucleus servers we read from the environment, in display order.
+NUCLEUS_KEYS = ("a", "b")
+
+# Legacy single-server default, used only when no OMNI_*_SERVER is configured
+# in the environment (keeps older setups working without a .env).
+_LEGACY_DEFAULT_SERVER = "omniverse://141.43.76.21"
+
+
+@dataclass(frozen=True)
+class NucleusEndpoint:
+    """One Omniverse Nucleus server plus the credentials used to reach it."""
+    key: str
+    name: str
+    server: str
+    user: str
+    password: str
+
+
+def _load_endpoint(key: str) -> "NucleusEndpoint | None":
+    """Read one OMNI_<KEY>_* endpoint from the environment, or None if unset."""
+    prefix = f"OMNI_{key.upper()}_"
+    server = os.getenv(prefix + "SERVER", "").strip()
+    if not server:
+        return None
+    return NucleusEndpoint(
+        key=key.lower(),
+        name=os.getenv(prefix + "NAME", key.upper()).strip() or key.upper(),
+        server=server.rstrip("/"),
+        user=os.getenv(prefix + "USER", "").strip(),
+        password=os.getenv(prefix + "PASS", ""),
+    )
+
+
+def load_nucleus_endpoints() -> "dict[str, NucleusEndpoint]":
+    """Build the ordered map of configured Nucleus endpoints from the env.
+
+    Falls back to a single legacy endpoint (the old hardcoded host, with
+    OMNI_USER/OMNI_PASS if present) when nothing is configured, so existing
+    deployments keep working without a .env.
+    """
+    endpoints: dict[str, NucleusEndpoint] = {}
+    for key in NUCLEUS_KEYS:
+        ep = _load_endpoint(key)
+        if ep is not None:
+            endpoints[ep.key] = ep
+    if not endpoints:
+        endpoints["a"] = NucleusEndpoint(
+            key="a",
+            name="Default",
+            server=os.getenv("OMNI_SERVER", _LEGACY_DEFAULT_SERVER).rstrip("/"),
+            user=os.getenv("OMNI_USER", ""),
+            password=os.getenv("OMNI_PASS", ""),
+        )
+    return endpoints
+
+
+def default_active_key(endpoints: "dict[str, NucleusEndpoint]") -> str:
+    """Resolve the boot-time active key from OMNI_ACTIVE_NUCLEUS, with fallback."""
+    key = os.getenv("OMNI_ACTIVE_NUCLEUS", "").strip().lower()
+    if key in endpoints:
+        return key
+    return next(iter(endpoints))
 
 @dataclass(frozen=True)
 class AppConfig:

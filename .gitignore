@@ -7,6 +7,12 @@ __pycache__/
 .venv/
 .env
 
+# Live-sync per-machine files (paths differ per host; never published)
+tools/packaging/livesync/livesync.config.yaml
+tools/packaging/livesync/*.local.bat
+tools/packaging/livesync/logs/
+tools/packaging/livesync/.livesync_state.json
+
 # VS Code
 .vscode/.ropeproject/
 
@@ -109,3 +115,4 @@ client-unity/Assets/Resources/PerformanceTestRunInfo.json.meta
 client-unity/Assets/Resources/PerformanceTestRunSettings.json.meta
 client-unity/Assets/Resources/alpha.shader
 client-unity/Assets/Resources/alpha.shader.meta
+shared/samples/step-definitions.yaml

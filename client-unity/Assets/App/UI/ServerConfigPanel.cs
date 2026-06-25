@@ -17,6 +17,7 @@ namespace Guidance.Runtime
         public const string PrefGrpcPort = "guidance.grpcPort";
         public const string PrefHttpPort = "guidance.httpPort";
         public const string PrefServiceTag = "guidance.serviceTag";
+        public const string PrefNucleusKey = "guidance.nucleusKey";
 
         [SerializeField] private int defaultGrpcPort = 50051;
         [SerializeField] private int defaultHttpPort = 8080;
@@ -33,6 +34,11 @@ namespace Guidance.Runtime
         private bool _discovering;
         private CancellationTokenSource _discoveryCts;
 
+        private NucleusEndpointDto[] _nucleusEndpoints = System.Array.Empty<NucleusEndpointDto>();
+        private string _activeNucleusKey = "";
+        private string _nucleusStatus = "";
+        private bool _nucleusBusy;
+
         public void Show(AppBootstrap bootstrap, string fallbackHost, int fallbackGrpcPort, int fallbackHttpPort)
         {
             _bootstrap = bootstrap;
@@ -43,6 +49,11 @@ namespace Guidance.Runtime
             _serviceTag = PlayerPrefs.GetString(PrefServiceTag, "");
             _status = "";
             _visible = true;
+
+            _activeNucleusKey = PlayerPrefs.GetString(PrefNucleusKey, "");
+            _nucleusEndpoints = System.Array.Empty<NucleusEndpointDto>();
+            _nucleusStatus = "";
+            LoadNucleusList();
         }
 
         private void OnGUI()
@@ -87,6 +98,10 @@ namespace Guidance.Runtime
             // Service tag filter field removed (not required). _serviceTag stays ""
             // so auto-discover just matches any beacon, and SaveAndContinue still
             // persists it.
+            GUILayout.Space(ImguiTheme.ControlHeight * 0.4f);
+
+            DrawNucleusSelector();
+
             GUILayout.Space(ImguiTheme.ControlHeight * 0.4f);
 
             GUI.enabled = !_discovering;
@@ -135,6 +150,7 @@ namespace Guidance.Runtime
                 _httpPort = task.Result.HttpPort.ToString();
                 _serviceTag = task.Result.Tag ?? "";
                 _status = $"Found: {task.Result.Host} (tag '{task.Result.Tag}')";
+                LoadNucleusList();   // host changed — refresh the nucleus list
             }
             else
             {
@@ -154,8 +170,119 @@ namespace Guidance.Runtime
             PlayerPrefs.SetString(PrefServiceTag, _serviceTag?.Trim() ?? "");
             PlayerPrefs.Save();
 
+            // Best-effort: make sure the server's active Nucleus matches the
+            // operator's choice before the job loads (covers the case where the
+            // toggle was tapped while the server was briefly unreachable).
+            if (!string.IsNullOrEmpty(_activeNucleusKey))
+                NucleusClient.SetActive(BuildHttpBaseUrl(), _activeNucleusKey, null, null);
+
             _visible = false;
             _bootstrap.OnServerConfigConfirmed(_host.Trim(), grpc, http);
+        }
+
+        // ─── Nucleus server selection ────────────────────────────────────────
+
+        private string BuildHttpBaseUrl()
+        {
+            var host = (_host ?? "").Trim();
+            if (!int.TryParse(_httpPort, out var port) || port <= 0) port = defaultHttpPort;
+            return $"http://{host}:{port}";
+        }
+
+        private void LoadNucleusList()
+        {
+            if (string.IsNullOrWhiteSpace(_host))
+            {
+                _nucleusStatus = "";
+                return;
+            }
+
+            _nucleusBusy = true;
+            _nucleusStatus = "Loading Nucleus servers...";
+            NucleusClient.FetchList(
+                BuildHttpBaseUrl(),
+                resp =>
+                {
+                    _nucleusEndpoints = resp.endpoints ?? System.Array.Empty<NucleusEndpointDto>();
+                    // Seed the selection from the server's active one if we don't
+                    // have a saved/explicit choice yet.
+                    if (string.IsNullOrEmpty(_activeNucleusKey))
+                        _activeNucleusKey = resp.active ?? "";
+                    _nucleusStatus = "";
+                    _nucleusBusy = false;
+                },
+                err =>
+                {
+                    _nucleusStatus = $"Nucleus list unavailable: {err}";
+                    _nucleusBusy = false;
+                });
+        }
+
+        private void DrawNucleusSelector()
+        {
+            GUILayout.Label("Nucleus Server");
+
+            GUILayout.BeginHorizontal();
+            if (_nucleusEndpoints != null && _nucleusEndpoints.Length > 0)
+            {
+                foreach (var ep in _nucleusEndpoints)
+                {
+                    var isActive = ep.key == _activeNucleusKey;
+                    var prevBg = GUI.backgroundColor;
+                    if (isActive) GUI.backgroundColor = new Color(0.35f, 0.75f, 1f, 1f);
+
+                    var label = string.IsNullOrEmpty(ep.name) ? ep.key : ep.name;
+                    if (GUILayout.Button(isActive ? $"● {label}" : label, GUILayout.Height(ImguiTheme.ControlHeight)))
+                        SelectNucleus(ep.key);
+
+                    GUI.backgroundColor = prevBg;
+                }
+            }
+            else
+            {
+                GUILayout.Label(_nucleusBusy ? "Loading..." : "(unavailable — check server IP)");
+            }
+            GUILayout.EndHorizontal();
+
+            GUI.enabled = !_nucleusBusy && !string.IsNullOrWhiteSpace(_host);
+            if (GUILayout.Button("Reload Nucleus list", GUILayout.Height(ImguiTheme.ControlHeight * 0.8f)))
+                LoadNucleusList();
+            GUI.enabled = true;
+
+            if (!string.IsNullOrEmpty(_nucleusStatus))
+                GUILayout.Label(_nucleusStatus);
+        }
+
+        private void SelectNucleus(string key)
+        {
+            _activeNucleusKey = key;
+            PlayerPrefs.SetString(PrefNucleusKey, key);
+            PlayerPrefs.Save();
+
+            _nucleusBusy = true;
+            _nucleusStatus = $"Switching to {NameForKey(key)}...";
+            NucleusClient.SetActive(
+                BuildHttpBaseUrl(),
+                key,
+                _ =>
+                {
+                    _nucleusStatus = $"Active Nucleus: {NameForKey(key)}";
+                    _nucleusBusy = false;
+                },
+                err =>
+                {
+                    _nucleusStatus = $"Switch failed: {err}";
+                    _nucleusBusy = false;
+                });
+        }
+
+        private string NameForKey(string key)
+        {
+            if (_nucleusEndpoints != null)
+                foreach (var ep in _nucleusEndpoints)
+                    if (ep.key == key)
+                        return string.IsNullOrEmpty(ep.name) ? ep.key : ep.name;
+            return key;
         }
 
         private void OnDestroy()

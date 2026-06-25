@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import omni.client
-from app.core.config import SERVER
+from app.omniverse.nucleus_manager import get_manager
 from app.core.logging import configure_logging
 
 logger = configure_logging("INFO")
@@ -23,7 +23,7 @@ def _omni_copy_to_local(nucleus_path: str, local_path: Path) -> None:
     local_path.parent.mkdir(parents=True, exist_ok=True)
     dst_url = "file:///" + str(local_path).replace("\\", "/")
     result = omni.client.copy(
-        f"{SERVER}{nucleus_path}",
+        f"{get_manager().active_server()}{nucleus_path}",
         dst_url,
         behavior=omni.client.CopyBehavior.OVERWRITE,
     )
@@ -33,7 +33,7 @@ def _omni_copy_to_local(nucleus_path: str, local_path: Path) -> None:
 
 def _read_nucleus_json(nucleus_path: str) -> dict:
     """Read and parse a JSON file directly from Nucleus."""
-    result, version, content = omni.client.read_file(f"{SERVER}{nucleus_path}")
+    result, version, content = omni.client.read_file(f"{get_manager().active_server()}{nucleus_path}")
     if result != omni.client.Result.OK:
         raise RuntimeError(f"Cannot read {nucleus_path}: {result}")
     return json.loads(bytes(content).decode("utf-8"))

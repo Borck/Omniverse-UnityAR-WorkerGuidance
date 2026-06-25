@@ -200,6 +200,9 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     omni_client = None
     if _OMNIVERSE_ROUTER_AVAILABLE:
       try:
+        # Seed the active Nucleus (applies its credentials) before connecting.
+        from app.omniverse.nucleus_manager import get_manager
+        get_manager()
         import omni.client as omni_client  # type: ignore[no-redef]
         omni_client.initialize()
       except ImportError:

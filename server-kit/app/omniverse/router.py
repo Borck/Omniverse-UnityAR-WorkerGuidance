@@ -2,20 +2,44 @@
 import omni.client
 from fastapi import FastAPI, HTTPException, APIRouter
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 from app.omniverse.service import _list, _recursive_list
-from app.core.config import REPO_ROOT, SERVER
+from app.omniverse.nucleus_manager import get_manager
+from app.core.config import REPO_ROOT
 import os
 from typing import Optional
 from app.core.logging import configure_logging
 from fastapi import BackgroundTasks
 from app.omniverse.nucleus_job_service import prepare_job
-# Set credentials before initializing
-os.environ["OMNI_USER"] = "shahan"
-os.environ["OMNI_PASS"] = "12345678"
 
 
 router = APIRouter(tags=["Omniverse Connection"])
 logger = configure_logging("INFO")
+
+
+class NucleusSelection(BaseModel):
+    key: str
+
+
+# ─── Nucleus server selection ─────────────────────────────────────────────────
+
+@router.get("/nucleus", summary="List configured Nucleus servers and the active one")
+def list_nucleus():
+    """Return the configured Nucleus endpoints (no passwords) + the active key."""
+    manager = get_manager()
+    return {"active": manager.active().key, "endpoints": manager.list_endpoints()}
+
+
+@router.post("/nucleus/active", summary="Switch the globally active Nucleus server")
+def set_active_nucleus(selection: NucleusSelection):
+    """Switch the active Nucleus for the whole server process and apply its creds."""
+    manager = get_manager()
+    try:
+        endpoint = manager.set_active(selection.key)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown nucleus '{selection.key}'")
+    logger.info(f"Active Nucleus switched to '{endpoint.key}' ({endpoint.server})")
+    return {"active": endpoint.key, "name": endpoint.name, "server": endpoint.server}
 
 
 
@@ -82,7 +106,7 @@ def search(path: str = "/", keyword: str = "", ext: str = ""):
 @router.get("/stat", summary="Get metadata for a single file or folder")
 def stat_file(path: str):
     """Return metadata (size, modified time) for a specific path."""
-    result, entry = omni.client.stat(f"{SERVER}{path}")
+    result, entry = omni.client.stat(f"{get_manager().active_server()}{path}")
     if result != omni.client.Result.OK:
         raise HTTPException(status_code=404, detail=str(result))
     return {
@@ -108,7 +132,7 @@ def download(remote_path: str, local_path: str):
     dst_url = "file:///" + local_path.replace("\\", "/")
 
     result = omni.client.copy(
-        f"{SERVER}{remote_path}",
+        f"{get_manager().active_server()}{remote_path}",
         dst_url,
         behavior=omni.client.CopyBehavior.OVERWRITE,
     )

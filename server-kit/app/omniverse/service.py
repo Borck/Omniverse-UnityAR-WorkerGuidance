@@ -1,7 +1,7 @@
 import omni.client
 from typing import Optional
 from fastapi import HTTPException
-from app.core.config import SERVER
+from app.omniverse.nucleus_manager import get_manager
 
 # ─── Services ────────────────────────────────────────────────────────────────
 def entry_to_dict(path: str, e) -> dict:
@@ -18,7 +18,7 @@ def entry_to_dict(path: str, e) -> dict:
 
 def _list(path: str) -> list:
     """List a single path, raise on failure."""
-    result, entries = omni.client.list(f"{SERVER}{path}")
+    result, entries = omni.client.list(f"{get_manager().active_server()}{path}")
     if result != omni.client.Result.OK:
         raise HTTPException(status_code=500, detail=f"Cannot list {path}: {str(result)}")
 
@@ -27,7 +27,7 @@ def _list(path: str) -> list:
 
 def _recursive_list(path: str, items: list, ext_filter: Optional[str] = None):
     """Walk the tree recursively and collect all items."""
-    result, entries = omni.client.list(f"{SERVER}{path}")
+    result, entries = omni.client.list(f"{get_manager().active_server()}{path}")
     if result != omni.client.Result.OK:
         return
     for e in entries:
