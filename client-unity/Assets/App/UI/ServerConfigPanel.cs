@@ -23,6 +23,8 @@ namespace Guidance.Runtime
         [SerializeField] private int defaultHttpPort = 8080;
         [SerializeField] private int discoveryPort = 45454;
         [SerializeField] private float discoveryTimeoutSeconds = 3f;
+        [Tooltip("Nucleus selected by default on first launch. \"a\" = first server (BTU), \"b\" = second (Chesco). Persists per device once changed.")]
+        [SerializeField] private string defaultNucleusKey = "a";
 
         private AppBootstrap _bootstrap;
         private bool _visible;
@@ -50,7 +52,10 @@ namespace Guidance.Runtime
             _status = "";
             _visible = true;
 
-            _activeNucleusKey = PlayerPrefs.GetString(PrefNucleusKey, "");
+            // Default to BTU ("a") on first launch so a key is pre-selected
+            // without the operator having to tap one. Once they pick a Nucleus
+            // it's saved to PlayerPrefs and that choice wins on later launches.
+            _activeNucleusKey = PlayerPrefs.GetString(PrefNucleusKey, defaultNucleusKey);
             _nucleusEndpoints = System.Array.Empty<NucleusEndpointDto>();
             _nucleusStatus = "";
             LoadNucleusList();
@@ -208,7 +213,11 @@ namespace Guidance.Runtime
                     // have a saved/explicit choice yet.
                     if (string.IsNullOrEmpty(_activeNucleusKey))
                         _activeNucleusKey = resp.active ?? "";
-                    _nucleusStatus = "";
+                    // Show the active Nucleus immediately (e.g. "Active Nucleus: BTU")
+                    // so the operator sees the default without having to tap a tab.
+                    _nucleusStatus = string.IsNullOrEmpty(_activeNucleusKey)
+                        ? ""
+                        : $"Active Nucleus: {NameForKey(_activeNucleusKey)}";
                     _nucleusBusy = false;
                 },
                 err =>

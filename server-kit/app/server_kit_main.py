@@ -133,7 +133,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   logger = configure_logging(resolved_config.log_level)
   stage_open_service = StageOpenService(stage_uri=resolved_config.stage_uri)
   processed_step_completions: dict[str, set[tuple[str, str, int]]] = {}
-  default_job_id = "demonstrator-26-02-25"
+  default_job_id = "Segment_Assembly"
 
   def _sorted_steps_for_job(job_id: str):
     steps = step_repo.get_steps(job_id)

@@ -398,3 +398,115 @@ jobs:
         targetLayerRole: target-position
         startOffset: [0.0, 0.0, 0.0]
         targetPosition: [0.0, 0.0, 0.0]
+  - jobId: Segment_Assembly
+    workflowVersion: "1.0.0"
+    timelineProfile:
+      startStep: 0
+      endStep: 500
+      fps: 30
+    steps:
+      - stepId: "step-001"
+        partId: Plate_Bottom
+        displayName: "Place bottom plate"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: Plate_Bottom_anim
+        anchorType: model-target
+        targetId: Segment_Assembly_Fixture_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_08d98884dacf8e54
+        instructionsShort: "Place bottom plate"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 1
+        animationStartStep: 0
+        animationEndStep: 100
+        keepVisibleUntilStep: 100
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-002"
+        partId: Core&Coils
+        displayName: "Place Cores & Coils"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: Core&Coils_anim
+        anchorType: model-target
+        targetId: Segment_Assembly_Fixture_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_f4f9f0291940c6df
+        instructionsShort: "Place Cores & Coils"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 2
+        animationStartStep: 100
+        animationEndStep: 200
+        keepVisibleUntilStep: 200
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-003"
+        partId: Bracket-Right
+        displayName: "Place the right bracket"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: Bracket-Right_anim
+        anchorType: model-target
+        targetId: Segment_Assembly_Fixture_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_4ca9e9dc8b39715e
+        instructionsShort: "Place the right bracket"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 3
+        animationStartStep: 200
+        animationEndStep: 300
+        keepVisibleUntilStep: 300
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-004"
+        partId: Bracket-Left
+        displayName: "Place the left bracket"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: Bracket-Left_anim
+        anchorType: model-target
+        targetId: Segment_Assembly_Fixture_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_163bb0bfe760473d
+        instructionsShort: "Place the left bracket"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 4
+        animationStartStep: 300
+        animationEndStep: 400
+        keepVisibleUntilStep: 400
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]
+      - stepId: "step-005"
+        partId: Plate_Top
+        displayName: "Place top plate"
+        sourcePrimPath: /World
+        activePrimPath: /World
+        animationName: Plate_Top_anim
+        anchorType: model-target
+        targetId: Segment_Assembly_Fixture_model_target
+        targetVersion: "2026-03-10.1"
+        assetVersion: sha256_6d6f3c74ac88b3db
+        instructionsShort: "Place top plate"
+        safetyNotes: []
+        expectedDurationSec: 30
+        sequenceIndex: 5
+        animationStartStep: 400
+        animationEndStep: 500
+        keepVisibleUntilStep: 500
+        animationLayerRole: animation
+        targetLayerRole: target-position
+        startOffset: [0.0, 0.0, 0.0]
+        targetPosition: [0.0, 0.0, 0.0]

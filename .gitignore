@@ -116,3 +116,6 @@ client-unity/Assets/Resources/PerformanceTestRunSettings.json.meta
 client-unity/Assets/Resources/alpha.shader
 client-unity/Assets/Resources/alpha.shader.meta
 shared/samples/step-definitions.yaml
+shared/samples/manifests/job-mock-001.manifest.json
+shared/samples/manifests/Segment_Assembly.manifest.json
+client-unity/QCAR/somedata16
