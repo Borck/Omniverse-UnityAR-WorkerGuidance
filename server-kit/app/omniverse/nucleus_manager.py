@@ -70,29 +70,16 @@ class NucleusManager:
             self._active_key = key
             endpoint = self._endpoints[key]
             self._apply_credentials(endpoint)
-            self._reset_auth(endpoint.server)
             return endpoint
 
     @staticmethod
     def _apply_credentials(endpoint: NucleusEndpoint) -> None:
+        # ponytail: no sign_out on switch — omni.client.sign_out(url) kills the
+        # connection to that host for the rest of the process (verified: every
+        # later call returns ERROR_CONNECTION). Cached per-host auth is fine
+        # because each host always uses the same one credential set.
         os.environ["OMNI_USER"] = endpoint.user
         os.environ["OMNI_PASS"] = endpoint.password
-
-    @staticmethod
-    def _reset_auth(server: str) -> None:
-        """Drop any cached auth for the target host so the next connection
-        re-brokers with the just-applied OMNI_USER/OMNI_PASS.
-
-        Defensive: omni.client caches a connection/auth per host, so a host
-        contacted earlier won't otherwise pick up changed credentials. Imported
-        lazily and fully guarded — on hosts without the Omniverse SDK (or if
-        sign_out misbehaves) this is a no-op rather than a failure.
-        """
-        try:
-            import omni.client  # type: ignore[import-not-found]
-            omni.client.sign_out(server)
-        except Exception:
-            pass
 
 
 # ── Process-wide singleton ──────────────────────────────────────────────
