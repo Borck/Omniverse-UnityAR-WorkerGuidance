@@ -152,6 +152,7 @@ MonoBehaviour:
   defaultHttpPort: 8080
   discoveryPort: 45454
   discoveryTimeoutSeconds: 3
+  defaultNucleusKey: a
 --- !u!4 &60848014
 Transform:
   m_ObjectHideFlags: 0
@@ -304,7 +305,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2395664cd44d4ce4bb52ede6b7904bbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  visible: 1
   showControls: 1
   appBootstrap: {fileID: 1369277005}
 --- !u!1 &1042461901
@@ -443,7 +443,6 @@ MonoBehaviour:
   trackingDirectionHint: {fileID: 0}
   jobSelectorPanel: {fileID: 599964136}
   fovTunerPanel: {fileID: 444537130}
-  tuneFovVisible: 1
 --- !u!4 &1369277006
 Transform:
   m_ObjectHideFlags: 0

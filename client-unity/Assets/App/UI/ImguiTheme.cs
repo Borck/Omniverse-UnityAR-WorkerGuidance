@@ -17,10 +17,12 @@ namespace Guidance.Runtime
     public static class ImguiTheme
     {
         // Native font size rasterised crisply by Unity. Raise for bigger text.
-        public const int FontSize = 30;
+        // Lowered from 30 -- on the Vuzix's short real display, taller panels
+        // (e.g. ServerConfigPanel) were pushing their bottom buttons off-screen.
+        public const int FontSize = 24;
 
         // Height for buttons / text fields so they fit the larger font.
-        public const float ControlHeight = 52f;
+        public const float ControlHeight = 42f;
 
         // No matrix scaling -> virtual screen == real screen.
         public static float VirtualWidth  => Screen.width;

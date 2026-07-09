@@ -67,8 +67,14 @@ namespace Guidance.Runtime
 
             ImguiTheme.Begin();
 
-            const float w = 760f;
-            const float h = 760f;
+            // Capped to the real screen size (with a small margin), not just
+            // hardcoded 760. On a screen shorter than 760px (the Vuzix's real
+            // display), centering a fixed 760-tall box pushes it partly
+            // off-screen at BOTH the top and bottom -- which is what was
+            // clipping Auto-discover/Save & Continue, independent of how
+            // little content was actually inside the box.
+            float w = Mathf.Min(760f, ImguiTheme.VirtualWidth - 16f);
+            float h = Mathf.Min(760f, ImguiTheme.VirtualHeight - 16f);
             var rect = new Rect((ImguiTheme.VirtualWidth - w) / 2f, (ImguiTheme.VirtualHeight - h) / 2f, w, h);
 
             GUILayout.BeginArea(rect, GUI.skin.box);
@@ -229,9 +235,10 @@ namespace Guidance.Runtime
 
         private void DrawNucleusSelector()
         {
-            GUILayout.Label("Nucleus Server");
-
+            // Label + endpoint buttons share one row instead of stacking --
+            // saves a full row of the Vuzix's limited vertical space.
             GUILayout.BeginHorizontal();
+            GUILayout.Label("Nucleus Server", GUILayout.Width(150));
             if (_nucleusEndpoints != null && _nucleusEndpoints.Length > 0)
             {
                 foreach (var ep in _nucleusEndpoints)
@@ -253,13 +260,19 @@ namespace Guidance.Runtime
             }
             GUILayout.EndHorizontal();
 
-            GUI.enabled = !_nucleusBusy && !string.IsNullOrWhiteSpace(_host);
-            if (GUILayout.Button("Reload Nucleus list", GUILayout.Height(ImguiTheme.ControlHeight * 0.8f)))
-                LoadNucleusList();
-            GUI.enabled = true;
-
+            // Refresh shares the status row instead of getting its own --
+            // there's room next to "Active Nucleus: X" and it avoids the
+            // extra row a standalone button cost on the Vuzix's short display.
             if (!string.IsNullOrEmpty(_nucleusStatus))
+            {
+                GUILayout.BeginHorizontal();
                 GUILayout.Label(_nucleusStatus);
+                GUI.enabled = !_nucleusBusy && !string.IsNullOrWhiteSpace(_host);
+                if (GUILayout.Button("Refresh", GUILayout.Width(120), GUILayout.Height(ImguiTheme.ControlHeight * 0.8f)))
+                    LoadNucleusList();
+                GUI.enabled = true;
+                GUILayout.EndHorizontal();
+            }
         }
 
         private void SelectNucleus(string key)

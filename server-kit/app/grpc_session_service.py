@@ -102,7 +102,7 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                 # Register the outbound push channel for this session so the
                 # ManifestWatcher can deliver server-driven events here.
                 if self._session_channels is not None:
-                    outbound = self._session_channels.attach(session_id, active_job_id)
+                    outbound = self._session_channels.attach(session_id, active_job_id, context)
 
                 yield guidance_pb2.ServerMessage(
                     hello_response=guidance_pb2.HelloResponse(
@@ -120,15 +120,21 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                         reason="first-step-activated",
                         step_id=first_step.step_id,
                     )
+                    if self._session_channels is not None:
+                        self._session_channels.set_current_step(session_id, first_step.step_id)
                     yield guidance_pb2.ServerMessage(step_activated=self._to_step_activated(first_step, active_job_id))
                 else:
                     # Backward-compatible fallback for tests/flows without configured step repository.
                     self._set_session_state_with_log(session_id, SessionState.STEP_READY, reason="mock-step-activated", step_id="17")
+                    if self._session_channels is not None:
+                        self._session_channels.set_current_step(session_id, "17")
                     yield guidance_pb2.ServerMessage(step_activated=self._mock_step_activated())
 
             elif payload_name == "heartbeat" and handshake_done:
                 nonce = f"hb-{message.heartbeat.client_time_unix_ms}"
                 self._logger.info("heartbeat", session_id=session_id, step_id="-")
+                if self._session_channels is not None:
+                    self._session_channels.touch_heartbeat(session_id)
                 yield guidance_pb2.ServerMessage(ping=guidance_pb2.Ping(nonce=nonce))
 
             elif payload_name == "step_completed" and handshake_done:
@@ -168,6 +174,8 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                         reason="next-step-activated",
                         step_id=next_step.step_id,
                     )
+                    if self._session_channels is not None:
+                        self._session_channels.set_current_step(session_id, next_step.step_id)
                     yield guidance_pb2.ServerMessage(
                         step_activated=self._to_step_activated(next_step, completed_job_id)
                     )
@@ -201,6 +209,8 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                         reason=reason,
                         step_id=target_step.step_id,
                     )
+                    if self._session_channels is not None:
+                        self._session_channels.set_current_step(session_id, target_step.step_id)
                     yield guidance_pb2.ServerMessage(
                         step_activated=self._to_step_activated(target_step, action_job_id)
                     )
@@ -216,7 +226,8 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                     correlation_id=message.fault.correlation_id or "-",
                 )
 
-            # Drain any pending server-pushed messages (manifest updates etc.).
+            # Drain any pending server-pushed messages (manifest updates, and
+            # StepActivated pushed by GuidanceControlService.ControlStep).
             # Runs at the end of every iteration so pushes deliver no later than
             # one client message round-trip after they're queued.
             if outbound is not None:
@@ -225,6 +236,8 @@ class GuidanceSessionService(guidance_pb2_grpc.GuidanceSessionServiceServicer):
                         push_msg = outbound.get_nowait()
                     except queue.Empty:
                         break
+                    if push_msg.WhichOneof("payload") == "step_activated" and self._session_channels is not None:
+                        self._session_channels.set_current_step(session_id, push_msg.step_activated.step_id)
                     yield push_msg
 
         # Stream closed by the client. Drop the channel so we don't leak queues

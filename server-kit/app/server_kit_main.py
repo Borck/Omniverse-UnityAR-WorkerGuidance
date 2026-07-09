@@ -1,15 +1,23 @@
 """FastAPI entrypoint for guidance runtime HTTP and bridge endpoints."""
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from fastapi import FastAPI, APIRouter
 from fastapi import BackgroundTasks
 from fastapi import HTTPException
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.routing import APIRoute
 from fastapi import status
 from pathlib import Path
+import sys
 import app
+
+# guidance_pb2_grpc.py does a bare `import guidance_pb2` (protoc-generated,
+# not relative), so the generated dir must be on sys.path before it's
+# imported -- same fix grpc_session_service.py already needed.
+sys.path.append(str(Path(__file__).resolve().parent / "generated"))
 
 # The omniverse router imports omni.client (Kit-only). On hosts where the
 # Omniverse SDK isn't installed in the FastAPI venv (e.g. AT21 with a clean
@@ -96,6 +104,8 @@ class LayerResolvePayload(BaseModel):
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
   """Creates the configured FastAPI application and wires runtime services."""
+  import time
+  http_start_unix_ms = int(time.time() * 1000)
   resolved_config = config or AppConfig.from_env()
   if resolved_config.export_job_processing_mode not in {"inline", "enqueue-only"}:
     raise ValueError(
@@ -219,6 +229,11 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   app = FastAPI(title="Guidance Server", version="0.2.0", lifespan=lifespan)
   app.state.config = resolved_config
   app.state.logger = logger
+
+  dashboard_dir = repo_root / "server-kit" / "dashboard"
+  if dashboard_dir.exists():
+    app.mount("/dashboard", StaticFiles(directory=dashboard_dir, html=True), name="dashboard")
+
   if _OMNIVERSE_ROUTER_AVAILABLE and omniverse_router is not None:
     app.include_router(omniverse_router, prefix="/omni", tags=["Omniverse Connection"])
   else:
@@ -236,6 +251,105 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   def health() -> dict[str, str]:
     logger.info("health check", session_id="-", step_id="-", event="http.health")
     return {"status": "ok"}
+
+  @contextmanager
+  def _grpc_control_stub():
+    """Local gRPC channel + control stub to the sibling gRPC process."""
+    import grpc
+    from app.generated import guidance_pb2_grpc
+    target = f"127.0.0.1:{resolved_config.grpc_port}"
+    with grpc.insecure_channel(target) as channel:
+      grpc.channel_ready_future(channel).result(timeout=2.0)
+      yield channel, guidance_pb2_grpc.GuidanceControlServiceStub(channel)
+
+  @api.get("/status")
+  def get_dashboard_status() -> JSONResponse:
+    """Dashboard snapshot: Nucleus + discovery (known in this process) merged
+    with live gRPC session/live-sync state (queried from the gRPC process,
+    which is where SessionChannels/ManifestWatcher actually live)."""
+    nucleus: dict = {"available": False}
+    if _OMNIVERSE_ROUTER_AVAILABLE:
+      try:
+        from app.omniverse.nucleus_manager import get_manager
+        manager = get_manager()
+        nucleus = {
+          "available": True,
+          "active": manager.active().key,
+          "endpoints": manager.list_endpoints(),
+        }
+      except Exception as exc:  # credentials missing, etc.
+        nucleus = {"available": False, "error": str(exc)}
+
+    grpc_status: dict = {"reachable": False}
+    try:
+      from app.generated import guidance_pb2
+      with _grpc_control_stub() as (channel, stub):
+        resp = stub.GetStatus(guidance_pb2.StatusRequest(), timeout=2.0)
+      grpc_status = {
+        "reachable": True,
+        "active_session_count": resp.active_session_count,
+        "sessions": [
+          {
+            "session_id": s.session_id,
+            "device_id": s.device_id,
+            "job_id": s.job_id,
+            "state": s.state,
+            "last_heartbeat_unix_ms": s.last_heartbeat_unix_ms,
+            "current_step_id": s.current_step_id,
+            "current_step_name": s.current_step_name,
+          }
+          for s in resp.sessions
+        ],
+        "livesync_last_broadcast_unix_ms": resp.livesync_last_broadcast_unix_ms,
+        "livesync_known_jobs": dict(resp.livesync_known_jobs),
+        "grpc_start_unix_ms": resp.grpc_start_unix_ms,
+      }
+    except Exception as exc:
+      grpc_status = {"reachable": False, "error": str(exc)}
+
+    # Full HTTP API surface, read straight off the FastAPI app -- no
+    # hand-maintained list to fall out of sync as routes are added.
+    routes = []
+    for route in app.routes:
+      if not isinstance(route, APIRoute):
+        continue
+      routes.append({
+        "path": route.path,
+        "methods": sorted(m for m in route.methods if m != "HEAD"),
+        "tags": list(dict.fromkeys(route.tags)),
+      })
+    routes.sort(key=lambda r: r["path"])
+
+    return JSONResponse(content={
+      "nucleus": nucleus,
+      "grpc": grpc_status,
+      "api_routes": routes,
+      "http_start_unix_ms": http_start_unix_ms,
+    })
+
+  @api.post("/control/sessions/{session_id}/disconnect")
+  def disconnect_session(session_id: str) -> JSONResponse:
+    """Force-close a live Vuzix/Unity Connect() stream. The device resumes the
+    same session_id on reconnect -- disruptive, not destructive."""
+    try:
+      from app.generated import guidance_pb2
+      with _grpc_control_stub() as (channel, stub):
+        resp = stub.DisconnectSession(
+          guidance_pb2.DisconnectSessionRequest(session_id=session_id), timeout=2.0
+        )
+      logger.info(
+        f"session disconnect requested via dashboard ok={resp.ok}",
+        session_id=session_id,
+        step_id="-",
+        event="http.control.disconnect",
+      )
+      if not resp.ok:
+        raise HTTPException(status_code=404, detail=resp.message)
+      return JSONResponse(content={"ok": True, "message": resp.message})
+    except HTTPException:
+      raise
+    except Exception as exc:
+      raise HTTPException(status_code=502, detail=f"gRPC process unreachable: {exc}") from exc
 
   @api.post("/api/stage:open-smoke")
   def stage_open_smoke() -> JSONResponse:

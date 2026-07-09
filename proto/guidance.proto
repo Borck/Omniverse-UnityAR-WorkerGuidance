@@ -22,6 +22,8 @@ service AssetTransferService {
 // over their existing Connect() stream via SessionChannels.
 service GuidanceControlService {
   rpc ControlStep(ControlStepRequest) returns (ControlStepResponse);
+  rpc GetStatus(StatusRequest) returns (StatusResponse);
+  rpc DisconnectSession(DisconnectSessionRequest) returns (DisconnectSessionResponse);
 }
 
 message ClientMessage {
@@ -102,6 +104,48 @@ message ControlStepResponse {
   string activated_step_id = 2;
   int32 sessions_notified = 3;   // number of device sessions the push reached
   string message = 4;            // human-readable detail (esp. on failure)
+}
+
+message StatusRequest {}
+
+// Snapshot of gRPC-process state for a monitoring dashboard. Sessions are
+// only the ones currently attached to a live Connect() stream -- a device
+// that dropped its connection is not counted even if it's still known to
+// the (disk-persisted) session store.
+message StatusResponse {
+  int32 active_session_count = 1;
+  repeated ActiveSession sessions = 2;
+  // Live-sync: last time ManifestWatcher pushed a ManifestUpdated, and the
+  // (job_id -> workflow_version) it currently has on disk. 0 = never.
+  int64 livesync_last_broadcast_unix_ms = 3;
+  map<string, string> livesync_known_jobs = 4;
+  // When this gRPC process came up (process-wide, not per-session).
+  int64 grpc_start_unix_ms = 5;
+}
+
+message ActiveSession {
+  string session_id = 1;
+  string device_id = 2;
+  string job_id = 3;
+  string state = 4;
+  // 0 if no heartbeat received yet this attach (e.g. right after connect).
+  int64 last_heartbeat_unix_ms = 5;
+  // "" until the session's first StepActivated is sent.
+  string current_step_id = 6;
+  string current_step_name = 7;
+}
+
+// Force-closes a live Connect() stream server-side (cancels the gRPC context).
+// The device sees its stream end and must reconnect -- it resumes the same
+// session_id via register_or_resume_session, so this is disruptive but not
+// destructive: no state is lost, the device just has to re-establish.
+message DisconnectSessionRequest {
+  string session_id = 1;
+}
+
+message DisconnectSessionResponse {
+  bool ok = 1;
+  string message = 2;
 }
 
 message TrackingState {

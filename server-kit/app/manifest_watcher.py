@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from pathlib import Path
 
 try:
@@ -39,6 +40,10 @@ class ManifestWatcher:
         self._poll = poll_interval_sec
         # job_id -> (workflow_version, {step_id -> asset_version})
         self._last_known: dict[str, tuple[str, dict[str, str]]] = {}
+        self._last_broadcast_at_ms: int = 0
+        # Guards _last_known / _last_broadcast_at_ms: written by the poll
+        # thread, read by status() from a gRPC handler thread.
+        self._status_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -106,7 +111,15 @@ class ManifestWatcher:
                 len(changed),
                 count,
             )
-            self._last_known[job_id] = (workflow_version, step_map)
+            with self._status_lock:
+                self._last_known[job_id] = (workflow_version, step_map)
+                self._last_broadcast_at_ms = int(time.time() * 1000)
+
+    def status(self) -> tuple[int, dict[str, str]]:
+        """(last_broadcast_unix_ms, {job_id: workflow_version}) — 0 ms if never broadcast."""
+        with self._status_lock:
+            known_jobs = {job_id: version for job_id, (version, _) in self._last_known.items()}
+            return self._last_broadcast_at_ms, known_jobs
 
     def _read_manifest(self, path: Path) -> tuple[str, str, dict[str, str]] | None:
         try:

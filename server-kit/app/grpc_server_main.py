@@ -35,10 +35,12 @@ except ImportError:
     from step_definition_repository import StepDefinitionRepository
 from pathlib import Path
 import grpc
+import time
 from concurrent import futures
 
 
 def run_combined_grpc_server(config: AppConfig) -> None:
+    grpc_start_unix_ms = int(time.time() * 1000)
     logger = configure_logging(config.log_level)
     repo_root = Path(__file__).resolve().parents[2]
     manifest_service = ManifestService(manifests_root=repo_root / config.manifests_root)
@@ -58,9 +60,18 @@ def run_combined_grpc_server(config: AppConfig) -> None:
     )
     # Shared push fabric: ManifestWatcher writes into it, Connect() reads from it.
     session_channels = SessionChannels()
+    session_manager = SessionManager(store_file=repo_root / config.session_store_file)
+    # Created here (not started) so GuidanceControlService.GetStatus can report
+    # live-sync state; .start() happens after the gRPC server is listening.
+    manifest_watcher = ManifestWatcher(
+        manifests_dir=repo_root / config.manifests_root,
+        channels=session_channels,
+        logger=logger,
+        poll_interval_sec=2.0,
+    )
     guidance_pb2_grpc.add_GuidanceSessionServiceServicer_to_server(
         GuidanceSessionService(
-            session_manager=SessionManager(store_file=repo_root / config.session_store_file),
+            session_manager=session_manager,
             logger=logger,
             step_repository=step_repository,
             default_job_id="job-mock-001",
@@ -85,6 +96,9 @@ def run_combined_grpc_server(config: AppConfig) -> None:
             session_channels=session_channels,
             step_repository=step_repository,
             logger=logger,
+            session_manager=session_manager,
+            manifest_watcher=manifest_watcher,
+            grpc_start_unix_ms=grpc_start_unix_ms,
         ),
         server,
     )
@@ -95,12 +109,6 @@ def run_combined_grpc_server(config: AppConfig) -> None:
 
     # Live-sync: watch on-disk manifests and broadcast ManifestUpdated when
     # any step's assetVersion changes. Daemon thread; dies with the server.
-    manifest_watcher = ManifestWatcher(
-        manifests_dir=repo_root / config.manifests_root,
-        channels=session_channels,
-        logger=logger,
-        poll_interval_sec=2.0,
-    )
     manifest_watcher.start()
 
     server.wait_for_termination()

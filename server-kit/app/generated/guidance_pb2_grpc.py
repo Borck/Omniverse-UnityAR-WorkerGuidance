@@ -259,6 +259,16 @@ class GuidanceControlServiceStub(object):
                 request_serializer=guidance__pb2.ControlStepRequest.SerializeToString,
                 response_deserializer=guidance__pb2.ControlStepResponse.FromString,
                 _registered_method=True)
+        self.GetStatus = channel.unary_unary(
+                '/guidance.v1.GuidanceControlService/GetStatus',
+                request_serializer=guidance__pb2.StatusRequest.SerializeToString,
+                response_deserializer=guidance__pb2.StatusResponse.FromString,
+                _registered_method=True)
+        self.DisconnectSession = channel.unary_unary(
+                '/guidance.v1.GuidanceControlService/DisconnectSession',
+                request_serializer=guidance__pb2.DisconnectSessionRequest.SerializeToString,
+                response_deserializer=guidance__pb2.DisconnectSessionResponse.FromString,
+                _registered_method=True)
 
 
 class GuidanceControlServiceServicer(object):
@@ -274,6 +284,18 @@ class GuidanceControlServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DisconnectSession(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GuidanceControlServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -281,6 +303,16 @@ def add_GuidanceControlServiceServicer_to_server(servicer, server):
                     servicer.ControlStep,
                     request_deserializer=guidance__pb2.ControlStepRequest.FromString,
                     response_serializer=guidance__pb2.ControlStepResponse.SerializeToString,
+            ),
+            'GetStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStatus,
+                    request_deserializer=guidance__pb2.StatusRequest.FromString,
+                    response_serializer=guidance__pb2.StatusResponse.SerializeToString,
+            ),
+            'DisconnectSession': grpc.unary_unary_rpc_method_handler(
+                    servicer.DisconnectSession,
+                    request_deserializer=guidance__pb2.DisconnectSessionRequest.FromString,
+                    response_serializer=guidance__pb2.DisconnectSessionResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -314,6 +346,60 @@ class GuidanceControlService(object):
             '/guidance.v1.GuidanceControlService/ControlStep',
             guidance__pb2.ControlStepRequest.SerializeToString,
             guidance__pb2.ControlStepResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/guidance.v1.GuidanceControlService/GetStatus',
+            guidance__pb2.StatusRequest.SerializeToString,
+            guidance__pb2.StatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DisconnectSession(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/guidance.v1.GuidanceControlService/DisconnectSession',
+            guidance__pb2.DisconnectSessionRequest.SerializeToString,
+            guidance__pb2.DisconnectSessionResponse.FromString,
             options,
             channel_credentials,
             insecure,

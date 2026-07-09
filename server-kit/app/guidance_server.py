@@ -110,3 +110,6 @@ class SessionManager:
 
     def get(self, session_id: str) -> SessionContext | None:
         return self._sessions.get(session_id)
+
+    def all(self) -> list[SessionContext]:
+        return list(self._sessions.values())

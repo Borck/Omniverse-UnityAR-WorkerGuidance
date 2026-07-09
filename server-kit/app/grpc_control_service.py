@@ -23,14 +23,18 @@ try:
     from .generated import guidance_pb2
     from .generated import guidance_pb2_grpc
     from .grpc_session_service import GuidanceSessionService
+    from .guidance_server import SessionManager
     from .logging_config import ContextAdapter
+    from .manifest_watcher import ManifestWatcher
     from .session_channels import SessionChannels
     from .step_definition_repository import StepDefinition, StepDefinitionRepository
 except ImportError:
     from generated import guidance_pb2
     from generated import guidance_pb2_grpc
     from grpc_session_service import GuidanceSessionService
+    from guidance_server import SessionManager
     from logging_config import ContextAdapter
+    from manifest_watcher import ManifestWatcher
     from session_channels import SessionChannels
     from step_definition_repository import StepDefinition, StepDefinitionRepository
 
@@ -43,10 +47,18 @@ class GuidanceControlService(guidance_pb2_grpc.GuidanceControlServiceServicer):
         session_channels: SessionChannels,
         step_repository: StepDefinitionRepository,
         logger: ContextAdapter,
+        session_manager: SessionManager | None = None,
+        manifest_watcher: ManifestWatcher | None = None,
+        grpc_start_unix_ms: int = 0,
     ) -> None:
         self._session_channels = session_channels
         self._step_repository = step_repository
         self._logger = logger
+        # Optional: only needed to answer GetStatus. None in tests that don't
+        # exercise it.
+        self._session_manager = session_manager
+        self._manifest_watcher = manifest_watcher
+        self._grpc_start_unix_ms = grpc_start_unix_ms
 
     def ControlStep(
         self,
@@ -99,6 +111,70 @@ class GuidanceControlService(guidance_pb2_grpc.GuidanceControlServiceServicer):
             sessions_notified=notified,
             message=("pushed" if notified else "no active sessions on this job"),
         )
+
+    def GetStatus(
+        self,
+        request: guidance_pb2.StatusRequest,
+        context: grpc.ServicerContext,
+    ) -> guidance_pb2.StatusResponse:
+        attached = self._session_channels.snapshot()  # [(session_id, job_id, last_heartbeat_ms, current_step_id)]
+
+        sessions = []
+        for session_id, job_id, last_heartbeat_ms, current_step_id in attached:
+            ctx = self._session_manager.get(session_id) if self._session_manager else None
+            step_name = ""
+            if current_step_id:
+                step = self._get_step(job_id, current_step_id)
+                step_name = step.display_name if step else ""
+            sessions.append(
+                guidance_pb2.ActiveSession(
+                    session_id=session_id,
+                    device_id=ctx.device_id if ctx else "",
+                    job_id=job_id,
+                    state=ctx.state.value if ctx else "",
+                    last_heartbeat_unix_ms=last_heartbeat_ms,
+                    current_step_id=current_step_id,
+                    current_step_name=step_name,
+                )
+            )
+
+        last_broadcast_ms, known_jobs = (
+            self._manifest_watcher.status() if self._manifest_watcher else (0, {})
+        )
+
+        return guidance_pb2.StatusResponse(
+            active_session_count=len(sessions),
+            sessions=sessions,
+            livesync_last_broadcast_unix_ms=last_broadcast_ms,
+            livesync_known_jobs=known_jobs,
+            grpc_start_unix_ms=self._grpc_start_unix_ms,
+        )
+
+    def DisconnectSession(
+        self,
+        request: guidance_pb2.DisconnectSessionRequest,
+        context: grpc.ServicerContext,
+    ) -> guidance_pb2.DisconnectSessionResponse:
+        session_id = request.session_id
+        target_ctx = self._session_channels.get_context(session_id)
+        if target_ctx is None:
+            msg = f"session '{session_id}' is not currently attached"
+            self._logger.info(msg, session_id=session_id, step_id="-", event="grpc.control.disconnect.not_found")
+            return guidance_pb2.DisconnectSessionResponse(ok=False, message=msg)
+
+        # Cancelling the target session's own ServicerContext ends its Connect()
+        # stream from the server side; the device sees the stream close and must
+        # reconnect. register_or_resume_session() means it resumes the same
+        # session_id -- no state is lost, just a forced re-handshake.
+        target_ctx.cancel()
+        self._session_channels.detach(session_id)
+        self._logger.info(
+            f"session force-disconnected session={session_id}",
+            session_id=session_id,
+            step_id="-",
+            event="grpc.control.disconnect",
+        )
+        return guidance_pb2.DisconnectSessionResponse(ok=True, message="disconnected")
 
     def _get_step(self, job_id: str, step_id: str) -> StepDefinition | None:
         steps: Iterable[StepDefinition] = self._step_repository.get_steps(job_id)
