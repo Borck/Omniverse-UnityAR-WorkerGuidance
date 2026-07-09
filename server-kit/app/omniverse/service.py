@@ -2,6 +2,11 @@ import omni.client
 from typing import Optional
 from fastapi import HTTPException
 from app.omniverse.nucleus_manager import get_manager
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+# ponytail: timeout for /folders and /files endpoints only.
+_NUCLEUS_TIMEOUT_SECONDS = 15
+_executor = ThreadPoolExecutor(max_workers=4)
 
 # ─── Services ────────────────────────────────────────────────────────────────
 def entry_to_dict(path: str, e) -> dict:
@@ -18,7 +23,13 @@ def entry_to_dict(path: str, e) -> dict:
 
 def _list(path: str) -> list:
     """List a single path, raise on failure."""
-    result, entries = omni.client.list(f"{get_manager().active_server()}{path}")
+    url = f"{get_manager().active_server()}{path}"
+    try:
+        future = _executor.submit(omni.client.list, url)
+        result, entries = future.result(timeout=_NUCLEUS_TIMEOUT_SECONDS)
+    except FuturesTimeoutError:
+        raise HTTPException(status_code=504, detail=f"Nucleus request timed out after {_NUCLEUS_TIMEOUT_SECONDS}s")
+
     if result != omni.client.Result.OK:
         raise HTTPException(status_code=500, detail=f"Cannot list {path}: {str(result)}")
 
