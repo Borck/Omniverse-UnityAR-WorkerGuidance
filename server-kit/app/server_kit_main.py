@@ -351,6 +351,14 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     except Exception as exc:
       raise HTTPException(status_code=502, detail=f"gRPC process unreachable: {exc}") from exc
 
+  @api.get("/wiki/index")
+  def get_wiki_index() -> JSONResponse:
+    """Graph + full content of every doc under docs/ (and openwiki/, once that
+    exists) -- small enough (tens of files) to ship in one response and let
+    the browser do search/graph rendering with no server-side index to keep warm."""
+    from app.wiki_service import build_wiki_index
+    return JSONResponse(content=build_wiki_index(repo_root))
+
   @api.post("/api/stage:open-smoke")
   def stage_open_smoke() -> JSONResponse:
     result = stage_open_service.smoke_open()

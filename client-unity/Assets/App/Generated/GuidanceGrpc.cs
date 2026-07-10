@@ -464,6 +464,14 @@ namespace Guidance.V1 {
     static readonly grpc::Marshaller<global::Guidance.V1.ControlStepRequest> __Marshaller_guidance_v1_ControlStepRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Guidance.V1.ControlStepRequest.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::Guidance.V1.ControlStepResponse> __Marshaller_guidance_v1_ControlStepResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Guidance.V1.ControlStepResponse.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Guidance.V1.StatusRequest> __Marshaller_guidance_v1_StatusRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Guidance.V1.StatusRequest.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Guidance.V1.StatusResponse> __Marshaller_guidance_v1_StatusResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Guidance.V1.StatusResponse.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Guidance.V1.DisconnectSessionRequest> __Marshaller_guidance_v1_DisconnectSessionRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Guidance.V1.DisconnectSessionRequest.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Guidance.V1.DisconnectSessionResponse> __Marshaller_guidance_v1_DisconnectSessionResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Guidance.V1.DisconnectSessionResponse.Parser));
 
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Method<global::Guidance.V1.ControlStepRequest, global::Guidance.V1.ControlStepResponse> __Method_ControlStep = new grpc::Method<global::Guidance.V1.ControlStepRequest, global::Guidance.V1.ControlStepResponse>(
@@ -472,6 +480,22 @@ namespace Guidance.V1 {
         "ControlStep",
         __Marshaller_guidance_v1_ControlStepRequest,
         __Marshaller_guidance_v1_ControlStepResponse);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::Guidance.V1.StatusRequest, global::Guidance.V1.StatusResponse> __Method_GetStatus = new grpc::Method<global::Guidance.V1.StatusRequest, global::Guidance.V1.StatusResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "GetStatus",
+        __Marshaller_guidance_v1_StatusRequest,
+        __Marshaller_guidance_v1_StatusResponse);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::Guidance.V1.DisconnectSessionRequest, global::Guidance.V1.DisconnectSessionResponse> __Method_DisconnectSession = new grpc::Method<global::Guidance.V1.DisconnectSessionRequest, global::Guidance.V1.DisconnectSessionResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "DisconnectSession",
+        __Marshaller_guidance_v1_DisconnectSessionRequest,
+        __Marshaller_guidance_v1_DisconnectSessionResponse);
 
     /// <summary>Service descriptor</summary>
     public static global::Google.Protobuf.Reflection.ServiceDescriptor Descriptor
@@ -485,6 +509,18 @@ namespace Guidance.V1 {
     {
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
       public virtual global::System.Threading.Tasks.Task<global::Guidance.V1.ControlStepResponse> ControlStep(global::Guidance.V1.ControlStepRequest request, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::System.Threading.Tasks.Task<global::Guidance.V1.StatusResponse> GetStatus(global::Guidance.V1.StatusRequest request, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::System.Threading.Tasks.Task<global::Guidance.V1.DisconnectSessionResponse> DisconnectSession(global::Guidance.V1.DisconnectSessionRequest request, grpc::ServerCallContext context)
       {
         throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
       }
@@ -538,6 +574,46 @@ namespace Guidance.V1 {
       {
         return CallInvoker.AsyncUnaryCall(__Method_ControlStep, null, options, request);
       }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Guidance.V1.StatusResponse GetStatus(global::Guidance.V1.StatusRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return GetStatus(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Guidance.V1.StatusResponse GetStatus(global::Guidance.V1.StatusRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.BlockingUnaryCall(__Method_GetStatus, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Guidance.V1.StatusResponse> GetStatusAsync(global::Guidance.V1.StatusRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return GetStatusAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Guidance.V1.StatusResponse> GetStatusAsync(global::Guidance.V1.StatusRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncUnaryCall(__Method_GetStatus, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Guidance.V1.DisconnectSessionResponse DisconnectSession(global::Guidance.V1.DisconnectSessionRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return DisconnectSession(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Guidance.V1.DisconnectSessionResponse DisconnectSession(global::Guidance.V1.DisconnectSessionRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.BlockingUnaryCall(__Method_DisconnectSession, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Guidance.V1.DisconnectSessionResponse> DisconnectSessionAsync(global::Guidance.V1.DisconnectSessionRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return DisconnectSessionAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Guidance.V1.DisconnectSessionResponse> DisconnectSessionAsync(global::Guidance.V1.DisconnectSessionRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncUnaryCall(__Method_DisconnectSession, null, options, request);
+      }
       /// <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
       protected override GuidanceControlServiceClient NewInstance(ClientBaseConfiguration configuration)
@@ -552,7 +628,9 @@ namespace Guidance.V1 {
     public static grpc::ServerServiceDefinition BindService(GuidanceControlServiceBase serviceImpl)
     {
       return grpc::ServerServiceDefinition.CreateBuilder()
-          .AddMethod(__Method_ControlStep, serviceImpl.ControlStep).Build();
+          .AddMethod(__Method_ControlStep, serviceImpl.ControlStep)
+          .AddMethod(__Method_GetStatus, serviceImpl.GetStatus)
+          .AddMethod(__Method_DisconnectSession, serviceImpl.DisconnectSession).Build();
     }
 
     /// <summary>Register service method with a service binder with or without implementation. Useful when customizing the service binding logic.
@@ -563,6 +641,8 @@ namespace Guidance.V1 {
     public static void BindService(grpc::ServiceBinderBase serviceBinder, GuidanceControlServiceBase serviceImpl)
     {
       serviceBinder.AddMethod(__Method_ControlStep, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::Guidance.V1.ControlStepRequest, global::Guidance.V1.ControlStepResponse>(serviceImpl.ControlStep));
+      serviceBinder.AddMethod(__Method_GetStatus, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::Guidance.V1.StatusRequest, global::Guidance.V1.StatusResponse>(serviceImpl.GetStatus));
+      serviceBinder.AddMethod(__Method_DisconnectSession, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::Guidance.V1.DisconnectSessionRequest, global::Guidance.V1.DisconnectSessionResponse>(serviceImpl.DisconnectSession));
     }
 
   }

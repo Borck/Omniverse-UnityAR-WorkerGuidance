@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Docs Wiki — Guidance Server</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #0d1117;
+    --border: #30363d;
+    --border-soft: #21262d;
+    --text: #c9d1d9;
+    --text-dim: #8b949e;
+    --text-faint: #6e7681;
+    --accent: #58a6ff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    overflow: hidden;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header .logo { height: 42px; width: auto; display: block; }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
+  header .meta { display: flex; align-items: center; gap: 10px; }
+  .nav-link, .refresh-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .nav-link:hover, .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .search-bar {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+  }
+  .search-bar input {
+    flex: 1;
+    max-width: 480px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+  }
+  .search-bar input:focus { outline: none; border-color: var(--accent); }
+  .search-meta { color: var(--text-faint); font-size: 12px; }
+
+  main {
+    display: flex;
+    height: calc(100vh - 116px);
+  }
+  /* ?embed=1 -- for nesting in an <iframe> card (e.g. the main dashboard)
+     without a redundant second header/search bar inside a small box. */
+  body.embedded header,
+  body.embedded .search-bar { display: none; }
+  body.embedded main { height: 100vh; }
+  #graph-wrap {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+  }
+  #graph-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  #graph-canvas.dragging { cursor: grabbing; }
+
+  #legend {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    background: rgba(22,27,34,0.9);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #legend .row { display: flex; align-items: center; gap: 6px; }
+  #legend .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  #empty-state {
+    position: absolute; inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+
+  #side-panel {
+    width: 420px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: none;
+    flex-direction: column;
+  }
+  #side-panel.open { display: flex; }
+  .panel-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .panel-head h2 { font-size: 14px; margin: 0; color: var(--text); font-weight: 650; }
+  .panel-head .path { font-size: 11px; color: var(--text-faint); font-family: var(--mono); margin-top: 3px; }
+  .panel-close {
+    background: none; border: none; color: var(--text-faint);
+    font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 6px;
+  }
+  .panel-close:hover { color: var(--text); }
+  .panel-body { flex: 1; overflow-y: auto; padding: 16px 18px; font-size: 13px; line-height: 1.55; }
+  .panel-body h1, .panel-body h2, .panel-body h3 { color: var(--text); margin: 16px 0 8px; }
+  .panel-body h1:first-child, .panel-body h2:first-child, .panel-body h3:first-child { margin-top: 0; }
+  .panel-body h1 { font-size: 17px; }
+  .panel-body h2 { font-size: 15px; }
+  .panel-body h3 { font-size: 13.5px; }
+  .panel-body p { margin: 8px 0; }
+  .panel-body code {
+    background: var(--surface-2); border: 1px solid var(--border-soft);
+    border-radius: 3px; padding: 1px 5px; font-family: var(--mono); font-size: 12px;
+  }
+  .panel-body pre {
+    background: var(--surface-2); border: 1px solid var(--border-soft);
+    border-radius: var(--radius); padding: 10px 12px; overflow-x: auto;
+  }
+  .panel-body pre code { border: none; padding: 0; background: none; }
+  .panel-body a { color: var(--accent); cursor: pointer; }
+  .panel-body li { margin: 3px 0; }
+  .panel-body mark { background: rgba(88,166,255,0.35); color: inherit; border-radius: 2px; }
+
+  #results-list {
+    width: 340px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    display: none;
+  }
+  #results-list.open { display: block; }
+  .result-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+  }
+  .result-item:hover { background: var(--surface-2); }
+  .result-title { font-size: 13px; font-weight: 550; color: var(--text); }
+  .result-path { font-size: 10.5px; color: var(--text-faint); font-family: var(--mono); margin-top: 2px; }
+  .result-snippet { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+  .result-snippet mark { background: rgba(88,166,255,0.35); color: inherit; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="direkt-logo.png?v=2" alt="Direkt" class="logo" />
+    <h1>Docs Wiki</h1>
+  </div>
+  <div class="meta">
+    <a class="nav-link" href="index.html">Status</a>
+  </div>
+</header>
+
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="Search doc titles and content..." />
+  <span class="search-meta" id="search-meta"></span>
+</div>
+
+<main>
+  <div id="graph-wrap">
+    <canvas id="graph-canvas"></canvas>
+    <div id="legend"></div>
+    <div id="empty-state">Loading docs…</div>
+  </div>
+  <div id="results-list"></div>
+  <div id="side-panel">
+    <div class="panel-head">
+      <div>
+        <h2 id="panel-title">—</h2>
+        <div class="path" id="panel-path">—</div>
+      </div>
+      <button class="panel-close" id="panel-close">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</main>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────
+let nodes = [];   // {id, title, content, x, y, vx, vy, fx, fy, degree, folder}
+let edges = [];   // {source, target} (indices into nodes)
+let nodeById = {};
+
+function folderOf(id) {
+  const parts = id.split("/");
+  return parts.length > 1 ? parts[0] : "(root)";
+}
+
+const FOLDER_COLORS = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#39c5cf"];
+const folderColor = {};
+function colorForFolder(folder) {
+  if (!(folder in folderColor)) {
+    folderColor[folder] = FOLDER_COLORS[Object.keys(folderColor).length % FOLDER_COLORS.length];
+  }
+  return folderColor[folder];
+}
+
+// ── Minimal markdown -> HTML (headers, bold, inline code, fences, links, lists) ──
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderMarkdown(md) {
+  const lines = md.replace(/\r\n/g, "\n").split("\n");
+  let html = "";
+  let inCode = false, codeBuf = [];
+  let inList = false;
+  for (const line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        html += `<pre><code>${escapeHtml(codeBuf.join("\n"))}</code></pre>`;
+        codeBuf = []; inCode = false;
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) { codeBuf.push(line); continue; }
+
+    const heading = line.match(/^(#{1,3})\s+(.*)$/);
+    const listItem = line.match(/^\s*[-*]\s+(.*)$/);
+
+    if (listItem) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      html += `<li>${inline(listItem[1])}</li>`;
+      continue;
+    }
+    if (inList) { html += "</ul>"; inList = false; }
+
+    if (heading) {
+      const level = heading[1].length;
+      html += `<h${level}>${inline(heading[2])}</h${level}>`;
+    } else if (line.trim() === "") {
+      // paragraph break, nothing to emit
+    } else {
+      html += `<p>${inline(line)}</p>`;
+    }
+  }
+  if (inList) html += "</ul>";
+  if (inCode) html += `<pre><code>${escapeHtml(codeBuf.join("\n"))}</code></pre>`;
+  return html;
+
+  function inline(text) {
+    let t = escapeHtml(text);
+    t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/\[([^\]]*)\]\(([^)]+)\)/g, (m, label, href) => {
+      if (href.endsWith(".md") || /\.md#/.test(href)) {
+        return `<a data-nav="${escapeHtml(href)}">${label}</a>`;
+      }
+      return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${label}</a>`;
+    });
+    return t;
+  }
+}
+
+// ── Force-directed layout (hand-rolled, no D3 -- ~40 nodes doesn't need it) ──
+const canvas = document.getElementById("graph-canvas");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = canvas.width = rect.width;
+  H = canvas.height = rect.height;
+}
+window.addEventListener("resize", resizeCanvas);
+
+function initPositions() {
+  const cx = W / 2, cy = H / 2;
+  const r = Math.min(W, H) * 0.35;
+  nodes.forEach((n, i) => {
+    const angle = (i / nodes.length) * Math.PI * 2;
+    n.x = cx + Math.cos(angle) * r + (Math.random() - 0.5) * 20;
+    n.y = cy + Math.sin(angle) * r + (Math.random() - 0.5) * 20;
+    n.vx = 0; n.vy = 0;
+  });
+}
+
+function simulationStep() {
+  const REPEL = 1800, SPRING = 0.02, SPRING_LEN = 110, CENTER = 0.003, DAMPING = 0.82;
+  const cx = W / 2, cy = H / 2;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    if (a.fx != null) continue;
+    let fx = (cx - a.x) * CENTER, fy = (cy - a.y) * CENTER;
+    for (let j = 0; j < nodes.length; j++) {
+      if (i === j) continue;
+      const b = nodes[j];
+      let dx = a.x - b.x, dy = a.y - b.y;
+      let distSq = dx * dx + dy * dy || 0.01;
+      const force = REPEL / distSq;
+      const dist = Math.sqrt(distSq);
+      fx += (dx / dist) * force;
+      fy += (dy / dist) * force;
+    }
+    a.vx = (a.vx + fx) * DAMPING;
+    a.vy = (a.vy + fy) * DAMPING;
+  }
+
+  for (const e of edges) {
+    const a = nodes[e.source], b = nodes[e.target];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+    const stretch = (dist - SPRING_LEN) * SPRING;
+    const fx = (dx / dist) * stretch, fy = (dy / dist) * stretch;
+    if (a.fx == null) { a.vx += fx; a.vy += fy; }
+    if (b.fx == null) { b.vx -= fx; b.vy -= fy; }
+  }
+
+  for (const n of nodes) {
+    if (n.fx != null) { n.x = n.fx; n.y = n.fy; continue; }
+    n.x += n.vx; n.y += n.vy;
+    n.x = Math.max(24, Math.min(W - 24, n.x));
+    n.y = Math.max(24, Math.min(H - 24, n.y));
+  }
+}
+
+// ── Interaction state ──
+let hoveredNode = null;
+let selectedNode = null;
+let draggingNode = null;
+let searchTerm = "";
+let matchedIds = null; // null = no active search
+
+function nodeRadius(n) {
+  return 6 + Math.min(10, n.degree * 1.6);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const highlightSet = new Set();
+  if (hoveredNode) {
+    highlightSet.add(hoveredNode.id);
+    edges.forEach(e => {
+      if (nodes[e.source] === hoveredNode) highlightSet.add(nodes[e.target].id);
+      if (nodes[e.target] === hoveredNode) highlightSet.add(nodes[e.source].id);
+    });
+  }
+
+  // edges
+  ctx.lineWidth = 1;
+  for (const e of edges) {
+    const a = nodes[e.source], b = nodes[e.target];
+    const dim = matchedIds && !(matchedIds.has(a.id) && matchedIds.has(b.id));
+    const hi = hoveredNode && (highlightSet.has(a.id) && highlightSet.has(b.id));
+    ctx.strokeStyle = hi ? "rgba(88,166,255,0.7)" : dim ? "rgba(48,54,61,0.35)" : "rgba(48,54,61,0.8)";
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  // nodes
+  for (const n of nodes) {
+    const r = nodeRadius(n);
+    const isMatch = !matchedIds || matchedIds.has(n.id);
+    const isHi = hoveredNode === n || highlightSet.has(n.id) || selectedNode === n;
+    ctx.globalAlpha = isMatch ? 1 : 0.18;
+
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = colorForFolder(n.folder);
+    ctx.fill();
+    if (isHi) {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#e6e9f0";
+      ctx.stroke();
+    }
+
+    if (isMatch && (isHi || r > 10 || nodes.length < 20)) {
+      ctx.fillStyle = "#c9d1d9";
+      ctx.font = "11px -apple-system, Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(truncate(n.title, 22), n.x, n.y + r + 13);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function truncate(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
+
+function tick() {
+  simulationStep();
+  draw();
+  requestAnimationFrame(tick);
+}
+
+function nodeAt(px, py) {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const n = nodes[i];
+    const r = nodeRadius(n) + 4;
+    if ((px - n.x) ** 2 + (py - n.y) ** 2 <= r * r) return n;
+  }
+  return null;
+}
+
+canvas.addEventListener("mousedown", e => {
+  const rect = canvas.getBoundingClientRect();
+  const n = nodeAt(e.clientX - rect.left, e.clientY - rect.top);
+  if (n) {
+    draggingNode = n;
+    n.fx = n.x; n.fy = n.y;
+    canvas.classList.add("dragging");
+  }
+});
+window.addEventListener("mousemove", e => {
+  const rect = canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  if (draggingNode) {
+    draggingNode.fx = px; draggingNode.fy = py;
+  } else {
+    hoveredNode = nodeAt(px, py);
+    canvas.style.cursor = hoveredNode ? "pointer" : "grab";
+  }
+});
+window.addEventListener("mouseup", e => {
+  if (draggingNode) {
+    draggingNode.fx = null; draggingNode.fy = null;
+    draggingNode = null;
+    canvas.classList.remove("dragging");
+  }
+});
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const n = nodeAt(e.clientX - rect.left, e.clientY - rect.top);
+  if (n) openNode(n);
+});
+
+// ── Side panel ──
+function openNode(n) {
+  selectedNode = n;
+  document.getElementById("panel-title").textContent = n.title;
+  document.getElementById("panel-path").textContent = n.id;
+  const body = document.getElementById("panel-body");
+  body.innerHTML = renderMarkdown(n.content);
+  body.querySelectorAll("[data-nav]").forEach(a => {
+    a.addEventListener("click", () => {
+      const href = a.getAttribute("data-nav").split("#")[0];
+      const resolved = resolveLink(n.id, href);
+      if (resolved && nodeById[resolved]) openNode(nodeById[resolved]);
+    });
+  });
+  document.getElementById("side-panel").classList.add("open");
+}
+document.getElementById("panel-close").addEventListener("click", () => {
+  selectedNode = null;
+  document.getElementById("side-panel").classList.remove("open");
+});
+
+function resolveLink(fromId, href) {
+  const parts = fromId.split("/").slice(0, -1);
+  for (const seg of href.split("/")) {
+    if (seg === "." || seg === "") continue;
+    if (seg === "..") parts.pop();
+    else parts.push(seg);
+  }
+  return parts.join("/");
+}
+
+// ── Search ──
+const searchInput = document.getElementById("search-input");
+const resultsList = document.getElementById("results-list");
+const searchMeta = document.getElementById("search-meta");
+
+searchInput.addEventListener("input", () => {
+  searchTerm = searchInput.value.trim().toLowerCase();
+  if (!searchTerm) {
+    matchedIds = null;
+    resultsList.classList.remove("open");
+    searchMeta.textContent = "";
+    return;
+  }
+  const matches = nodes.filter(n =>
+    n.title.toLowerCase().includes(searchTerm) || n.content.toLowerCase().includes(searchTerm)
+  );
+  matchedIds = new Set(matches.map(n => n.id));
+  searchMeta.textContent = `${matches.length} match${matches.length === 1 ? "" : "es"}`;
+  renderResults(matches);
+  resultsList.classList.add("open");
+});
+
+function snippetFor(content, term) {
+  const idx = content.toLowerCase().indexOf(term);
+  if (idx === -1) return escapeHtml(content.slice(0, 140)) + "…";
+  const start = Math.max(0, idx - 60);
+  const end = Math.min(content.length, idx + term.length + 60);
+  const raw = content.slice(start, end);
+  const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+  return (start > 0 ? "…" : "") + escapeHtml(raw).replace(re, m => `<mark>${escapeHtml(m)}</mark>`) + (end < content.length ? "…" : "");
+}
+
+function renderResults(matches) {
+  resultsList.innerHTML = "";
+  matches.slice(0, 100).forEach(n => {
+    const el = document.createElement("div");
+    el.className = "result-item";
+    el.innerHTML = `<div class="result-title">${escapeHtml(n.title)}</div>
+      <div class="result-path">${escapeHtml(n.id)}</div>
+      <div class="result-snippet">${snippetFor(n.content, searchTerm)}</div>`;
+    el.addEventListener("click", () => openNode(n));
+    resultsList.appendChild(el);
+  });
+}
+
+// ── Load ──
+async function load() {
+  const emptyState = document.getElementById("empty-state");
+  try {
+    const res = await fetch("/wiki/index", { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data.nodes || data.nodes.length === 0) {
+      emptyState.textContent = "No docs found under docs/ yet.";
+      emptyState.style.display = "flex";
+      return;
+    }
+    const idToIndex = {};
+    nodes = data.nodes.map((n, i) => {
+      idToIndex[n.id] = i;
+      const folder = folderOf(n.id);
+      return { ...n, degree: 0, folder };
+    });
+    edges = data.edges
+      .map(e => ({ source: idToIndex[e.source], target: idToIndex[e.target] }))
+      .filter(e => e.source != null && e.target != null);
+    edges.forEach(e => { nodes[e.source].degree++; nodes[e.target].degree++; });
+    nodeById = {};
+    nodes.forEach(n => { nodeById[n.id] = n; });
+
+    resizeCanvas();
+    initPositions();
+    tick();
+    buildLegend();
+    emptyState.style.display = "none";
+  } catch (err) {
+    emptyState.textContent = "Could not load /wiki/index: " + err.message;
+    emptyState.style.display = "flex";
+  }
+}
+
+function buildLegend() {
+  const folders = [...new Set(nodes.map(n => n.folder))].sort();
+  const legend = document.getElementById("legend");
+  legend.innerHTML = folders.map(f =>
+    `<div class="row"><span class="dot" style="background:${colorForFolder(f)}"></span>${escapeHtml(f)}</div>`
+  ).join("");
+}
+
+if (new URLSearchParams(location.search).get("embed") === "1") {
+  document.body.classList.add("embedded");
+}
+load();
+</script>
+
+</body>
+</html>
