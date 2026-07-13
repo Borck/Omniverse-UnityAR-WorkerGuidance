@@ -359,6 +359,60 @@
     border-radius: 4px;
     border: 1px solid var(--border);
   }
+
+  /* ── Live Floor: job progress board (#1) + activity feed (#2) ──── */
+  .job-progress { display: flex; flex-direction: column; gap: 16px; }
+  .job-block-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 8px;
+  }
+  .job-block-head .sub { color: var(--text-faint); font-weight: 400; font-family: var(--mono); font-size: 11px; }
+  .step-track { display: flex; flex-direction: column; gap: 3px; }
+  .step-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 5px 9px; border-radius: 4px;
+    background: var(--surface-2); border: 1px solid var(--border-soft);
+    font-size: 12.5px;
+  }
+  .step-row.done { opacity: 0.5; }
+  .step-row.active { border-color: var(--accent); background: #10233c; }
+  .step-marker { width: 16px; text-align: center; flex-shrink: 0; color: var(--text-faint); }
+  .step-row.done .step-marker { color: var(--ok); }
+  .step-row.active .step-marker { color: var(--accent); }
+  .step-seq { color: var(--text-faint); font-family: var(--mono); width: 18px; flex-shrink: 0; }
+  .step-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .worker-pills { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .worker-pill {
+    font-family: var(--mono); font-size: 10px; padding: 1px 7px;
+    border-radius: 999px; background: #10233c; color: var(--accent);
+    border: 1px solid var(--accent); white-space: nowrap;
+  }
+  .feed { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; }
+  .feed-row {
+    display: flex; gap: 9px; align-items: center;
+    padding: 6px 2px; border-bottom: 1px solid var(--border-soft); font-size: 12px;
+  }
+  .feed-row:last-child { border-bottom: none; }
+  .feed-time { color: var(--text-faint); font-family: var(--mono); font-size: 10.5px; white-space: nowrap; flex-shrink: 0; min-width: 50px; }
+  .feed-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .feed-msg { color: var(--text-dim); min-width: 0; }
+  .feed-msg b { color: var(--text); font-weight: 600; }
+
+  /* Folder search tools (#3) + file detail (#4) */
+  .folder-tools { display: flex; gap: 6px; align-items: center; }
+  .folder-tools input[type=text] {
+    flex: 1; min-width: 0; background: var(--surface-2);
+    border: 1px solid var(--border); color: var(--text);
+    border-radius: 4px; padding: 5px 8px; font-size: 12px; font-family: var(--sans);
+  }
+  .folder-tools input[type=text]:focus { outline: none; border-color: var(--accent); }
+  .folder-tools label { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer; }
+  .file-meta { color: var(--text-faint); font-family: var(--mono); font-size: 10.5px; }
+
+  /* Inline heartbeat dot inside the session table (#5) */
+  td .hb-inline { display: inline-block; margin-right: 7px; vertical-align: middle; }
+  /* Manifest job picker (#6) */
+  select.refresh-btn { font-family: var(--sans); }
 </style>
 </head>
 <body>
@@ -407,6 +461,27 @@
       <div class="tile-sub" id="hero-health-sub">—</div>
       <svg class="sparkline" id="grpc-health-strip" viewBox="0 0 300 28" preserveAspectRatio="none"></svg>
     </div>
+  </div>
+
+  <div class="section-label">Live Floor</div>
+  <div class="grid">
+    <section class="card" id="progress-card" style="grid-column: span 2; min-width: 0;">
+      <div class="card-head">
+        <div class="card-title"><span class="dot" id="progress-dot"></span>Job Progress</div>
+        <span class="badge" id="progress-badge">—</span>
+      </div>
+      <div class="job-progress" id="job-progress"></div>
+      <div class="empty" id="progress-empty">No active jobs — connect a device to watch its steps advance live.</div>
+    </section>
+
+    <section class="card" style="min-width: 0;">
+      <div class="card-head">
+        <div class="card-title"><span class="dot ok"></span>Activity Feed</div>
+        <span class="badge" id="feed-badge">0 events</span>
+      </div>
+      <div class="feed" id="feed"></div>
+      <div class="empty" id="feed-empty">Watching for changes…</div>
+    </section>
   </div>
 
   <div class="section-label">Runtime</div>
@@ -458,8 +533,30 @@
         <span class="k">Path</span>
         <span class="v" id="folders-path">/</span>
       </div>
+      <div class="folder-tools">
+        <input type="text" id="folder-search-input" placeholder="Search files under this path…" />
+        <label><input type="checkbox" id="folder-usd-only" /> USD</label>
+        <button class="action-btn" id="folder-search-btn">Search</button>
+      </div>
       <div class="endpoint-list" id="folders-list"></div>
       <button class="action-btn" id="folders-refresh-btn">Refresh</button>
+    </section>
+  </div>
+
+  <div class="section-label">Job Manifest</div>
+  <div class="grid">
+    <section class="card wide">
+      <div class="card-head">
+        <div class="card-title"><span class="dot" id="manifest-dot"></span>Resolved Assets</div>
+        <select id="manifest-job-select" class="refresh-btn" style="cursor:pointer"></select>
+      </div>
+      <div class="table-scroll-x">
+        <table class="data-table" id="manifest-table" style="display:none">
+          <thead><tr><th>Step</th><th>Part</th><th>Asset Version</th><th>Target Version</th><th>Compression</th></tr></thead>
+          <tbody id="manifest-rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="manifest-empty">Select a job to view its resolved asset manifest.</div>
     </section>
   </div>
 
@@ -698,6 +795,20 @@ function heartbeatCell(ms) {
   return `<span class="${cls}">${relTime(ms)}</span>`;
 }
 
+// Heartbeat freshness as a dot level (#5), same thresholds as heartbeatCell.
+function hbLevel(ms) {
+  if (!ms) return "err";
+  const ageS = (Date.now() - ms) / 1000;
+  return ageS < 15 ? "ok" : ageS < 60 ? "warn" : "err";
+}
+
+function fmtBytes(n) {
+  if (n == null) return "—";
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  return (n / 1024 / 1024).toFixed(1) + " MB";
+}
+
 // Mini Nucleus folder browser, hitting the existing /omni/folders endpoint
 // (already 15s-timeout-protected). Not part of the /status poll -- fetched
 // on load, on demand, and right after a Nucleus switch, since that's the
@@ -822,7 +933,8 @@ function render(data, isDemo) {
       const tr = document.createElement("tr");
       const label = s.device_id || s.session_id;
       const stepLabel = s.current_step_name || s.current_step_id || "—";
-      tr.innerHTML = `<td title="${escapeHtml(label)}">${escapeHtml(truncateLabel(label, 15))}</td><td>${escapeHtml(s.job_id || "—")}</td><td>${escapeHtml(stepLabel)}</td><td><span class="state-pill">${escapeHtml(s.state || "—")}</span></td><td>${heartbeatCell(s.last_heartbeat_unix_ms)}</td><td><button class="action-btn danger" data-disconnect="${escapeHtml(s.session_id)}">Disconnect</button></td>`;
+      const hb = `<span class="dot ${hbLevel(s.last_heartbeat_unix_ms)} hb-inline"></span>`;
+      tr.innerHTML = `<td title="${escapeHtml(label)}">${hb}${escapeHtml(truncateLabel(label, 15))}</td><td>${escapeHtml(s.job_id || "—")}</td><td>${escapeHtml(stepLabel)}</td><td><span class="state-pill">${escapeHtml(s.state || "—")}</span></td><td>${heartbeatCell(s.last_heartbeat_unix_ms)}</td><td><button class="action-btn danger" data-disconnect="${escapeHtml(s.session_id)}">Disconnect</button></td>`;
       const btn = tr.querySelector("[data-disconnect]");
       btn.addEventListener("click", () => disconnectSession(s.session_id, label, btn));
       rowsEl.appendChild(tr);
@@ -878,6 +990,275 @@ function render(data, isDemo) {
     tr.innerHTML = `<td>${methodBadges}</td><td>${escapeHtml(r.path)}</td><td>${tagChips}</td>`;
     routesRowsEl.appendChild(tr);
   });
+
+  // ── Live Floor + manifest picker (all derived from the same poll) ──
+  updateJobProgress(grpc);
+  updateActivityFeed(data);
+  updateManifestJobOptions(data);
+}
+
+// ── #1 Job progress board ──────────────────────────────────────────
+// Joins two things we already poll/serve: the job's ordered step list
+// (/api/jobs/{id}/steps, cached -- steps don't change mid-run) and each
+// live session's current_step_id (already in /status). A worker pill is
+// placed on whichever step it's currently on. Multiple jobs at once =>
+// one mini-track per distinct job_id among the connected devices.
+const stepsCache = {};   // jobId -> ordered steps | "loading" | "error"
+
+async function ensureSteps(jobId) {
+  if (stepsCache[jobId] !== undefined) return;   // already loading/loaded/failed
+  stepsCache[jobId] = "loading";
+  try {
+    const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/steps`, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const body = await res.json();
+    stepsCache[jobId] = (body.steps || []).slice()
+      .sort((a, b) => (a.sequence_index || 0) - (b.sequence_index || 0));
+    updateJobProgress(lastGrpc);   // re-render now that steps arrived
+  } catch (err) {
+    stepsCache[jobId] = "error";
+  }
+}
+
+// Pure join, factored out so the self-test can exercise it (see runSelfTest).
+function computeStepStates(steps, workers) {
+  const seqById = {};
+  steps.forEach(st => { seqById[st.step_id] = st.sequence_index; });
+  const workerSeqs = workers.map(w => seqById[w.current_step_id]).filter(x => x != null);
+  const minSeq = workerSeqs.length ? Math.min(...workerSeqs) : Infinity;
+  const workersByStep = {};
+  workers.forEach(w => { (workersByStep[w.current_step_id] = workersByStep[w.current_step_id] || []).push(w); });
+  return steps.map(st => {
+    const here = workersByStep[st.step_id] || [];
+    const active = here.length > 0;
+    const done = st.sequence_index < minSeq;   // every worker on this job has passed it
+    return { step: st, here, active, done, marker: active ? "▶" : done ? "✓" : "○" };
+  });
+}
+
+function renderJobBlock(jobId, workers) {
+  const head = `<div class="job-block-head"><span>${escapeHtml(jobId)}</span><span class="sub">${workers.length} on floor</span></div>`;
+  const steps = stepsCache[jobId];
+  if (steps === "loading" || steps === undefined)
+    return `<div class="job-block">${head}<div class="empty">Loading steps…</div></div>`;
+  if (steps === "error" || !steps.length)
+    return `<div class="job-block">${head}<div class="empty">No step definitions for this job.</div></div>`;
+  const rows = computeStepStates(steps, workers).map(s => {
+    const cls = s.active ? "active" : s.done ? "done" : "";
+    const name = s.step.display_name || s.step.step_id;
+    const pills = s.here.map(w => {
+      const wl = w.device_id || w.session_id;
+      return `<span class="worker-pill" title="${escapeHtml(wl)}">${escapeHtml(truncateLabel(wl, 12))}</span>`;
+    }).join("");
+    return `<div class="step-row ${cls}"><span class="step-marker">${s.marker}</span><span class="step-seq">${s.step.sequence_index}</span><span class="step-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="worker-pills">${pills}</span></div>`;
+  }).join("");
+  return `<div class="job-block">${head}<div class="step-track">${rows}</div></div>`;
+}
+
+let lastGrpc = {};
+function updateJobProgress(grpc) {
+  lastGrpc = grpc || {};
+  const wrap = document.getElementById("job-progress");
+  const emptyEl = document.getElementById("progress-empty");
+  const sessions = lastGrpc.reachable ? (lastGrpc.sessions || []) : [];
+  const byJob = {};
+  sessions.forEach(s => { const j = s.job_id || "(no job)"; (byJob[j] = byJob[j] || []).push(s); });
+  const jobIds = Object.keys(byJob).sort();
+  setDot("progress-dot", sessions.length ? "ok" : "warn");
+  document.getElementById("progress-badge").textContent = jobIds.length
+    ? `${jobIds.length} job${jobIds.length === 1 ? "" : "s"} · ${sessions.length} worker${sessions.length === 1 ? "" : "s"}`
+    : "idle";
+  if (jobIds.length === 0) { wrap.innerHTML = ""; emptyEl.style.display = ""; return; }
+  emptyEl.style.display = "none";
+  jobIds.forEach(ensureSteps);
+  wrap.innerHTML = jobIds.map(j => renderJobBlock(j, byJob[j])).join("");
+}
+
+// ── #2 Activity feed ───────────────────────────────────────────────
+// No new data: diff this /status snapshot against the previous one and
+// log what changed (connect/disconnect, step/state change, Nucleus
+// switch, manifest version bump, gRPC reachability flip).
+const FEED_MAX = 60;
+let feedEvents = [];
+let prevSnap = null;
+
+function snapOf(data) {
+  const grpc = data.grpc || {};
+  const sessions = {};
+  (grpc.sessions || []).forEach(s => {
+    sessions[s.session_id] = {
+      device: s.device_id || s.session_id, job: s.job_id,
+      step: s.current_step_name || s.current_step_id, state: s.state,
+    };
+  });
+  return {
+    sessions, nucleusActive: (data.nucleus || {}).active,
+    jobs: grpc.livesync_known_jobs || {}, grpcReachable: !!grpc.reachable,
+  };
+}
+
+function pushFeed(dot, html) {
+  feedEvents.unshift({ t: Date.now(), dot, html });
+  if (feedEvents.length > FEED_MAX) feedEvents.pop();
+}
+
+function updateActivityFeed(data) {
+  const snap = snapOf(data);
+  if (prevSnap) {
+    Object.keys(snap.sessions).forEach(id => {
+      const cur = snap.sessions[id], prev = prevSnap.sessions[id];
+      if (!prev) { pushFeed("var(--ok)", `<b>${escapeHtml(cur.device)}</b> connected${cur.job ? " · " + escapeHtml(cur.job) : ""}`); return; }
+      if (cur.step !== prev.step) pushFeed("var(--accent)", `<b>${escapeHtml(cur.device)}</b> → step ${escapeHtml(cur.step || "—")}`);
+      else if (cur.state !== prev.state) pushFeed("var(--accent)", `<b>${escapeHtml(cur.device)}</b> state ${escapeHtml(cur.state || "—")}`);
+    });
+    Object.keys(prevSnap.sessions).forEach(id => {
+      if (!snap.sessions[id]) pushFeed("var(--err)", `<b>${escapeHtml(prevSnap.sessions[id].device)}</b> disconnected`);
+    });
+    if (snap.nucleusActive !== prevSnap.nucleusActive && snap.nucleusActive)
+      pushFeed("var(--warn)", `Nucleus switched to <b>${escapeHtml(snap.nucleusActive)}</b>`);
+    Object.keys(snap.jobs).forEach(j => {
+      if (prevSnap.jobs[j] === undefined) pushFeed("var(--accent)", `Manifest tracked: <b>${escapeHtml(j)}</b> v${escapeHtml(snap.jobs[j])}`);
+      else if (prevSnap.jobs[j] !== snap.jobs[j]) pushFeed("var(--accent)", `<b>${escapeHtml(j)}</b> manifest → v${escapeHtml(snap.jobs[j])}`);
+    });
+    if (snap.grpcReachable !== prevSnap.grpcReachable)
+      pushFeed(snap.grpcReachable ? "var(--ok)" : "var(--err)", `gRPC ${snap.grpcReachable ? "reachable again" : "became unreachable"}`);
+  }
+  prevSnap = snap;
+  renderFeed();
+}
+
+function renderFeed() {
+  const el = document.getElementById("feed");
+  document.getElementById("feed-badge").textContent = `${feedEvents.length} event${feedEvents.length === 1 ? "" : "s"}`;
+  document.getElementById("feed-empty").style.display = feedEvents.length ? "none" : "";
+  el.innerHTML = feedEvents.map(e =>
+    `<div class="feed-row"><span class="feed-time">${relTime(e.t)}</span><span class="feed-dot" style="background:${e.dot}"></span><span class="feed-msg">${e.html}</span></div>`
+  ).join("");
+}
+
+// ── #3 folder search / USD finder + #4 file detail on click ────────
+async function searchFolders() {
+  const kw = document.getElementById("folder-search-input").value.trim();
+  const usdOnly = document.getElementById("folder-usd-only").checked;
+  const path = currentFoldersPath || "/";
+  if (!usdOnly && !kw) { showToast("Enter a keyword, or tick USD", "err"); return; }
+  const listEl = document.getElementById("folders-list");
+  const badgeEl = document.getElementById("folders-badge");
+  setDot("folders-dot", "warn");
+  badgeEl.textContent = "Searching…";
+  try {
+    const url = usdOnly
+      ? `/omni/usd?path=${encodeURIComponent(path)}`
+      : `/omni/search?path=${encodeURIComponent(path)}&keyword=${encodeURIComponent(kw)}`;
+    const res = await fetch(url, { cache: "no-store" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || ("HTTP " + res.status));
+    const results = (usdOnly ? body.files : body.results) || [];
+    setDot("folders-dot", "ok");
+    badgeEl.textContent = `${results.length} match${results.length === 1 ? "" : "es"}`;
+    listEl.innerHTML = "";
+    const back = document.createElement("div");
+    back.className = "endpoint-row"; back.style.cursor = "pointer";
+    back.innerHTML = `<span class="name">⬅ back to folders</span>`;
+    back.addEventListener("click", () => loadNucleusFolders(currentFoldersPath));
+    listEl.appendChild(back);
+    if (!results.length) {
+      const e = document.createElement("div"); e.className = "empty"; e.textContent = "No matches under this path."; listEl.appendChild(e);
+    } else {
+      results.slice(0, 100).forEach(r => {
+        const row = document.createElement("div");
+        row.className = "endpoint-row"; row.style.cursor = "pointer";
+        if (r.type === "folder") {
+          row.innerHTML = `<span class="name">📁 ${escapeHtml(r.name)}</span>`;
+          row.addEventListener("click", () => { document.getElementById("folder-search-input").value = ""; loadNucleusFolders(r.path); });
+        } else {
+          row.innerHTML = `<div class="endpoint-info"><span class="name">📄 ${escapeHtml(r.name)}</span><span class="file-meta" data-meta>${r.size != null ? fmtBytes(r.size) : ""}</span></div>`;
+          row.addEventListener("click", () => showFileDetail(r, row));
+        }
+        listEl.appendChild(row);
+      });
+    }
+  } catch (err) {
+    setDot("folders-dot", "err");
+    badgeEl.textContent = "Search failed";
+    listEl.innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// #4: click a file result -> /omni/stat, show size + modified inline.
+async function showFileDetail(f, row) {
+  const metaEl = row.querySelector("[data-meta]");
+  if (metaEl) metaEl.textContent = "loading…";
+  try {
+    const res = await fetch(`/omni/stat?path=${encodeURIComponent(f.path)}`, { cache: "no-store" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || ("HTTP " + res.status));
+    if (metaEl) metaEl.textContent = `${fmtBytes(body.size)} · ${body.modified_time || ""}`;
+  } catch (err) {
+    if (metaEl) metaEl.textContent = "stat failed";
+  }
+}
+
+// ── #6 manifest viewer (read-only) ─────────────────────────────────
+let manifestJobs = [];
+function updateManifestJobOptions(data) {
+  const grpc = data.grpc || {};
+  const set = new Set();
+  (grpc.sessions || []).forEach(s => { if (s.job_id) set.add(s.job_id); });
+  Object.keys(grpc.livesync_known_jobs || {}).forEach(j => set.add(j));
+  const jobs = [...set].sort();
+  if (jobs.join("|") === manifestJobs.join("|")) return;   // no change, keep user's selection
+  manifestJobs = jobs;
+  const sel = document.getElementById("manifest-job-select");
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">Select job…</option>` +
+    jobs.map(j => `<option value="${escapeHtml(j)}">${escapeHtml(j)}</option>`).join("");
+  if (prev && jobs.includes(prev)) sel.value = prev;
+}
+
+async function loadManifest(jobId) {
+  const table = document.getElementById("manifest-table");
+  const rowsEl = document.getElementById("manifest-rows");
+  const emptyEl = document.getElementById("manifest-empty");
+  if (!jobId) { table.style.display = "none"; emptyEl.style.display = ""; emptyEl.textContent = "Select a job to view its resolved asset manifest."; setDot("manifest-dot", ""); return; }
+  setDot("manifest-dot", "warn");
+  table.style.display = "none"; emptyEl.style.display = ""; emptyEl.textContent = "Loading manifest…";
+  try {
+    const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/manifest`, { cache: "no-store" });
+    if (res.status === 404) throw new Error("No manifest resolved for this job yet.");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const body = await res.json();
+    const steps = body.steps || [];
+    setDot("manifest-dot", "ok");
+    if (!steps.length) { table.style.display = "none"; emptyEl.style.display = ""; emptyEl.textContent = "Manifest has no steps."; return; }
+    rowsEl.innerHTML = steps.map(st =>
+      `<tr><td>${escapeHtml(st.stepId)}</td><td>${escapeHtml(st.partId || "—")}</td><td>${escapeHtml(st.assetVersion || "—")}</td><td>${escapeHtml(st.targetVersion || "—")}</td><td>${escapeHtml(st.compression || "—")}</td></tr>`
+    ).join("");
+    table.style.display = ""; emptyEl.style.display = "none";
+  } catch (err) {
+    setDot("manifest-dot", "err");
+    table.style.display = "none"; emptyEl.style.display = ""; emptyEl.textContent = err.message;
+  }
+}
+
+// Browser self-check for the one bit of real logic here (the step/worker
+// join). Load the page with ?selftest=1 and watch the console.
+function runSelfTest() {
+  const steps = [
+    { step_id: "a", display_name: "A", sequence_index: 1 },
+    { step_id: "b", display_name: "B", sequence_index: 2 },
+    { step_id: "c", display_name: "C", sequence_index: 3 },
+  ];
+  const workers = [
+    { session_id: "s1", device_id: "w1", current_step_id: "b" },
+    { session_id: "s2", device_id: "w2", current_step_id: "c" },
+  ];
+  const st = computeStepStates(steps, workers);
+  console.assert(st[0].done && !st[0].active, "A: everyone passed -> done");
+  console.assert(st[1].active && !st[1].done, "B: worker present -> active");
+  console.assert(st[2].active, "C: worker present -> active");
+  console.assert(st[1].here.length === 1 && st[2].here.length === 1, "one worker each on B, C");
+  console.log("dashboard self-test passed");
 }
 
 async function tick() {
@@ -893,6 +1274,10 @@ async function tick() {
 
 document.getElementById("refresh-btn").addEventListener("click", tick);
 document.getElementById("folders-refresh-btn").addEventListener("click", () => loadNucleusFolders(currentFoldersPath));
+document.getElementById("folder-search-btn").addEventListener("click", searchFolders);
+document.getElementById("folder-search-input").addEventListener("keydown", e => { if (e.key === "Enter") searchFolders(); });
+document.getElementById("manifest-job-select").addEventListener("change", e => loadManifest(e.target.value));
+if (new URLSearchParams(location.search).get("selftest") === "1") runSelfTest();
 tick();
 loadNucleusFolders("/");
 setInterval(tick, REFRESH_MS);
