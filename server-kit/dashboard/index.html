@@ -408,6 +408,9 @@
   .folder-tools input[type=text]:focus { outline: none; border-color: var(--accent); }
   .folder-tools label { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer; }
   .file-meta { color: var(--text-faint); font-family: var(--mono); font-size: 10.5px; }
+  /* Cap the folder/search list at ~10 rows; scroll the rest so a big
+     directory doesn't stretch the card and blow out the grid layout. */
+  #folders-list { max-height: 360px; overflow-y: auto; }
 
   /* Inline heartbeat dot inside the session table (#5) */
   td .hb-inline { display: inline-block; margin-right: 7px; vertical-align: middle; }
