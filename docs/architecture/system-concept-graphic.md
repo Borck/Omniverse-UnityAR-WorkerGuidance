@@ -4,13 +4,13 @@ Updated: 2026-03-10
 
 ```mermaid
 flowchart LR
-    U[Unity 6 Client]\nAppBootstrap + StepCoordinator
-    T[Transport Layer]\nNative gRPC / HTTP Bridge
-    S[Server Kit API]\nFastAPI + Session Manager
-    R[Step Resolver]\nYAML step definitions + layer resolver
-    E[Export Pipeline]\nGLB export + optional Draco
+    U["Unity 6 Client<br>AppBootstrap + StepCoordinator"]
+    T["Transport Layer<br>Native gRPC / HTTP Bridge"]
+    S["Server Kit API<br>FastAPI + Session Manager"]
+    R["Step Resolver<br>YAML step definitions + layer resolver"]
+    E["Export Pipeline<br>GLB export + optional Draco"]
     A[(Versioned Asset Store)]
-    V[Vuforia Runtime]\nTarget tracking callbacks
+    V["Vuforia Runtime<br>Target tracking callbacks"]
     D[(Diagnostics Bundle)]
 
     U --> T

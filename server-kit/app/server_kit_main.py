@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse
+from fastapi.responses import Response
 from fastapi import status
 from pathlib import Path
 import app
@@ -31,6 +33,7 @@ except ImportError as _exc:
 
 try:
   from .config import AppConfig
+  from .connection_qr import log_connection_qr, connection_page_html, svg_qr, build_endpoints
   from .discovery_beacon import start_beacon_from_config
   from .draco_codec import DracoCodec
   from .draco_codec import DracoCodecConfig
@@ -41,6 +44,7 @@ try:
   from .layer_stack_resolver import LayerStackResolver
 except ImportError:
   from config import AppConfig
+  from connection_qr import log_connection_qr, connection_page_html, svg_qr, build_endpoints
   from discovery_beacon import start_beacon_from_config
   from draco_codec import DracoCodec
   from draco_codec import DracoCodecConfig
@@ -205,6 +209,9 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
       except ImportError:
         omni_client = None
     beacon = start_beacon_from_config(resolved_config, logger=logger)
+    # Print the scannable gRPC + FastAPI connection QR codes to the console, and
+    # advertise the browser page for scanning from a screen.
+    log_connection_qr(resolved_config, logger=logger)
     try:
       yield
     finally:
@@ -233,6 +240,30 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
   def health() -> dict[str, str]:
     logger.info("health check", session_id="-", step_id="-", event="http.health")
     return {"status": "ok"}
+
+  @api.get("/api/connection", response_class=HTMLResponse, tags=["Connection"])
+  def connection_page() -> HTMLResponse:
+    """Browser page with both connection QR codes — scan from a screen."""
+    logger.info("connection page served", session_id="-", step_id="-", event="http.connection.page")
+    return HTMLResponse(content=connection_page_html(resolved_config))
+
+  @api.get("/api/connection/endpoints", tags=["Connection"])
+  def connection_endpoints() -> JSONResponse:
+    """The advertised gRPC + FastAPI endpoints (the QR payloads, as JSON)."""
+    ep = build_endpoints(resolved_config)
+    return JSONResponse(content={"host": ep.host, "grpc": ep.grpc_url, "http": ep.http_url})
+
+  @api.get("/api/connection/qr/{service}.svg", tags=["Connection"])
+  def connection_qr_svg(service: str) -> Response:
+    """SVG QR for a single service: 'grpc' or 'fastapi'."""
+    ep = build_endpoints(resolved_config)
+    url = {"grpc": ep.grpc_url, "fastapi": ep.http_url, "http": ep.http_url}.get(service.lower())
+    if url is None:
+      raise HTTPException(status_code=404, detail="Unknown service (use 'grpc' or 'fastapi')")
+    svg_bytes = svg_qr(url)
+    if svg_bytes is None:
+      raise HTTPException(status_code=503, detail="QR rendering unavailable (install 'qrcode' on the server)")
+    return Response(content=svg_bytes, media_type="image/svg+xml")
 
   @api.post("/api/stage:open-smoke")
   def stage_open_smoke() -> JSONResponse:
@@ -396,8 +427,8 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
           "stepId": step.step_id,
           "partId": step.part_id,
           "assetVersion": step.asset_version,
-          "glbUrl": f"/api/assets/{step.asset_version}/{step.glb_file}",
-          "stepJsonUrl": f"/api/assets/{step.asset_version}/{step.step_json_file}",
+          "glbUrl": f"/api/assets/{step.asset_version}/{step.glb_file}" if step.asset_version and step.glb_file else "",
+          "stepJsonUrl": f"/api/assets/{step.asset_version}/{step.step_json_file}" if step.asset_version and step.step_json_file else "",
           "targetVersion": step.target_version,
           "targetUrl": f"/api/targets/{step.target_version}/{step.target_file}" if step.target_version and step.target_file else "",
           "compression": step.compression,

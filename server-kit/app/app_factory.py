@@ -328,10 +328,10 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
           "stepId": step.step_id,
           "partId": step.part_id,
           "assetVersion": step.asset_version,
-          "glbUrl": f"/api/assets/{step.asset_version}/{step.glb_file}",
-          "stepJsonUrl": f"/api/assets/{step.asset_version}/{step.step_json_file}",
+          "glbUrl": f"/api/assets/{step.asset_version}/{step.glb_file}" if step.asset_version and step.glb_file else "",
+          "stepJsonUrl": f"/api/assets/{step.asset_version}/{step.step_json_file}" if step.asset_version and step.step_json_file else "",
           "targetVersion": step.target_version,
-          "targetUrl": f"/api/targets/{step.target_version}/{step.target_file}" if step.target_file else "",
+          "targetUrl": f"/api/targets/{step.target_version}/{step.target_file}" if step.target_version and step.target_file else "",
           "compression": step.compression,
         }
         for step in manifest.steps

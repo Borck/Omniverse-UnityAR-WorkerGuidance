@@ -23,6 +23,8 @@ namespace Guidance.Runtime
         private string _transportMode = string.Empty;
         private bool? _imageTargetFound = null;
         private float _fixtureDistanceMeters = -1f; // < 0 = unknown / not tracked
+        private bool _showReacquireHint = false;
+        private GUIStyle _hintStyle;
 
         private void Awake()
         {
@@ -41,6 +43,8 @@ namespace Guidance.Runtime
         public void ClearImageTargetFound() => _imageTargetFound = null;
         /// <summary>Live camera→fixture distance in metres; pass a negative value when unknown/untracked.</summary>
         public void SetFixtureDistance(float meters) => _fixtureDistanceMeters = meters;
+        /// <summary>Show/hide the always-on "re-aim at the fixture" overlay, shown while a job is active but the pose is not solidly tracked (fail-safe hologram hide).</summary>
+        public void SetReacquireHint(bool show) => _showReacquireHint = show;
 
         public void SetActiveStep(string stepId, string partId)
         {
@@ -86,6 +90,35 @@ namespace Guidance.Runtime
                 if (show != appBootstrap.IsFixtureOverlayVisible) appBootstrap.SetFixtureOverlayVisible(show);
                 GUILayout.EndHorizontal();
             }
+        }
+
+        // Always-on transient safety overlay, independent of the ControlDrawer.
+        // When an active job loses a solid tracking lock the hologram is hidden
+        // (option A fail-safe), so the worker must be told WHY it vanished and
+        // what to do. This is the only thing this component draws outside
+        // DrawContent(); it is a no-op whenever the hint is not active.
+        private void OnGUI()
+        {
+            if (!_showReacquireHint) return;
+
+            if (_hintStyle == null)
+            {
+                _hintStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = Mathf.RoundToInt(ImguiTheme.FontSize * 1.1f),
+                    alignment = TextAnchor.MiddleCenter,
+                    wordWrap = true,
+                    richText = true,
+                };
+                // Bright warm colour reads clearly on the additive waveguide
+                // (dark pixels are invisible there, so we rely on luminance).
+                _hintStyle.normal.textColor = new Color(1f, 0.85f, 0.15f);
+            }
+
+            float w = Screen.width * 0.7f;
+            float h = ImguiTheme.ControlHeight * 1.8f;
+            var rect = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.08f, w, h);
+            GUI.Label(rect, "<b>Tracking lost - aim the glasses at the fixture</b>", _hintStyle);
         }
     }
 }

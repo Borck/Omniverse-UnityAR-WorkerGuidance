@@ -29,8 +29,24 @@ namespace Guidance.Runtime
             _animator = animator;
             _delaySeconds = delaySeconds;
             _speed = speed;
-            if (_loop != null) StopCoroutine(_loop);
+            TryStartLoop();
+        }
+
+        // Initialize can run while this GameObject is still inactive (the model is
+        // parented under AnimationRoot, which stays SetActive(false) until Vuforia
+        // locks). StartCoroutine silently no-ops on an inactive object, so we gate
+        // the start and let OnEnable pick it up once tracking activates the root --
+        // mirroring AnimationReplayLoop.
+        private void TryStartLoop()
+        {
+            if (_animator == null || _loop != null) return;
+            if (!isActiveAndEnabled) return;
             _loop = StartCoroutine(LoopRoutine());
+        }
+
+        private void OnEnable()
+        {
+            TryStartLoop();
         }
 
         private IEnumerator LoopRoutine()

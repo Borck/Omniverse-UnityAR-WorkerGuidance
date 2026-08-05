@@ -152,6 +152,7 @@ MonoBehaviour:
   defaultHttpPort: 8080
   discoveryPort: 45454
   discoveryTimeoutSeconds: 3
+  qrScanner: {fileID: 0}
 --- !u!4 &60848014
 Transform:
   m_ObjectHideFlags: 0
@@ -304,7 +305,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2395664cd44d4ce4bb52ede6b7904bbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  visible: 1
   showControls: 1
   appBootstrap: {fileID: 1369277005}
 --- !u!1 &1042461901
@@ -386,6 +386,79 @@ MonoBehaviour:
   m_PointerBehavior: 0
   m_CursorLockBehavior: 0
   m_ScrollDeltaPerTick: 6
+--- !u!1 &1261957832
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1261957833}
+  - component: {fileID: 1261957835}
+  - component: {fileID: 1261957834}
+  m_Layer: 0
+  m_Name: Barcode
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1261957833
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1261957832}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1484046098}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1261957834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1261957832}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -287086267, guid: 8a9a760f95896c34689febc965510927, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mObserverBehaviour: {fileID: 1261957835}
+  mHiddenRoot: {fileID: 0}
+  mTargetName: 
+  mDatasetName: 
+  mCastedBehaviour: {fileID: 1261957835}
+  mBarcodeReferencePreview: {fileID: 0}
+--- !u!114 &1261957835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1261957832}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 762154030, guid: 8a9a760f95896c34689febc965510927, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  PreviewVisible: 1
+  RuntimeOcclusion: 0
+  RuntimeCollider: 0
+  mTrackableName: 
+  mInitializedInEditor: 1
+  mBarcodeTypes: 09000000
+  mDetectMultipleBarcodes: 1
+  mShowAdvanced: 1
+  mShowObservedTypes: 1
+  mPreview: {fileID: 1261957834}
 --- !u!1 &1369277004
 GameObject:
   m_ObjectHideFlags: 0
@@ -426,6 +499,7 @@ MonoBehaviour:
   vuforiaTrackingBridge: {fileID: 0}
   autoConfirmStepAfterAssetReady: 0
   autoConfirmDelaySeconds: 0.5
+  instructionHoldSeconds: 5
   heartbeatIntervalSeconds: 5
   reconnectMinIntervalSeconds: 2
   reconnectMaxIntervalSeconds: 20
@@ -435,15 +509,17 @@ MonoBehaviour:
   discoveryPort: 45454
   serviceTagFilter: antillen
   discoveryTimeoutSeconds: 3
-  animationOffsetLocalPosition: {x: 0, y: -0.14, z: 0}
+  animationOffsetLocalPosition: {x: 0, y: -0.05, z: 0}
   animationOffsetLocalEulerAngles: {x: 0, y: 0, z: 0}
   overlayOffsetLocalPosition: {x: 0, y: 0, z: 0}
   overlayOffsetLocalEulerAngles: {x: 0, y: 0, z: 0}
   statusPanel: {fileID: 858389738}
+  instructionOverlay: {fileID: 0}
+  fittingTextHoldSeconds: 4
+  fittingAnimationFallbackSeconds: 12
   trackingDirectionHint: {fileID: 0}
   jobSelectorPanel: {fileID: 599964136}
   fovTunerPanel: {fileID: 444537130}
-  tuneFovVisible: 1
 --- !u!4 &1369277006
 Transform:
   m_ObjectHideFlags: 0
@@ -706,7 +782,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
-  m_Children: []
+  m_Children:
+  - {fileID: 1261957833}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1484046099

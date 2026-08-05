@@ -62,8 +62,12 @@ copy livesync.config.example.yaml livesync.config.yaml
 notepad livesync.config.yaml
 ```
 
-Edit at minimum: `repo_root`, `kit_app_dir`, `nucleus_export_root`,
-`target_version`, `target_file`, `watch_paths`. See
+Edit at minimum: `repo_root`, `kit_app_dir`, `nucleus_job_root`,
+`nucleus_export_root`. Leave **`watch_paths: []`** so the watch list is derived
+from `assembly_definition.json` and refreshed after every rebuild.
+
+The old `target_version` / `target_file` keys are obsolete — the Vuforia model
+target is discovered from `{nucleus_job_root}/model_target/`. See
 [configuration.md](configuration.md) section 1 for every field.
 
 ### 1.5 Configure the export script (per job)

@@ -1,0 +1,56 @@
+{
+  "jobId": "Segment_Assembly",
+  "workflowVersion": "1.0.0",
+  "steps": [
+    {
+      "stepId": "step-001",
+      "partId": "Plate_Bottom",
+      "assetVersion": "sha256_08d98884dacf8e54",
+      "glbFile": "part_Plate_Bottom_08d98884.glb",
+      "stepJsonFile": "step-001.json",
+      "targetVersion": "2026-03-10.1",
+      "targetFile": "Segment_Assembly_Fixture.dat",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-002",
+      "partId": "Core&Coils",
+      "assetVersion": "sha256_f4f9f0291940c6df",
+      "glbFile": "part_Core&Coils_f4f9f029.glb",
+      "stepJsonFile": "step-002.json",
+      "targetVersion": "2026-03-10.1",
+      "targetFile": "Segment_Assembly_Fixture.dat",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-003",
+      "partId": "Bracket-Right",
+      "assetVersion": "sha256_4ca9e9dc8b39715e",
+      "glbFile": "part_Bracket-Right_4ca9e9dc.glb",
+      "stepJsonFile": "step-003.json",
+      "targetVersion": "2026-03-10.1",
+      "targetFile": "Segment_Assembly_Fixture.dat",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-004",
+      "partId": "Bracket-Left",
+      "assetVersion": "sha256_163bb0bfe760473d",
+      "glbFile": "part_Bracket-Left_163bb0bf.glb",
+      "stepJsonFile": "step-004.json",
+      "targetVersion": "2026-03-10.1",
+      "targetFile": "Segment_Assembly_Fixture.dat",
+      "compression": "NONE"
+    },
+    {
+      "stepId": "step-005",
+      "partId": "Plate_Top",
+      "assetVersion": "sha256_6d6f3c74ac88b3db",
+      "glbFile": "part_Plate_Top_6d6f3c74.glb",
+      "stepJsonFile": "step-005.json",
+      "targetVersion": "2026-03-10.1",
+      "targetFile": "Segment_Assembly_Fixture.dat",
+      "compression": "NONE"
+    }
+  ]
+}

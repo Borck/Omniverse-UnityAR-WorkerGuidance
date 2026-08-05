@@ -96,13 +96,16 @@ namespace Guidance.Runtime
                 _activeModelRoot.transform.SetParent(parentTransform, worldPositionStays: false);
                 _activeModelRoot.transform.localPosition = Vector3.zero;
                 _activeModelRoot.transform.localRotation = Quaternion.identity;
-                // GLBs exported from Omniverse come in at ~10x the size needed in Unity,
-                // so we uniformly downscale to 0.1 on every axis. Note: scaling this
-                // root magnifies the GLB's own positional offset (parts are exported
-                // at their real assembly position, not centered), so increasing this
-                // value also shifts the model away from the anchor. To grow the model
-                // in place, scale around its bounds centre instead (see note below).
-                _activeModelRoot.transform.localScale    = Vector3.one * 0.1f;
+                // No Unity-side scale correction. The GLBs are now authored at true
+                // real-world metres at the Omniverse level (the source of truth), so we
+                // trust the export for both size AND placement and leave the model root
+                // at scale 1.0.
+                //
+                // History (do not reintroduce): 0.1 assumed an old export was ~10x too
+                // big; 50/100 were stopgaps for a ~100x-too-small export. All obsolete
+                // now that the source is fixed. If parts ever look wrong-sized again, fix
+                // it in Omniverse (metersPerUnit / export scale), not here.
+                _activeModelRoot.transform.localScale    = Vector3.one;
             }
 
             IModelLoader selectedLoader = null;
@@ -137,6 +140,70 @@ namespace Guidance.Runtime
                 if (_activeModelRoot == myRoot)
                     ClearActiveModel();
             }
+        }
+
+        /// <summary>True while a model is loaded (whether shown or hidden).</summary>
+        public bool HasActiveModel => _activeModelRoot != null;
+
+        /// <summary>
+        /// Show/hide the active model without destroying it. Toggling the model
+        /// root's own GameObject is independent of the tracking gate (which toggles
+        /// the parent AnimationRoot), and re-enabling it re-fires the replay-loop
+        /// drivers' OnEnable so the animation restarts from frame 0 — used by the
+        /// fitting-step text/animation cycle in AppBootstrap.
+        /// </summary>
+        public void SetActiveModelVisible(bool visible)
+        {
+            if (_activeModelRoot != null && _activeModelRoot.activeSelf != visible)
+                _activeModelRoot.SetActive(visible);
+        }
+
+        /// <summary>
+        /// Effective play duration (seconds) of the longest clip on the active
+        /// model, at its authored playback speed — i.e. how long "one full play"
+        /// of the motion takes. Returns 0 when there is no active model or no
+        /// playable clip, so callers can fall back to a fixed duration.
+        /// </summary>
+        public float GetActiveAnimationPlaySeconds()
+        {
+            if (_activeModelRoot == null) return 0f;
+
+            float maxSeconds = 0f;
+
+            // Legacy Animation components (the primary path — see GltfFastModelLoader,
+            // which drives these via AnimationReplayLoop). includeInactive: the model
+            // may be hidden or under an inactive tracking gate when we query it.
+            var animations = _activeModelRoot.GetComponentsInChildren<Animation>(true);
+            foreach (var anim in animations)
+            {
+                foreach (AnimationState s in anim)
+                {
+                    float speed = Mathf.Abs(s.speed);
+                    if (speed < 0.001f) speed = 1f;
+                    float secs = s.length / speed;
+                    if (secs > maxSeconds) maxSeconds = secs;
+                }
+            }
+
+            // Mecanim Animator-driven GLBs (AnimatorReplayLoop). animator.speed may
+            // read 0 while the loop is holding the last frame, so fall back to the
+            // loader's authored playback speed (0.25x) in that case.
+            var animators = _activeModelRoot.GetComponentsInChildren<Animator>(true);
+            foreach (var animator in animators)
+            {
+                var controller = animator.runtimeAnimatorController;
+                if (controller == null) continue;
+                float speed = Mathf.Abs(animator.speed);
+                if (speed < 0.001f) speed = 0.25f;
+                foreach (var clip in controller.animationClips)
+                {
+                    if (clip == null) continue;
+                    float secs = clip.length / speed;
+                    if (secs > maxSeconds) maxSeconds = secs;
+                }
+            }
+
+            return maxSeconds;
         }
 
         public void ClearActiveModel()

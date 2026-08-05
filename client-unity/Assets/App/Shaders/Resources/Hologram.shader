@@ -1,22 +1,26 @@
 Shader "Guidance/Hologram"
 {
+    // Optical-see-through waveguide hologram, tuned for the Vuzix M4000 under
+    // bright workbench lighting. Waveguides are additive (display only ADDS
+    // light, never subtracts), so:
+    //   - Dark/dim fragments are washed out by ambient -> we keep a brightness
+    //     floor everywhere and avoid any time-varying darkening.
+    //   - Additive blend matches the optics: overlapping fragments accumulate,
+    //     never overwrite each other dimmer.
+    //   - Fresnel rim emphasises the silhouette so the part shape reads even
+    //     when the interior is washed out.
     Properties
     {
-        _BaseColor          ("Base Color",          Color) = (0.2, 0.8, 1.0, 1.0)
-        _RimColor           ("Rim Color",           Color) = (0.4, 1.0, 1.0, 1.0)
-        _RimPower           ("Rim Power",           Range(0.5, 8)) = 2.5
-        _RimIntensity       ("Rim Intensity",       Range(0, 5))   = 2.0
-        _Alpha              ("Body Alpha",          Range(0, 1))   = 0.18
-        _ScanlineSpeed      ("Scanline Speed",      Range(0, 5))   = 0.6
-        _ScanlineDensity    ("Scanline Density",    Range(1, 200)) = 60
-        _ScanlineIntensity  ("Scanline Intensity",  Range(0, 1))   = 0.4
-        _PulseSpeed         ("Pulse Speed",         Range(0, 5))   = 0.5
-        _PulseAmount        ("Pulse Amount",        Range(0, 1))   = 0.75
+        [HDR] _BaseColor    ("Base Color (HDR)",       Color) = (0, 2, 2, 1)
+        [HDR] _RimColor     ("Rim Color (HDR)",        Color) = (0.8, 2.5, 2.5, 1)
+        _RimPower           ("Rim Power",              Range(0.5, 8))  = 1.8
+        _RimIntensity       ("Rim Intensity",          Range(0, 15))   = 6.0
+        _BodyAlpha          ("Body Alpha",             Range(0, 1))    = 0.55
+        _ShapeContrast      ("Body Shape Contrast",    Range(0, 1))    = 0.25
     }
 
     SubShader
     {
-        // RenderPipeline tag tells URP this SubShader is for it.
         Tags
         {
             "RenderType"      = "Transparent"
@@ -32,9 +36,15 @@ Shader "Guidance/Hologram"
             // old Built-in tag) is silently skipped by URP -> invisible model.
             Tags { "LightMode" = "UniversalForward" }
 
-            Blend SrcAlpha OneMinusSrcAlpha
+            // Pure additive: no source-alpha attenuation, so every fragment
+            // contributes its full HDR colour to the framebuffer. Maximum
+            // possible punch on the waveguide.
+            Blend One One
             ZWrite Off
-            Cull Off
+            // Never depth-occluded: punch through fixture overlay, near-clip,
+            // anything else in the scene.
+            ZTest Always
+            Cull Back
 
             HLSLPROGRAM
             #pragma vertex   vert
@@ -61,12 +71,8 @@ Shader "Guidance/Hologram"
                 float4 _RimColor;
                 float  _RimPower;
                 float  _RimIntensity;
-                float  _Alpha;
-                float  _ScanlineSpeed;
-                float  _ScanlineDensity;
-                float  _ScanlineIntensity;
-                float  _PulseSpeed;
-                float  _PulseAmount;
+                float  _BodyAlpha;
+                float  _ShapeContrast;
             CBUFFER_END
 
             v2f vert (appdata v)
@@ -82,25 +88,24 @@ Shader "Guidance/Hologram"
             {
                 float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
                 float  ndotv   = saturate(dot(normalize(i.worldNormal), viewDir));
-                float  fresnel = pow(1.0 - ndotv, _RimPower) * _RimIntensity;
 
-                // Double-tap heartbeat: two close peaks (lub-dub), then a rest,
-                // repeating once per (1/_PulseSpeed) seconds.
-                float phase = frac(_Time.y * _PulseSpeed);
-                float peak1 = exp(-pow((phase - 0.08) * 14.0, 2.0));
-                float peak2 = exp(-pow((phase - 0.24) * 14.0, 2.0));
-                float beat  = saturate(peak1 + peak2);
-                float pulse = lerp(1.0 - _PulseAmount, 1.0 + _PulseAmount, beat);
+                // Fresnel: dim at facing, bright at grazing -> silhouette glows.
+                float fresnel = pow(1.0 - ndotv, _RimPower) * _RimIntensity;
 
-                float scan     = sin((i.worldPos.y * _ScanlineDensity) - (_Time.y * _ScanlineSpeed * 6.2831853)) * 0.5 + 0.5;
-                float scanMask = lerp(1.0 - _ScanlineIntensity, 1.0, scan);
+                // Body brightness has a configurable floor so back-facing /
+                // shadowed fragments don't drop below the waveguide's
+                // washout threshold under bright workbench light.
+                // _ShapeContrast = 0 -> flat body (max visibility, no shape cue)
+                // _ShapeContrast = 1 -> full N.V shading (best shape cue)
+                float bodyShade = lerp(1.0, ndotv, _ShapeContrast);
 
-                half3 body = _BaseColor.rgb * scanMask * pulse;
+                half3 body = _BaseColor.rgb * bodyShade * _BodyAlpha;
                 half3 rim  = _RimColor.rgb  * fresnel;
-                half3 col  = body + rim;
-
-                half alpha = saturate((_Alpha * scanMask + fresnel) * pulse);
-                return half4(col, alpha);
+                // Pure additive (Blend One One): the final colour we return is
+                // exactly what gets added to the framebuffer. Alpha is unused
+                // by the blend equation but kept = 1 so debugging in editor
+                // shows the same intensity it ends up at on glass.
+                return half4(body + rim, 1.0);
             }
             ENDHLSL
         }

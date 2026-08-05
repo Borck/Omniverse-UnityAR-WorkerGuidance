@@ -12,4 +12,9 @@ if not exist "%KIT_PYTHON%" (
 )
 
 "%KIT_PYTHON%" "%RUNNER%"
+if errorlevel 1 (
+  echo.
+  echo [trigger_now] pipeline_runner exited with an error. See the message above.
+  pause
+)
 endlocal

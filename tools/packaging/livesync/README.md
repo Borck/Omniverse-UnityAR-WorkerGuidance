@@ -45,12 +45,25 @@ download GLBs and call `nucleus_job_service.prepare_job()` directly.
    The fields most likely to need changing per host:
    - `repo_root` — where this repo is checked out
    - `kit_app_dir` — where `kit-app-template-109-0-3` lives
-   - `kit_export_command` — verify the flag syntax matches your template
+   - `kit_export_command` — verify the flag syntax matches your template, and
+     that it launches the minimal `--name direkt_export.kit`
+   - `nucleus_job_root` — the job folder on Nucleus; the assembly definition,
+     the animation USDs and the model target are all derived from it
    - `nucleus_export_root` — Nucleus path where the Kit exporter drops GLBs
-     (matches `NUCLEUS_OUTPUT_ROOT` in `export_glbs_from_usd.py`, minus the
-     `omniverse://<host>` prefix)
-   - `target_version` / `target_file` — Vuforia Model Target identifiers
-   - `watch_paths` — the master USD plus every part USD and `-Position.usd`
+   - `watch_paths` — **leave as `[]`**; see below
+
+   > The old `target_version` / `target_file` keys are gone: `prepare_job`
+   > discovers the Vuforia model target from `{nucleus_job_root}/model_target/`.
+   > `job_id` and the Nucleus paths are handed to the Kit exporter as
+   > `DIREKT_*` environment variables — nothing is hardcoded in the script.
+
+   **Watch paths are collected automatically.** With `watch_paths: []` the
+   watcher reads `assembly_definition.json` and watches the JSON itself, the
+   model-target `.dat`/`.xml`, and one `step_id_<M>_<N>.usd` per `is_animation`
+   step — then re-derives that list after every rebuild, so steps added to the
+   JSON are picked up without restarting the watcher. Only set an explicit list
+   to override this (it then never auto-refreshes). Full detail in
+   [docs/live-sync/configuration.md](../../../docs/live-sync/configuration.md).
 
 2. Confirm the Kit headless export works by itself, by hand:
 
@@ -90,7 +103,16 @@ download GLBs and call `nucleus_job_service.prepare_job()` directly.
    .\run_watcher.bat
    ```
 
-   You should see `Live-sync watcher starting` and `Watching N path(s)`.
+   You should see `Live-sync watcher starting` followed by:
+
+   ```
+   Derived 26 watch path(s) from omniverse://.../JSON/assembly_definition.json
+   Watching 26 path(s) on Nucleus (auto-derived; refreshed after each rebuild)
+   ```
+
+   If it instead says `explicit watch_paths from config; NOT auto-refreshed`,
+   `watch_paths` is non-empty — clear it to `[]` unless you deliberately want a
+   fixed list.
 
 6. To run the watcher on boot, add it as a Windows Task Scheduler entry:
    - Trigger: At startup

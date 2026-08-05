@@ -13,29 +13,39 @@ different FOVs at play**:
 
 | FOV | Value | What it is |
 |---|---|---|
-| **Camera FOV** | ~37° vertical | The vertical angle the M4000's tracking camera sees of the world. Vuforia derives its projection matrix from this. |
-| **Waveguide / display FOV** | ~28° vertical | The angular slice of the framebuffer that the optics actually project to the eye. |
+| **Camera FOV** | ~37° vertical | The vertical angle the M4000's tracking camera sees of the world. Vuforia derives its projection matrix from this. Measured live from the matrix (`vfov = 2·atan(1/abs(m11))`) — check the logcat line for your unit's exact value. |
+| **Waveguide / display FOV** | **~14° vertical** (28° **diagonal**) | The angular slice of the framebuffer the optics actually project to the eye. **The headline "28°" Vuzix spec is the _diagonal_ FOV.** For the ~16:9 WVGA panel that splits into ≈24.5° horizontal × **≈14° vertical**. |
+
+> **Diagonal vs. vertical — the distinction that sets "true size."** The slider
+> and the whole projection scale work in **vertical** FOV (the override scales
+> `m11`, the vertical element). So the number that matters for matching size is
+> the **vertical** display FOV ≈ **14°**, *not* the 28° diagonal headline. An
+> earlier version of this doc treated 28° as the vertical display FOV and put
+> "true size" at the 28° slider mark — that is wrong: at the 28° mark the hologram
+> renders at only about **half** real angular size. Confirm the exact true-size
+> slider value on glass (the setting where the hologram edges land on the real
+> part); it is expected around **13–16°**.
 
 These don't match. The consequence:
 
-- Vuforia renders the virtual world at **37°** into the framebuffer.
-- The waveguide then squeezes that whole framebuffer into the eye's
-  **28°** window.
-- 37° of rendered content compressed into 28° of eye-angle ⇒ virtual
-  content appears **smaller than the real fixture**. The "everything
-  looks far away" experience.
+- Vuforia renders the virtual world at **~37°** vertical into the framebuffer.
+- The waveguide then shows that framebuffer across only the eye's **~14°**
+  vertical window.
+- ~37° of rendered content displayed in ~14° of eye-angle ⇒ virtual content
+  appears **much smaller than the real fixture** (about a third of real size at
+  native — see §1b.4). The "everything looks far away" experience.
 
-The FOV tuner narrows the render-side FOV so virtual content fills more
-of the waveguide, with an on-glass slider for live tuning. The
-"true size" line — where the hologram matches the real part 1:1 — is
-exactly the **display FOV**: render at 28° and the hologram subtends
-the same eye angle as the real part.
+The FOV tuner narrows the render-side FOV so virtual content fills more of the
+waveguide, with an on-glass slider for live tuning. The **"true size" line** —
+where the hologram matches the real part 1:1 — is where the **render FOV equals
+the _vertical_ display FOV**, i.e. the slider set to ≈ **14°** (confirm on glass).
 
-| Render FOV (slider) | Effect through the 28° display |
+| Render FOV (slider) | Effect through the ~14° vertical display |
 |---|---|
-| **37°** (slider max, = native) | 37° squeezed into 28° → smaller than real (Vuforia default) |
-| **28°** | 28° shown in 28° → **angular 1:1, true size** |
-| **< 28°** | narrow world shown in 28° → magnified / scope zoom |
+| **37°** (slider max, = native) | ~37° shown in ~14° → ~⅓ real size (Vuforia default, "far away") |
+| **28°** | still ~½ real size — **not** true size (28° is the diagonal spec) |
+| **≈14°** | render ≈ vertical display FOV → **angular 1:1, true size** |
+| **< 14°** | narrow world shown in ~14° → magnified past real / scope zoom |
 
 ## 1b. The size relationship: real ↔ camera ↔ display (the math)
 
@@ -113,24 +123,25 @@ Two factors, and they are the entire story:
 
 ### 1b.4 What the dominant term predicts
 
-With raw Vuforia (`FOV_render` = native **37°**), display **28°**, ignoring the
-small term:
+With raw Vuforia (`FOV_render` = native **37°**), **vertical** display **≈14°**
+(the 28° diagonal spec → ~14° vertical), ignoring the small term:
 
 ```
-M ≈ tan(14°) / tan(18.5°) = 0.249 / 0.335 ≈ 0.75
+M ≈ tan(7°) / tan(18.5°) = 0.123 / 0.335 ≈ 0.37
 ```
 
-The hologram is **~75 % of real size, independent of distance** — that *is* the
+The hologram is **~37 % of real size, independent of distance** — that *is* the
 "everything looks small / far away" effect, and it is pure optics
-(`FOV_display / FOV_camera`).
+(`FOV_display / FOV_camera`). (An earlier version used 28° as the *vertical*
+display FOV and got 0.75; the correct vertical figure is ~14°, hence ~0.37.)
 
 It also derives the **true-size point** directly: set `M = 1` (ignoring the small
 term) ⇒ `tan(FOV_render/2) = tan(FOV_display/2)` ⇒
 ```
-FOV_render = FOV_display = 28°   →   hologram = real size
+FOV_render = FOV_display ≈ 14°   →   hologram = real size
 ```
-That is *why* 28° is special: it is the only render FOV where the display FOV
-cancels the render FOV.
+That is *why* ≈14° is the special slider value: it is the render FOV where the
+**vertical** display FOV cancels the render FOV. (Not 28° — that is the diagonal.)
 
 ### 1b.5 The eye-offset (distance) term, quantified
 
@@ -149,30 +160,35 @@ FOV ratio.
 
 ### 1b.6 Worked example
 
-Part `H` = 10 cm at `D_cam` = 50 cm; camera 37°, display 28°, eye 5 cm behind the
-camera (`D_eye` = 55 cm):
+Part `H` = 10 cm at `D_cam` = 50 cm; camera 37°, **vertical** display ≈14°, eye
+5 cm behind the camera (`D_eye` = 55 cm):
 
 | Quantity | Computation | Result |
 |---|---|---|
 | Real part (naked eye) | `2·atan(5/55)` | **10.4°** |
-| Hologram @ native 37° | `M = 0.745 × 1.10 = 0.82` | **8.5°** (smaller — "far away") |
-| Hologram @ 28° (true size) | `M = 1.00 × 1.10 = 1.10` | **11.4°** (~10 % bigger, from eye-offset) |
-| Hologram @ 18° (default) | `M = (tan14/tan9) × 1.10 = 1.57 × 1.10 = 1.73` | **18°** (zoomed for visibility) |
+| Hologram @ native 37° | `M = 0.37 × 1.10 = 0.40` | **4.2°** (much smaller — "far away") |
+| Hologram @ 28° | `M = 0.49 × 1.10 = 0.54` | **5.6°** (still about half — *not* true size) |
+| Hologram @ 18° (default) | `M = (tan7/tan9) × 1.10 = 0.78 × 1.10 = 0.85` | **8.9°** (slightly under real) |
+| Hologram @ ≈14° (true size) | `M = 1.00 × 1.10 = 1.10` | **11.4°** (~10 % bigger, from eye-offset) |
 
 ### 1b.7 Two magnification references (a common point of confusion)
 
-"18° ≈ 2.1× zoom" (§5) and "18° ≈ 1.7× real" (above) are **both correct** — they
+"18° ≈ 2.1× zoom" (§5) and "18° ≈ 0.85× real" (above) are **both correct** — they
 use different reference points:
 
 - **2.1×** = hologram @ 18° vs. hologram @ **native 37°** =
   `tan(18.5°)/tan(9°)`. This is the override's own zoom factor (what
-  `CameraFovOverride` multiplies the projection by).
-- **1.57–1.7×** = hologram @ 18° vs. **real life** =
-  `tan(14°)/tan(9°) × (D_eye/D_cam)`. This uses display 28° as the reference,
-  because true size happens at 28°.
+  `CameraFovOverride` multiplies the projection by). It is always measured
+  against native, so it is unaffected by the display-FOV correction.
+- **~0.85×** = hologram @ 18° vs. **real life** =
+  `tan(7°)/tan(9°) × (D_eye/D_cam) = 0.78 × 1.10`. This uses the **vertical**
+  display ≈14° as the reference, because true size happens at ≈14°. Note this is
+  **less than 1** — at the 18° default the hologram is still slightly *smaller*
+  than real; you reach 1:1 only near 14°.
 
 Mixing these two references is the classic source of "wait, which number is the
-zoom?" confusion.
+zoom?" confusion. (The earlier doc compounded it by using 28° as the real-life
+reference, which wrongly made 18° look like 1.7× real instead of ~0.85×.)
 
 ### 1b.8 Do we need the focal length / virtual-image distance?
 
@@ -350,21 +366,26 @@ it depends on device/resolution mode — so we don't hard-code it.
 ### Calibrated slider values for M4000
 
 The slider top equals Vuforia's native (~37°) so the entire slider is
-genuine zoom-in. Approximate effective zoom:
+genuine zoom-in. **Scale** = zoom vs. native (`tan(18.5°)/tan(slider/2)`, what the
+code multiplies by). **≈× real** = size vs. real life through the ~14° vertical
+display (`tan(7°)/tan(slider/2)`, FOV-ratio only — multiply by ~1.05–1.1 up close
+for the eye-offset term):
 
-| Slider | Scale | Effect |
-|---|---|---|
-| **37°** | ~1.0× | Matches Vuforia native — slider's "no zoom" position |
-| 30° | ~1.25× | Mild zoom (preset) |
-| **28°** | ~1.32× | **Angular 1:1 with the waveguide — true size** |
-| 24° | ~1.57× | Moderate |
-| **18°** (default) | ~2.1× | Sensible baseline; out-of-box ON setting (preset) |
-| 14° | ~2.7× | Strong scope |
-| **12°** | ~3.2× | Heavy zoom (preset) |
-| 8° | ~4.8× | Maximum magnification |
+| Slider | Scale (vs native) | ≈× real | Effect |
+|---|---|---|---|
+| **37°** | ~1.0× | ~0.37× | Matches Vuforia native — much smaller than real ("far away") |
+| 30° | ~1.25× | ~0.46× | Mild zoom (preset) |
+| **28°** | ~1.34× | ~0.49× | ~half real — **not** true size (28° is the *diagonal* spec) |
+| 24° | ~1.57× | ~0.58× | Moderate |
+| **18°** (default) | ~2.1× | ~0.78× | Out-of-box ON setting (preset) — still slightly under real |
+| **≈14°** | ~2.7× | **~1.0×** | **Angular 1:1 — true size (render ≈ vertical display FOV)** |
+| **12°** | ~3.2× | ~1.17× | Heavy zoom (preset) — larger than real |
+| 8° | ~4.8× | ~1.76× | Maximum magnification |
 
 Constants live in `CameraFovOverride.cs`: `MinFovDegrees = 8f`,
-`MaxFovDegrees = 37f`, `DefaultFovDegrees = 18f`.
+`MaxFovDegrees = 37f`, `DefaultFovDegrees = 18f`. **Note:** the 18° default renders
+at ~0.78× real (slightly small); for true-size overlay set the slider to ≈14°.
+Confirm the exact true-size value on glass — see §1's diagonal-vs-vertical note.
 
 ## 6. Code modules
 
@@ -464,7 +485,7 @@ content sits near the anchor.
 ### 8.2 Camera-eye parallax is a *separate* problem
 
 The FOV zoom is correct in **camera space**. It does not correct the
-~5.5 cm offset between the M4000's camera and the operator's eye —
+~6 cm lateral offset between the M4000's camera and the operator's eye —
 that's what the eye-offset calibration is for. See
 `docs/m4000-eye-calibration.md`.
 
@@ -475,7 +496,8 @@ through the waveguide is approximated by eye, not by intrinsics. With
 Vuzix-provided calibration we could plug it into
 `VuforiaConfiguration.DeviceTrackerConfiguration.UseThirdPartySeethroughEyewear`
 for proper optical-see-through registration. Until then, this slider
-is the closest we get to true 1:1 at the 28° "true size" mark.
+is the closest we get to true 1:1, at the **≈14° vertical** "true size" mark
+(not 28° — that is the diagonal spec; see §1).
 
 ### 8.4 In the Unity Editor (PC webcam) the source FOV is degenerate
 
