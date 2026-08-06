@@ -542,7 +542,10 @@
         <button class="action-btn" id="folder-search-btn">Search</button>
       </div>
       <div class="endpoint-list" id="folders-list"></div>
-      <button class="action-btn" id="folders-refresh-btn">Refresh</button>
+      <div class="folder-tools">
+        <button class="action-btn" id="folders-refresh-btn">Refresh</button>
+        <label title="Keep retrying until Nucleus responds"><input type="checkbox" id="folder-autoconnect" /> Auto-connect</label>
+      </div>
     </section>
   </div>
 
@@ -816,8 +819,15 @@ function fmtBytes(n) {
 // (already 15s-timeout-protected). Not part of the /status poll -- fetched
 // on load, on demand, and right after a Nucleus switch, since that's the
 // moment you actually want proof the new connection can list something.
+let foldersReqSeq = 0;      // bumped each call; only the latest is allowed to touch the UI
+let foldersTicker = null;   // shared so a new call cancels the previous one's counter
+let autoConnect = false;    // when on, keep retrying a failed connect until it succeeds
+let autoRetryTimer = null;  // pending retry timeout, so it can be cancelled
+const AUTO_RETRY_MS = 3000;
 async function loadNucleusFolders(path) {
   path = path || currentFoldersPath || "/";
+  const myReq = ++foldersReqSeq;   // a later switch (e.g. BTU -> Chesco) makes this stale
+  if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }  // supersede any scheduled retry
   const dotEl = document.getElementById("folders-dot");
   const badgeEl = document.getElementById("folders-badge");
   const listEl = document.getElementById("folders-list");
@@ -830,12 +840,16 @@ async function loadNucleusFolders(path) {
   // Clear the stale list immediately -- otherwise the previous Nucleus's
   // folders stay on screen during the (slow) connect to the new one.
   listEl.innerHTML = `<div class="empty">Connecting to Nucleus…</div>`;
-  const ticker = setInterval(() => {
+  if (foldersTicker) clearInterval(foldersTicker);   // stop the previous call's counter
+  foldersTicker = setInterval(() => {
     badgeEl.textContent = `Connecting… ${Math.round((Date.now() - started) / 1000)}s`;
   }, 1000);
   try {
     const res = await fetch(`/omni/folders?path=${encodeURIComponent(path)}`, { cache: "no-store" });
-    clearInterval(ticker);
+    // A newer switch started while this request was in flight -- that call now
+    // owns the UI and the ticker, so this stale response must not draw anything.
+    if (myReq !== foldersReqSeq) return;
+    clearInterval(foldersTicker);
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.detail || ("HTTP " + res.status));
     currentFoldersPath = path;
@@ -869,10 +883,24 @@ async function loadNucleusFolders(path) {
       });
     }
   } catch (err) {
-    clearInterval(ticker);
+    if (myReq !== foldersReqSeq) return;   // superseded; leave the newer call's UI alone
+    clearInterval(foldersTicker);
     setDot("folders-dot", "err");
-    badgeEl.textContent = "Unreachable";
-    listEl.innerHTML = `<div class="empty">Could not reach Nucleus: ${escapeHtml(err.message)}<br>The Docker Nucleus can be slow to connect or briefly offline — try Refresh again.</div>`;
+    if (autoConnect) {
+      // Keep trying: the Docker Nucleus may still be booting or between
+      // reconnects. Count down to the next attempt, then fire again.
+      let remain = Math.round(AUTO_RETRY_MS / 1000);
+      badgeEl.textContent = `Retrying in ${remain}s…`;
+      foldersTicker = setInterval(() => {
+        remain -= 1;
+        badgeEl.textContent = remain > 0 ? `Retrying in ${remain}s…` : "Retrying…";
+      }, 1000);
+      listEl.innerHTML = `<div class="empty">Nucleus not ready — auto-retrying.<br><span class="sub">${escapeHtml(err.message)}</span></div>`;
+      autoRetryTimer = setTimeout(() => loadNucleusFolders(path), AUTO_RETRY_MS);
+    } else {
+      badgeEl.textContent = "Unreachable";
+      listEl.innerHTML = `<div class="empty">Could not reach Nucleus: ${escapeHtml(err.message)}<br>The Docker Nucleus can be slow to connect or briefly offline — try Refresh, or tick Auto-connect.</div>`;
+    }
   }
 }
 
@@ -1288,6 +1316,14 @@ async function tick() {
 
 document.getElementById("refresh-btn").addEventListener("click", tick);
 document.getElementById("folders-refresh-btn").addEventListener("click", () => loadNucleusFolders(currentFoldersPath));
+document.getElementById("folder-autoconnect").addEventListener("change", (e) => {
+  autoConnect = e.target.checked;
+  if (autoConnect) {
+    loadNucleusFolders(currentFoldersPath);   // start trying immediately
+  } else if (autoRetryTimer) {
+    clearTimeout(autoRetryTimer); autoRetryTimer = null;   // stop the retry loop
+  }
+});
 document.getElementById("folder-search-btn").addEventListener("click", searchFolders);
 document.getElementById("folder-search-input").addEventListener("keydown", e => { if (e.key === "Enter") searchFolders(); });
 document.getElementById("manifest-job-select").addEventListener("change", e => loadManifest(e.target.value));
