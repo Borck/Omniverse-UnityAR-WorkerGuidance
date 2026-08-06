@@ -823,9 +823,19 @@ async function loadNucleusFolders(path) {
   const listEl = document.getElementById("folders-list");
   document.getElementById("folders-path").textContent = path;
   setDot("folders-dot", "warn");
-  badgeEl.textContent = "Loading...";
+  // Live elapsed counter -- the Docker Nucleus can take 30-40s on a cold
+  // connect, so show it ticking instead of a frozen "Loading..." label.
+  const started = Date.now();
+  badgeEl.textContent = "Connecting…";
+  // Clear the stale list immediately -- otherwise the previous Nucleus's
+  // folders stay on screen during the (slow) connect to the new one.
+  listEl.innerHTML = `<div class="empty">Connecting to Nucleus…</div>`;
+  const ticker = setInterval(() => {
+    badgeEl.textContent = `Connecting… ${Math.round((Date.now() - started) / 1000)}s`;
+  }, 1000);
   try {
     const res = await fetch(`/omni/folders?path=${encodeURIComponent(path)}`, { cache: "no-store" });
+    clearInterval(ticker);
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.detail || ("HTTP " + res.status));
     currentFoldersPath = path;
@@ -859,9 +869,10 @@ async function loadNucleusFolders(path) {
       });
     }
   } catch (err) {
+    clearInterval(ticker);
     setDot("folders-dot", "err");
     badgeEl.textContent = "Unreachable";
-    listEl.innerHTML = `<div class="empty">Could not load: ${escapeHtml(err.message)}</div>`;
+    listEl.innerHTML = `<div class="empty">Could not reach Nucleus: ${escapeHtml(err.message)}<br>The Docker Nucleus can be slow to connect or briefly offline — try Refresh again.</div>`;
   }
 }
 

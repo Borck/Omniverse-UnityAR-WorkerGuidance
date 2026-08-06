@@ -5,8 +5,16 @@ from app.omniverse.nucleus_manager import get_manager
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 # ponytail: timeout for /folders and /files endpoints only.
-_NUCLEUS_TIMEOUT_SECONDS = 15
-_executor = ThreadPoolExecutor(max_workers=4)
+# 50s because the Nucleus runs in Docker -- a cold connect can take 30-40s,
+# and it occasionally drops and re-establishes. 15s was firing before it even
+# finished connecting.
+_NUCLEUS_TIMEOUT_SECONDS = 50
+# A timed-out request leaves its thread blocked on the uncancellable
+# omni.client.list call, so a small pool gets permanently exhausted after a
+# few slow requests (the "fails after N refreshes" bug). 16 gives generous
+# headroom for a single-admin dashboard; threads free as calls finally return.
+# ponytail: bump higher only if a genuinely concurrent multi-user need appears.
+_executor = ThreadPoolExecutor(max_workers=16)
 
 # ─── Services ────────────────────────────────────────────────────────────────
 def entry_to_dict(path: str, e) -> dict:
