@@ -5,6 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "generated"))
 
 try:
     from .config import AppConfig
+    from .connection_qr import log_connection_qr
     from .discovery_beacon import start_beacon_from_config
     from .draco_codec import DracoCodec
     from .draco_codec import DracoCodecConfig
@@ -20,6 +21,7 @@ try:
     from .step_definition_repository import StepDefinitionRepository
 except ImportError:
     from config import AppConfig
+    from connection_qr import log_connection_qr
     from discovery_beacon import start_beacon_from_config
     from draco_codec import DracoCodec
     from draco_codec import DracoCodecConfig
@@ -106,6 +108,8 @@ def run_combined_grpc_server(config: AppConfig) -> None:
     server.start()
     logger.info("grpc service started", session_id="-", step_id="-", event="grpc.start")
     start_beacon_from_config(config, logger=logger)
+    # Print the scannable gRPC + FastAPI connection QR codes to the console.
+    log_connection_qr(config, logger=logger)
 
     # Live-sync: watch on-disk manifests and broadcast ManifestUpdated when
     # any step's assetVersion changes. Daemon thread; dies with the server.

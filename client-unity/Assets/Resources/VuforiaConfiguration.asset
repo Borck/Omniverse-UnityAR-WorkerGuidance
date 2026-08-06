@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   vuforia:
     vuforiaLicenseKey: AUkZkLL/////AAABmczdPFhLlkb0gqibH4bUhq4N3Pnrl6zv0ehv+XFjPK3iZGOkPl7diAkOwiwpsx2TUYMLR7ZD40eLUrC2HWJzBi2TmdMeQ8R2kFf48Wz597kfBpgCKbmWnpCbgHI4GyCA+FoNsqdc6bPM+q+JfCznlIpx99ERQ8wEi/M87E5J1Hswb94Jx+u0rUQ9J8POaHIJdy6uKyQhgERZTveBCOuvnupwiwAMLQzXom1KVqkhKLziBcdLnyd2riNLPNrqTLL0cu7zUwRDMNzj3NlRkQGc1h9lD/+pHxFk+SkVGOYp2b5opXAu+galedN5Gv56oKpKqm3qqbQvwUJ6+o6vz0AUT/i7ElftBmH0Li9iwQ/f+0ra
-    ufoLicenseKey: QVhiM0Y1Ly8vLy8vQUFBQUtPbnFIeHJFSGs1N3VrMlg4U050eVBzK2pkOFZxMDhrazlwYjBsYS9aZUIxQlV1ckZWcWt0ZllSQWpnT2tIRlY2VzdOMDRTRjNYRUhmbTF5L1BnYlB4eWdHWEF6RUNheXowc3dyNVNYa2ozdERuRjhka1FpOHRscHdkMDcrcEJEY1FjTjNJcUM1bEgwOTYzQkdZdjRsQStRb0hSQU9nRGthelp5TlY0WHVwWU9EaE05NWw5bXAzbnBDMjM5MWZBWXBFdEdiL2loTDNab3N4b25ZblhjK1JtSS9wLzRoTDIwVGhmTXR6WFJNYkpUTXZLZzJoQ0N0TEJXNEptZ0pSOUtSdStzQWM3QjVNOWFFMGVHQ1dUT1VRSUUweEpiZC9ZL2cvS29iNDhBRXdQOGFwbWR5NmRWU0FHU2psVzRZY2FEU2Zud3J1ZHhucVNmSUZiajNTUnIzM0lKVlFIaW1rL0oyOGNFeDdyekcySXg=
+    ufoLicenseKey: QWVRR0ttZi8vLy8vQUFBQUtIaFJRZmtnMWtvQnFiQUQxbTBuazBBYXlEdlMxVEtaa3o1MldoOE0vdThPdVZNR2tUcC9QaFlvWThkNzZqc2VhazZOYjRnWjVrMFVoSE1pRzArZVRGMkdxNHE5ekNObG1EcDJ0TTQ2WGx3WTd6Nkp6b1lHbEJZNUp1d0lMNXJ0NzByTnFJdjE3dnhuekx3UW1LTjAxYjZ0M2FHOXhhMHNQTEJrbVlIUzNJOGFuUDg3bjd0ZUhZOHdLUFExemNnajFpQ1ZycUgydjdhY3g2ajI2a2dscTRFZ0tTcGNGMTJvZDRFK0ovT29aem8zVmJHeldIUllDUkYyQmxVbE83U1JGSUpvbTEyYms3SlhhTVVTRGJRUUpuV0FWQ2hKN0dVSGRRSm1CdGlZMjFhTTVmOGZ5QkwvNm1DZGw1U0VJbHJOeXdzTE1WdTkrcTBkTW43T25NYTRyYmt2cXZyYkRRdlZyV0tkNnZaWWIzVU8=
     delayedInitialization: 0
-    cameraFocusModeSetting: 5
-    cameraDeviceModeSetting: -2
+    cameraFocusModeSetting: 2
+    cameraDeviceModeSetting: -1
     maxSimultaneousImageTargets: 1
     virtualSceneScaleFactor: 1
     modelTargetRecoWhileExtendedTracked: 1
@@ -42,8 +42,8 @@ MonoBehaviour:
     videoBackgroundEnabled: 0
   deviceTracker:
     autoStartTracker: 1
-    arcoreRequirement: 1
-    autoImportArcore: 0
+    arcoreRequirement: 2
+    autoImportArcore: 1
     thirdPartyARCoreClientDetected: 0
   playmode:
     mRecordingPath: 

@@ -439,7 +439,14 @@ namespace Guidance.Runtime
             const float playbackSpeed       = 0.25f;
             const float replayDelaySeconds  = 10f;
 
-            Animation[] animations = offsetNode.GetComponentsInChildren<Animation>();
+            // includeInactive: true is CRITICAL. Models are instantiated under
+            // AnimationRoot, which AppBootstrap keeps SetActive(false) until Vuforia
+            // acquires a solid pose. Without includeInactive the search returns an
+            // empty array whenever the model loaded before tracking locked, so NO
+            // replay-loop driver gets attached and the part never animates -- even
+            // after the root activates (the OnEnable safety net can't fire on a
+            // component that was never added). Matches HologramApplier/FixtureOverlay.
+            Animation[] animations = offsetNode.GetComponentsInChildren<Animation>(true);
             foreach (Animation anim in animations)
             {
                 anim.wrapMode = WrapMode.ClampForever;
@@ -464,7 +471,7 @@ namespace Guidance.Runtime
                 loop.Initialize(anim, replayDelaySeconds, playbackSpeed);
             }
 
-            Animator[] animators = offsetNode.GetComponentsInChildren<Animator>();
+            Animator[] animators = offsetNode.GetComponentsInChildren<Animator>(true);
             foreach (Animator animator in animators)
             {
                 animator.enabled = true;

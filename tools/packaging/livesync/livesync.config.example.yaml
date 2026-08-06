@@ -6,19 +6,31 @@
 # are resolved from here.
 repo_root: "D:/DIREKT/Worker guidance/Omniverse-UnityAR-WorkerGuidance"
 
-# The job to rebuild on every change. Must match a config under
-# tools/packaging/jobs/ and the JOB_CONFIG_NAME inside export_glbs_from_usd.py.
-job_id: "demonstrator-26-02-25"
+# The job to rebuild on every change. Also the Nucleus output subfolder name.
+job_id: "Segment_Assembly"
 
-# Nucleus paths to watch. The watcher stats each one every poll_interval_sec
-# and triggers a rebuild when ANY of them gets a new modification time.
-# Include the master USD AND every per-part USD it sublayers in.
-watch_paths:
-  - "omniverse://localhost/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025/Demonstrator%2026.02.25.usd"
-  # Add the 7 part USDs here too, e.g.:
-  # - "omniverse://localhost/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025/PLATE_BOTTOM_01_001.usd"
-  # - "omniverse://localhost/Projects/DIREKT/Omniverse%20Tests/Animation%20Februar%2025/CORES_001.usd"
-  # ... etc
+# ── Job source on Nucleus ────────────────────────────────────────────────
+# Root Nucleus folder of the JOB (the Animation Export folder). Everything else
+# is derived from it by convention (override individually below if it differs):
+#   {nucleus_job_root}/                             -> the step_id_<M>_<N>_Animation.usd files (in the root)
+#   {nucleus_job_root}/JSON/*.json                  -> assembly definition (drives the steps)
+#   {nucleus_job_root}/model_target/  (.dat + .xml) -> Vuforia Model Target (discovered, copied as-is)
+# Leave empty for now if the JOB folder isn't finalized; fill before a run.
+nucleus_job_root: ""   # e.g. "omniverse://141.43.76.21/Projects/DIREKT/Project Assembly/Source/Animation Export"
+
+# Nucleus host prefix for the output root below. Rarely needs changing.
+nucleus_host: "omniverse://141.43.76.21"
+
+# Optional explicit overrides. Leave empty to use the derived paths above.
+assembly_definition_url: ""   # full URL to assembly_definition.json (else discovered in {job_root}/JSON)
+animation_source_dir: ""      # folder holding the *_Animation.usd (else {job_root} itself)
+model_target_dir: ""          # folder holding the .dat/.xml (else {job_root}/model_target)
+
+# Nucleus paths to watch. LEAVE EMPTY to auto-derive from assembly_definition.json:
+# the watcher will watch the JSON itself, the model_target .dat/.xml, and every
+# is_animation step's *_Animation.usd -- so you never hand-maintain this list.
+# Only set an explicit list to override that (e.g. legacy per-part jobs).
+watch_paths: []
 
 # How often to check Nucleus for changes, in seconds.
 poll_interval_sec: 5
@@ -43,19 +55,16 @@ kit_export_command: >
   cmd /c "cd /d {kit_app_dir} && repo.bat launch -- --no-window
   --exec {repo_root}/server-kit/app/omniverse/export_glbs_from_usd.py"
 
-# Nucleus path (under SERVER from app.core.config) where the Kit exporter
-# drops GLBs and _export_report.json. Matches NUCLEUS_OUTPUT_ROOT inside
-# export_glbs_from_usd.py. The final URL prepare_job() looks at is:
+# Nucleus path (under nucleus_host / SERVER) where the Kit exporter drops the
+# GLBs and _export_report.json. The exporter writes to:
+#     <nucleus_host><nucleus_export_root>/<job_id>/
+# and prepare_job() reads back:
 #     <SERVER><nucleus_export_root>/<job_id>/_export_report.json
-# So for NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
-# this should be "/Users/shahan".
-nucleus_export_root: "/Users/shahan"
+nucleus_export_root: "/Users/abdul"
 
-# Vuforia Model Target identifying info, passed through to prepare_job().
-# target_id is optional; if empty, prepare_job derives it from target_file.
-target_id: ""
-target_version: "v1.0.0"
-target_file: "Fixture_detectors_1.dat"
+# NOTE: The Vuforia Model Target is no longer named here. prepare_job discovers
+# the single .dat/.xml in the Nucleus model_target folder (see model_target_dir /
+# nucleus_job_root above) and copies them verbatim into shared/samples/targets/.
 
 # Optional: the venv used to manually run automate_job.py / build_runtime_packages.py.
 # NOT used by the live-sync pipeline anymore (prepare_job replaces both).

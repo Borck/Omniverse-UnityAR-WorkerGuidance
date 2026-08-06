@@ -17,24 +17,71 @@ Per-host configuration for the watcher and `pipeline_runner`. Copy
 | Key | Type | Notes |
 |---|---|---|
 | `repo_root` | string (absolute path) | Where this repository is checked out. All other repo-relative paths resolve from here. |
-| `job_id` | string | Must match `JOB_ID` inside `export_glbs_from_usd.py`. Used as the manifest filename stem and the gRPC routing key. |
-| `nucleus_export_root` | string (Nucleus path, no host prefix) | Where the Kit exporter drops GLBs and `_export_report.json`. Must match `NUCLEUS_OUTPUT_ROOT` in `export_glbs_from_usd.py` minus the `omniverse://<host>` prefix. |
+| `job_id` | string | The job to rebuild. Manifest filename stem and gRPC routing key. Passed to the exporter as `DIREKT_JOB_ID` — **nothing is hardcoded in the Kit script.** |
+| `nucleus_export_root` | string (Nucleus path, no host prefix) | Where the Kit exporter drops GLBs and `_export_report.json`. Passed as `DIREKT_NUCLEUS_OUTPUT_ROOT`; the exporter writes to `<nucleus_host><nucleus_export_root>/<job_id>/`. |
 
-### Vuforia target
+### Job source on Nucleus
+
+`nucleus_job_root` is the single anchor — everything else is derived from it by
+convention, and each derivation can be overridden individually.
 
 | Key | Type | Notes |
 |---|---|---|
-| `target_id` | string | Leave empty; `prepare_job` derives it from `target_file` as `<stem>_model_target`. |
-| `target_version` | string | Matches the folder name under `shared/samples/targets/`. |
-| `target_file` | string | The `.dat` filename. The `.xml` companion is found by replacing the extension. |
+| `nucleus_job_root` | string (full `omniverse://` URL) | Root folder of the job (the "Animation Export" folder). Derives all three paths below. |
+| `nucleus_host` | string | Host prefix for `nucleus_export_root`. Parsed from `nucleus_job_root` if omitted. |
+| `assembly_definition_url` | string | Override. Empty ⇒ discover the single `*.json` in `{nucleus_job_root}/JSON/`. |
+| `animation_source_dir` | string | Override. Empty ⇒ `{nucleus_job_root}` itself (the `step_id_<M>_<N>.usd` files live in the root). |
+| `model_target_dir` | string | Override. Empty ⇒ `{nucleus_job_root}/model_target/`. `prepare_job` **discovers** the `.dat`/`.xml` there — the target is no longer named in config. |
+
+> The removed `target_id` / `target_version` / `target_file` keys are obsolete.
+> `prepare_job` discovers the Vuforia model target from `model_target_dir` and
+> derives `target_id` as `<dat-stem>_model_target`.
 
 ### Watching
 
 | Key | Type | Notes |
 |---|---|---|
-| `watch_paths` | list of strings | Nucleus URLs of the per-part animation USDs. **Only files the artist actually edits to change geometry/animation should be in this list.** Master USDs or layers consumed elsewhere should *not* be included unless they actually flow into the GLBs the exporter produces. |
-| `poll_interval_sec` | int | How often `omni.client.stat()` is called for each watched path. Default 5. |
-| `debounce_sec` | int | Quiet period after the *last* detected change before the pipeline fires. Default 10. |
+| `watch_paths` | list of strings | **Leave empty (`[]`) to auto-derive — recommended.** See "Automatic watch-path collection" below. A non-empty list overrides the derivation entirely and is never auto-refreshed. |
+| `poll_interval_sec` | int | How often `omni.client.stat()` is called **per watched path**. Default 5. With ~26 auto-derived paths a value of 1 means ~26 Nucleus stats every second — prefer 5. |
+| `debounce_sec` | int | Quiet period after the *last* detected change before the pipeline fires. Default 10. Too low can fire mid-save. |
+
+#### Automatic watch-path collection
+
+When `watch_paths` is empty, `watcher.resolve_watch_paths()` builds the list from
+the assembly definition, so it never has to be hand-maintained:
+
+1. **`{nucleus_job_root}/JSON/*.json`** — the assembly definition itself, so
+   editing it re-triggers a rebuild.
+2. **`{model_target_dir}/*.dat` + `*.xml`** — so a re-trained Vuforia target
+   re-triggers a rebuild.
+3. **One USD per animation step** — for every step with `is_animation: true`,
+   `{animation_source_dir}/step_id_<M>_<N>.usd`.
+
+Step 3 uses `_usd_name()`, which mirrors `usd_name()` in the exporter. **These two
+must stay in sync** — they are the single source of truth for the filename
+convention (`step_id "1.2"` → `step_id_1_2.usd`, *no* `_Animation` suffix).
+
+**Refresh after every rebuild.** A rebuild may consume a new
+`assembly_definition.json` with steps added, removed, or re-flagged. After each
+pipeline run the watcher calls `refresh_watch_paths()` to re-derive the list and
+logs the delta:
+
+```
+Now watching (new): omniverse://.../step_id_24_2.usd
+No longer watching: omniverse://.../step_id_9_2.usd
+Watch list updated: 26 path(s) (+1, -1)
+```
+
+New paths have no `last_seen` entry, so the next poll treats them as changed and
+exports them automatically. Removed paths are pruned from `.livesync_state.json`.
+
+**Fails safe:** if the re-derive errors or returns an empty list (Nucleus hiccup,
+JSON briefly unreadable), the previous list is kept — the watcher can never end
+up watching nothing. Startup logs which mode is active:
+
+```
+Watching 26 path(s) on Nucleus (auto-derived; refreshed after each rebuild)
+```
 
 ### Pipeline behavior
 
@@ -87,8 +134,8 @@ on disk.
 ### Nucleus paths
 
 ```python
-NUCLEUS_BASE = "omniverse://141.43.76.21/Users/abdul/Animation Chesco"
-NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/abdul"
+NUCLEUS_BASE = "omniverse://XXX.XXX.XXX.XXX/Users/abdul/Animation Chesco"
+NUCLEUS_OUTPUT_ROOT = "omniverse://XXX.XXX.XXX.XXX/Users/abdul"
 ```
 
 - `NUCLEUS_BASE` is the folder containing the per-part animation USDs.
@@ -146,7 +193,7 @@ inconsistency.
 ## 3. `server-kit/app/core/config.py` — server-side constants
 
 ```python
-SERVER = "omniverse://141.43.76.21"
+SERVER = "omniverse://XXX.XXX.XXX.XXX"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ```
 

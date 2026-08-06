@@ -11,15 +11,16 @@ see [architecture.md](architecture.md).
 
 ### `tools/packaging/livesync/watcher.py`
 
-**Role:** Long-running polling loop. Watches a configured list of Nucleus URLs;
-when one or more change, debounces, then spawns `pipeline_runner.py` with the
-list of changed URLs in an environment variable.
+**Role:** Long-running polling loop. Derives the set of Nucleus URLs to watch,
+polls them; when one or more change, debounces, then spawns `pipeline_runner.py`
+with the list of changed URLs in an environment variable.
 
 **Runtime:** Kit's bundled Python (needs `omni.client`).
 
 **Inputs:**
 
-- `livesync.config.yaml` — paths, poll interval, debounce, log/state file
+- `livesync.config.yaml` — job root, poll interval, debounce, log/state file
+- `assembly_definition.json` on Nucleus — **the source of the watch list**
 - Nucleus reachability + cached credentials for the watched USDs
 
 **Outputs:**
@@ -29,11 +30,31 @@ list of changed URLs in an environment variable.
 - `.livesync_state.json` — last-seen modification times, persisted so a
   restart doesn't fire spurious rebuilds
 
+**Watch-path derivation (`resolve_watch_paths`):**
+
+The watch list is not hand-maintained. With `watch_paths: []` in config it is
+derived from the assembly definition: the JSON itself, the model-target
+`.dat`/`.xml`, and one `step_id_<M>_<N>.usd` per `is_animation` step. A non-empty
+`watch_paths` in config overrides this and disables refreshing.
+
+`_usd_name()` here **mirrors `usd_name()` in `export_glbs_from_usd.py`** — the two
+define the same filename convention and must be changed together. A mismatch is
+silent and severe: the watcher watches files the exporter never reads (or vice
+versa), so incremental rebuilds match nothing and every step is skipped.
+
+**Refresh (`refresh_watch_paths`):** re-derives after every pipeline run, so steps
+added to / removed from the JSON are picked up without restarting the watcher,
+logging the added/removed delta. Fails safe — on error or an empty re-derive the
+previous list is kept, so the watcher can never end up watching nothing. Removed
+paths are pruned from the state file.
+
 **Key implementation notes:**
 
 - `pending_changes: set[str]` accumulates across polls within a debounce
   window, so two saves in quick succession produce *one* pipeline run that
   covers both.
+- Derived paths are `%20`-encoded; the exporter's incremental check compares
+  against **both** the encoded and literal-space forms, so either matches.
 - The Nucleus mtime API differs between Kit versions: older builds expose
   `entry.modified_time_ns`, newer ones `entry.modified_time` (datetime or
   float). `stat_nucleus_mtime` tries both.

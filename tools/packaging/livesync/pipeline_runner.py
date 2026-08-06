@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import os
+import re
 import subprocess
 import sys
 import time
@@ -52,6 +53,53 @@ def format_command(template: str, cfg: dict) -> str:
         kit_app_dir=cfg["kit_app_dir"],
         job_id=cfg["job_id"],
     )
+
+
+def _nucleus_host(cfg: dict) -> str:
+    """Nucleus host prefix (e.g. omniverse://141.43.76.21).
+
+    From the explicit `nucleus_host` key if set, otherwise parsed from
+    `nucleus_job_root`. No path is hardcoded here.
+    """
+    explicit = str(cfg.get("nucleus_host", "") or "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    job_root = str(cfg.get("nucleus_job_root", "") or "").strip()
+    match = re.match(r"(omniverse://[^/]+)", job_root)
+    if match:
+        return match.group(1)
+    raise KeyError(
+        "Set 'nucleus_host' or 'nucleus_job_root' so the Nucleus host can be resolved"
+    )
+
+
+def _nucleus_output_root(cfg: dict) -> str:
+    """Full omniverse:// URL where the Kit exporter drops GLBs + report."""
+    host = _nucleus_host(cfg)
+    export_root = str(cfg["nucleus_export_root"]).strip("/")
+    return f"{host}/{export_root}"
+
+
+def _model_target_dir(cfg: dict) -> str:
+    """Nucleus folder holding the Vuforia model target. Explicit key wins;
+    otherwise derived as <nucleus_job_root>/model_target."""
+    explicit = str(cfg.get("model_target_dir", "") or "").strip()
+    if explicit:
+        return explicit
+    job_root = str(cfg.get("nucleus_job_root", "") or "").rstrip("/")
+    return f"{job_root}/model_target" if job_root else ""
+
+
+def _export_env(cfg: dict) -> dict[str, str]:
+    """Config handed to the Kit exporter subprocess via environment variables.
+    Single source of truth = the yaml; nothing is hardcoded in the Kit script."""
+    return {
+        "DIREKT_JOB_ID": str(cfg["job_id"]),
+        "DIREKT_NUCLEUS_OUTPUT_ROOT": _nucleus_output_root(cfg),
+        "DIREKT_NUCLEUS_JOB_ROOT": str(cfg.get("nucleus_job_root", "") or "").rstrip("/"),
+        "DIREKT_ASSEMBLY_DEFINITION_URL": str(cfg.get("assembly_definition_url", "") or ""),
+        "DIREKT_ANIMATION_SOURCE_DIR": str(cfg.get("animation_source_dir", "") or ""),
+    }
 
 
 def run_subprocess_step(name: str, command: str, cwd: Path, timeout: int, log_file: Path) -> int:
@@ -98,15 +146,15 @@ def run_prepare_job(cfg: dict, repo_root: Path, log_file: Path) -> int:
             from app.omniverse.nucleus_job_service import prepare_job  # noqa: E402
 
             nucleus_export_path = f"{cfg['nucleus_export_root'].rstrip('/')}/{cfg['job_id']}"
+            model_target_dir = _model_target_dir(cfg)
             f.write(f"nucleus_export_path = {nucleus_export_path}\n")
+            f.write(f"model_target_dir    = {model_target_dir}\n")
             f.flush()
 
             result = prepare_job(
                 nucleus_export_path=nucleus_export_path,
                 repo_root=repo_root,
-                target_id=cfg.get("target_id", ""),
-                target_version=cfg.get("target_version", "v1.0.0"),
-                target_file=cfg.get("target_file", "demonstrator.dat"),
+                model_target_dir=model_target_dir,
             )
             elapsed = time.monotonic() - started
             f.write(f"result = {result}\n")
@@ -128,6 +176,22 @@ def main() -> int:
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+
+    # Fail fast with a readable message (not a raw KeyError that vanishes when
+    # trigger_now.bat closes) if a required key is missing or empty.
+    required = [
+        "repo_root", "job_id", "nucleus_export_root",
+        "kit_app_dir", "kit_export_command", "pipeline_timeout_sec", "log_dir",
+    ]
+    missing = [k for k in required if cfg.get(k) in (None, "")]
+    if not cfg.get("nucleus_job_root") and not cfg.get("nucleus_host"):
+        missing.append("nucleus_job_root or nucleus_host")
+    if missing:
+        sys.exit(
+            f"[pipeline_runner] Missing required config key(s): {', '.join(missing)}\n"
+            f"  Fix them in {args.config}"
+        )
+
     repo_root = Path(cfg["repo_root"])
 
     log_dir = Path(cfg["log_dir"]) / "runs"
@@ -146,6 +210,15 @@ def main() -> int:
         print(f"[pipeline_runner] Incremental rebuild: {n} changed Nucleus URL(s)", flush=True)
     else:
         print("[pipeline_runner] Full rebuild (no LIVESYNC_CHANGED_URLS)", flush=True)
+
+    # Hand the job config to the Kit exporter subprocess via env. The subprocess
+    # (cmd -> repo.bat -> kit) inherits os.environ, same channel the watcher uses
+    # for LIVESYNC_CHANGED_URLS. This is what replaces the old hardcoded
+    # JOB_ID/NUCLEUS_BASE/PARTS constants inside export_glbs_from_usd.py.
+    export_env = _export_env(cfg)
+    os.environ.update(export_env)
+    for key, value in export_env.items():
+        print(f"[pipeline_runner]   {key}={value}", flush=True)
 
     kit_cmd = format_command(cfg["kit_export_command"], cfg)
     rc = run_subprocess_step("Kit GLB export", kit_cmd, repo_root, cfg["pipeline_timeout_sec"], log_file)

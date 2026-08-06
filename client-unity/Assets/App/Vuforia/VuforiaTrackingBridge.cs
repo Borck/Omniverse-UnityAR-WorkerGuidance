@@ -67,6 +67,18 @@ namespace Guidance.Runtime
             }
         }
 
+        /// <summary>
+        /// Single source of truth for "is the pose solid enough to show
+        /// world-locked content" (fail-safe / option A). Only TRACKED and
+        /// LIMITED count. EXTENDED_TRACKED — the device tracker maintaining a
+        /// target that is NOT currently in the camera view — deliberately does
+        /// NOT count, nor does NO_POSE: the extended pose drifts and would
+        /// otherwise look head-locked when the worker glances away from the
+        /// fixture. We hide the hologram in those states and prompt a re-aim.
+        /// </summary>
+        public static bool IsSolidPose(Status status)
+            => status == Status.TRACKED || status == Status.LIMITED;
+
         private void HandleTargetStatusChanged(ObserverBehaviour behaviour, TargetStatus status)
         {
             if (appBootstrap == null)
@@ -78,9 +90,7 @@ namespace Guidance.Runtime
             // database scale doesn't match the physical object's real-world size).
             Debug.Log($"[VuforiaTrackingBridge] Status={status.Status} StatusInfo={status.StatusInfo} target={behaviour?.TargetName}");
 
-            var trackingAcquired =
-                status.Status == Status.TRACKED
-                || status.Status == Status.LIMITED;
+            var trackingAcquired = IsSolidPose(status.Status);
 
             var poseTransform = behaviour != null ? behaviour.transform : transform;
             appBootstrap.OnTargetTrackingUpdated(

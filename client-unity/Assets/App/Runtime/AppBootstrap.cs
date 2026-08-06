@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -26,6 +27,9 @@ namespace Guidance.Runtime
         [SerializeField] private VuforiaTrackingBridge vuforiaTrackingBridge;
         [SerializeField] private bool autoConfirmStepAfterAssetReady = false;
         [SerializeField] private float autoConfirmDelaySeconds = 0.5f;
+        [Tooltip("Seconds the instruction stays on screen before a step's animation appears. Text-only steps ignore this and show text only.")]
+        [SerializeField] private float instructionHoldSeconds = 5f;
+
         [SerializeField] private float heartbeatIntervalSeconds = 5f;
         [SerializeField] private float reconnectMinIntervalSeconds = 2f;
         [SerializeField] private float reconnectMaxIntervalSeconds = 20f;
@@ -54,6 +58,13 @@ namespace Guidance.Runtime
         [SerializeField] private Vector3 overlayOffsetLocalEulerAngles = Vector3.zero;
 
         [SerializeField] private SessionStatusPanel statusPanel;
+        [Header("Full-screen instruction overlay")]
+        [Tooltip("Optional scene-wired full-screen instruction overlay. If left empty, one is created at runtime.")]
+        [SerializeField] private FullScreenInstructionPanel instructionOverlay;
+        [Tooltip("Fitting steps: seconds the big instruction text is held before each animation play.")]
+        [SerializeField] private float fittingTextHoldSeconds = 4f;
+        [Tooltip("Fitting steps: fallback animation-play duration (seconds) used when the clip length can't be read.")]
+        [SerializeField] private float fittingAnimationFallbackSeconds = 12f;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
         [SerializeField] private JobSelectorPanel jobSelectorPanel;
         [Header("Control drawer")]
@@ -85,6 +96,7 @@ namespace Guidance.Runtime
         private Transform _activeObserverTransform;
         private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
         private FixtureOverlay _activeFixtureOverlay;
+        private Coroutine _fittingCycle;
 
         private void Awake()
         {
@@ -107,6 +119,13 @@ namespace Guidance.Runtime
             _drawer = gameObject.AddComponent<ControlDrawer>();
             _drawer.Bind(statusPanel, fovTunerPanel, _eyeOffsetPanel);
             _drawer.enabled = false; // shown once a job is running
+
+            // Full-screen instruction overlay (drawn independently of the drawer,
+            // so instructions stay readable with the drawer collapsed). Starts
+            // hidden; step activation shows it.
+            if (instructionOverlay == null)
+                instructionOverlay = gameObject.AddComponent<FullScreenInstructionPanel>();
+            instructionOverlay.Hide();
 
             StartCoroutine(StartupFlow());
         }
@@ -170,16 +189,18 @@ namespace Guidance.Runtime
                 statusPanel.SetFixtureDistance(-1f);
         }
 
-        // Optical see-through parallax correction: shift the tracked content by
-        // the calibrated camera->eye offset, expressed in world space from the
-        // camera's current orientation. A fixed camera-space content shift is
-        // equivalent to translating the rendering viewpoint, so the correction
-        // is automatically distance-accurate (perspective handles near vs far).
-        // AnimationRoot starts at the observer origin (localPosition 0); we set
-        // its localPosition so its world position is observer + worldShift.
+        // Optical see-through parallax correction (content-shift): shift the
+        // tracked content by the calibrated camera->eye offset, expressed in world
+        // space from the camera's current orientation. A fixed camera-space content
+        // shift is equivalent to translating the rendering viewpoint, so the
+        // correction is automatically distance-accurate (perspective handles near
+        // vs far). AnimationRoot starts at the observer origin (localPosition 0); we
+        // set its localPosition so its world position is observer + worldShift. A
+        // zero OffsetMeters is a no-op, so an uncalibrated eye offset does nothing.
         private void ApplyEyeOffset()
         {
-            if (_eyeOffset == null || _activeObserverTransform == null) return;
+            if (_eyeOffset == null) return;
+            if (_activeObserverTransform == null) return;
             var cam = Camera.main;
             if (cam == null) return;
 
@@ -227,9 +248,9 @@ namespace Guidance.Runtime
             ShowJobSelectorOrInitialize();
         }
 
-        public void OnServerConfigConfirmed(string host, int grpcPort, int httpPort)
+        public void OnServerConfigConfirmed(string grpcHost, int grpcPort, string httpHost, int httpPort, bool httpTls)
         {
-            SaveAndApplyEndpoint(host, grpcPort, httpPort);
+            SaveAndApplyEndpoints(grpcHost, grpcPort, httpHost, httpPort, httpTls);
             ShowJobSelectorOrInitialize();
         }
 
@@ -243,25 +264,42 @@ namespace Guidance.Runtime
 
         private void ApplySavedEndpointPrefs()
         {
-            var savedHost = PlayerPrefs.GetString(ServerConfigPanel.PrefHost, "");
-            if (string.IsNullOrEmpty(savedHost)) return;
+            var grpcHost = PlayerPrefs.GetString(ServerConfigPanel.PrefHost, "");
+            if (string.IsNullOrEmpty(grpcHost)) return;
 
-            var savedGrpc = PlayerPrefs.GetInt(ServerConfigPanel.PrefGrpcPort, 50051);
-            var savedHttp = PlayerPrefs.GetInt(ServerConfigPanel.PrefHttpPort, 8080);
-            grpcTarget = $"{savedHost}:{savedGrpc}";
-            httpBridgeBaseUrl = $"http://{savedHost}:{savedHttp}";
-            Debug.Log($"[AppBootstrap] Using saved server endpoint {grpcTarget}");
+            var grpcPort = PlayerPrefs.GetInt(ServerConfigPanel.PrefGrpcPort, 50051);
+            // gRPC and FastAPI may live on different hosts (separate QR codes); the
+            // HTTP host falls back to the gRPC host when not set separately.
+            var httpHost = PlayerPrefs.GetString(ServerConfigPanel.PrefHttpHost, grpcHost);
+            if (string.IsNullOrEmpty(httpHost)) httpHost = grpcHost;
+            var httpPort = PlayerPrefs.GetInt(ServerConfigPanel.PrefHttpPort, 8080);
+            var httpScheme = PlayerPrefs.GetString(ServerConfigPanel.PrefHttpScheme, "http");
+
+            grpcTarget = $"{grpcHost}:{grpcPort}";
+            httpBridgeBaseUrl = $"{httpScheme}://{httpHost}:{httpPort}";
+            Debug.Log($"[AppBootstrap] Using saved endpoints gRPC={grpcTarget} HTTP={httpBridgeBaseUrl}");
         }
 
-        private void SaveAndApplyEndpoint(string host, int grpcPort, int httpPort)
+        // Full form: independent gRPC and FastAPI hosts (used by the two-QR flow).
+        private void SaveAndApplyEndpoints(string grpcHost, int grpcPort, string httpHost, int httpPort, bool httpTls)
         {
-            grpcTarget = $"{host}:{grpcPort}";
-            httpBridgeBaseUrl = $"http://{host}:{httpPort}";
-            PlayerPrefs.SetString(ServerConfigPanel.PrefHost, host);
+            if (string.IsNullOrEmpty(httpHost)) httpHost = grpcHost;
+            var scheme = httpTls ? "https" : "http";
+
+            grpcTarget = $"{grpcHost}:{grpcPort}";
+            httpBridgeBaseUrl = $"{scheme}://{httpHost}:{httpPort}";
+
+            PlayerPrefs.SetString(ServerConfigPanel.PrefHost, grpcHost);
             PlayerPrefs.SetInt(ServerConfigPanel.PrefGrpcPort, grpcPort);
+            PlayerPrefs.SetString(ServerConfigPanel.PrefHttpHost, httpHost);
             PlayerPrefs.SetInt(ServerConfigPanel.PrefHttpPort, httpPort);
+            PlayerPrefs.SetString(ServerConfigPanel.PrefHttpScheme, scheme);
             PlayerPrefs.Save();
         }
+
+        // Back-compat: same host for both services (UDP auto-discovery).
+        private void SaveAndApplyEndpoint(string host, int grpcPort, int httpPort)
+            => SaveAndApplyEndpoints(host, grpcPort, host, httpPort, httpTls: false);
 
         private static void ParseGrpcTarget(string value, out string host, out int port)
         {
@@ -380,12 +418,25 @@ namespace Guidance.Runtime
             _lastActivation = activation;
             _stepHistory.Add(activation);
 
+            // A new step supersedes the previous fitting text/animation cycle.
+            StopFittingCycle();
+
+            var instructionText = string.IsNullOrEmpty(activation.InstructionsShort)
+                ? activation.DisplayName
+                : activation.InstructionsShort;
+
             if (statusPanel != null)
             {
                 statusPanel.SetActiveStep(activation.StepId, activation.PartId);
-                statusPanel.SetInstruction(string.IsNullOrEmpty(activation.InstructionsShort) ? activation.DisplayName : activation.InstructionsShort);
+                statusPanel.SetInstruction(instructionText);
                 statusPanel.SetWarning(string.Empty);
             }
+
+            // Show the big centred instruction right away for every step. Whether
+            // it stays up (preparation) or starts alternating with the animation
+            // (fitting) is decided once the asset pipeline knows if there's a GLB.
+            if (instructionOverlay != null)
+                instructionOverlay.ShowText(instructionText);
 
             if (enableRuntimeAssetPipeline)
             {
@@ -397,12 +448,15 @@ namespace Guidance.Runtime
         {
             Debug.Log("[AppBootstrap] Workflow complete — all steps done.");
             _runtime.StepCoordinator.RegisterFault("workflow-complete");
+            StopFittingCycle();
             if (statusPanel != null)
             {
                 statusPanel.SetActiveStep("-", "-");
                 statusPanel.SetInstruction("-");
                 statusPanel.SetWarning("Alle Schritte abgeschlossen! Workflow komplett.");
             }
+            if (instructionOverlay != null)
+                instructionOverlay.ShowText("Alle Schritte abgeschlossen!");
         }
 
         private void OnSessionConnectionStateChanged(SessionConnectionState state)
@@ -434,6 +488,9 @@ namespace Guidance.Runtime
         public void ReturnToJobSelector()
         {
             if (jobSelectorPanel == null) return;
+
+            StopFittingCycle();
+            if (instructionOverlay != null) instructionOverlay.Hide();
 
             if (_drawer != null) _drawer.enabled = false;
 
@@ -481,6 +538,7 @@ namespace Guidance.Runtime
                 statusPanel.SetInstruction("-");
                 statusPanel.SetWarning(string.Empty);
                 statusPanel.ClearImageTargetFound();
+                statusPanel.SetReacquireHint(false);
             }
 
             jobSelectorPanel.Show(this);
@@ -504,6 +562,11 @@ namespace Guidance.Runtime
             _runtime.ModelPresenter.ClearActiveModel();
             _lastActivation = null;
 
+            // Step confirmed: drop the big instruction and its cycle until the
+            // server activates the next step.
+            StopFittingCycle();
+            if (instructionOverlay != null) instructionOverlay.Hide();
+
             if (statusPanel != null)
             {
                 statusPanel.SetActiveStep("-", "-");
@@ -517,6 +580,13 @@ namespace Guidance.Runtime
         {
             if (_lastActivation == null) return;
 
+            var instructionText = string.IsNullOrEmpty(_lastActivation.InstructionsShort)
+                ? _lastActivation.DisplayName
+                : _lastActivation.InstructionsShort;
+
+            StopFittingCycle();
+            if (instructionOverlay != null) instructionOverlay.ShowText(instructionText);
+
             if (!string.IsNullOrEmpty(_lastModelPath) && File.Exists(_lastModelPath))
             {
                 _runtime.TargetManager.ActivateTarget(_lastActivation.TargetId, _lastTargetVersion, _lastTargetPayloadPath);
@@ -525,6 +595,10 @@ namespace Guidance.Runtime
                 _loadCancellation = new CancellationTokenSource();
                 _ = _runtime.ModelPresenter.PresentModelAsync(_lastModelPath, _lastActivation, _loadCancellation.Token, _activeObserverTransform);
                 if (statusPanel != null) statusPanel.SetWarning(string.Empty);
+                // Fitting step (has a model): restart the text/animation cycle. The
+                // cycle tolerates the async load finishing a moment later.
+                if (instructionOverlay != null)
+                    _fittingCycle = StartCoroutine(RunFittingInstructionCycle(_loadCancellation.Token));
                 return;
             }
 
@@ -560,12 +634,23 @@ namespace Guidance.Runtime
             _runtime.TargetManager.DeactivateTarget();
             _lastActivation = previousActivation;
 
+            // A step change supersedes the previous fitting cycle; ResolveAndPresent
+            // restarts one for the previous step if it's a fitting step.
+            StopFittingCycle();
+
+            var instructionText = string.IsNullOrEmpty(previousActivation.InstructionsShort)
+                ? previousActivation.DisplayName
+                : previousActivation.InstructionsShort;
+
             if (statusPanel != null)
             {
                 statusPanel.SetActiveStep(previousActivation.StepId, previousActivation.PartId);
-                statusPanel.SetInstruction(previousActivation.DisplayName);
+                statusPanel.SetInstruction(instructionText);
                 statusPanel.SetWarning(string.Empty);
             }
+
+            if (instructionOverlay != null)
+                instructionOverlay.ShowText(instructionText);
 
             StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
         }
@@ -609,6 +694,11 @@ namespace Guidance.Runtime
 
         private IEnumerator ResolveAndPresentStepAsset(StepActivationDto activation)
         {
+            // Anchor the instruction-hold window at activation time, so an
+            // animation step's model appears ~instructionHoldSeconds after the
+            // worker first sees the instruction (asset download overlaps this).
+            float presentAnimationAfter = Time.time + Mathf.Max(0f, instructionHoldSeconds);
+
             ResolvedStepAssetBundle resolvedBundle = null;
             string resolveError = null;
 
@@ -635,6 +725,30 @@ namespace Guidance.Runtime
             }
 
             var resolved = resolvedBundle.Current;
+
+            // Instruction-only substep (= "preparation" step): the manifest carries
+            // no GLB (empty glbUrl). Show the instruction text only — skip asset
+            // download, target activation, and model presentation. The big
+            // full-screen instruction was already shown in OnSessionStepActivated
+            // and, because no fitting cycle is started here, it stays on screen
+            // until the next step. Backend Next/Previous still steps through these
+            // entries normally.
+            if (string.IsNullOrEmpty(resolved.GlbUrl))
+            {
+                _loadCancellation?.Cancel();
+                StopFittingCycle();
+                _runtime.ModelPresenter.ClearActiveModel();
+                statusPanel?.SetPipelineStatus("instruction only");
+                _lastModelPath = string.Empty;
+                instructionOverlay?.Show(); // keep the preparation text up
+
+                // Warm the next step's assets (typically the animation substep)
+                // so it's ready by the time the backend advances.
+                if (resolvedBundle.Next != null)
+                    StartCoroutine(PrefetchNextStepAssets(resolvedBundle.Next, activation.StepId));
+                yield break;
+            }
+
             var fileName = ExtractFileName(resolved.GlbUrl, activation.StepId);
             var glbCached = _runtime.AssetCache.TryGetCachedFile(resolved.AssetVersion, fileName, out _);
             if (glbCached) _runtime.TelemetryClient.TrackAssetCacheHit(resolved.AssetVersion, fileName);
@@ -763,6 +877,24 @@ namespace Guidance.Runtime
             _loadCancellation = new CancellationTokenSource();
             var loadToken = _loadCancellation.Token;
 
+            // Hold the instruction on screen before the animation appears. The
+            // download/target work above overlapped this window, so the model
+            // shows at ~instructionHoldSeconds from activation (or later if the
+            // download ran long). Bail immediately if a newer step superseded us.
+            //
+            // With the full-screen overlay present, the fitting cycle owns the
+            // text-then-animation timing (and the overlay already shows the text),
+            // so load the model promptly and let the cycle decide when it appears —
+            // otherwise the first play would be held twice (here + text phase).
+            if (instructionOverlay == null)
+            {
+                while (Time.time < presentAnimationAfter)
+                {
+                    if (loadToken.IsCancellationRequested) yield break;
+                    yield return null;
+                }
+            }
+
             var spawnAnchor = _modelSpawnAnchor != null && _modelSpawnAnchor.gameObject != null
                 ? _modelSpawnAnchor
                 : (_activeObserverTransform != null && _activeObserverTransform.gameObject != null
@@ -783,6 +915,15 @@ namespace Guidance.Runtime
             _lastModelPath = modelPath ?? string.Empty;
             _lastTargetPayloadPath = targetDatPath ?? string.Empty;
             _lastTargetVersion = resolved.TargetVersion ?? string.Empty;
+
+            // Fitting step: the model carries an animation. Alternate the big
+            // instruction text with the animation (text held, then one full play,
+            // repeat) until the next step supersedes it.
+            if (instructionOverlay != null)
+            {
+                StopFittingCycle();
+                _fittingCycle = StartCoroutine(RunFittingInstructionCycle(loadToken));
+            }
 
             if (resolvedBundle.Next != null)
             {
@@ -829,11 +970,19 @@ namespace Guidance.Runtime
         private void OnModelTargetStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
         {
             if (_activeObserverTransform == null) return;
-            var tracked = status.Status == Vuforia.Status.TRACKED
-                       || status.Status == Vuforia.Status.EXTENDED_TRACKED;
-            if (_activeObserverTransform.gameObject.activeSelf != tracked)
-                _activeObserverTransform.gameObject.SetActive(tracked);
-            statusPanel?.SetImageTargetFound(tracked);
+
+            // Fail-safe visibility (option A): show the hologram ONLY while the
+            // pose is solid (TRACKED/LIMITED). On EXTENDED_TRACKED (device
+            // tracker holding an out-of-view target — drifts, looks head-locked)
+            // or NO_POSE, hide the whole AR subtree and prompt the worker to
+            // re-aim. Hiding AnimationRoot (not the observer GameObject) keeps
+            // Vuforia updating pose, so it re-locks instantly when the fixture
+            // comes back into view. Policy shared with VuforiaTrackingBridge.
+            var solid = VuforiaTrackingBridge.IsSolidPose(status.Status);
+            if (_activeObserverTransform.gameObject.activeSelf != solid)
+                _activeObserverTransform.gameObject.SetActive(solid);
+            statusPanel?.SetImageTargetFound(solid);
+            statusPanel?.SetReacquireHint(!solid);
         }
 #endif
 
@@ -918,6 +1067,63 @@ namespace Guidance.Runtime
                     onReady: _ => { }, onError: error => prefetchTargetError = error
                 );
                 if (!string.IsNullOrEmpty(prefetchTargetError)) _runtime.TelemetryClient.TrackFault("PREFETCH_NEXT_TARGET", prefetchTargetError);
+            }
+        }
+
+        private void StopFittingCycle()
+        {
+            if (_fittingCycle != null)
+            {
+                StopCoroutine(_fittingCycle);
+                _fittingCycle = null;
+            }
+        }
+
+        /// <summary>
+        /// Fitting-step presentation loop: show the big instruction text for
+        /// <see cref="fittingTextHoldSeconds"/> (model hidden), then hide the text
+        /// and play the animation once fully (model shown), then repeat — until the
+        /// step is superseded (token cancelled) or the coroutine is stopped.
+        /// Preparation (text-only) steps never enter this loop; their text stays up.
+        /// </summary>
+        private IEnumerator RunFittingInstructionCycle(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                // ---- text phase: big instruction only, model hidden ----
+                _runtime.ModelPresenter.SetActiveModelVisible(false);
+                instructionOverlay?.Show();
+
+                float held = 0f;
+                while (held < fittingTextHoldSeconds)
+                {
+                    if (token.IsCancellationRequested) yield break;
+                    held += Time.deltaTime;
+                    yield return null;
+                }
+
+                // ---- animation phase: one full play, text hidden ----
+                instructionOverlay?.Hide();
+                // Re-enabling the model root re-fires the replay-loop drivers'
+                // OnEnable, restarting the clip from frame 0.
+                _runtime.ModelPresenter.SetActiveModelVisible(true);
+
+                // Give the (re)started replay loop a couple of frames to settle so
+                // the clip length reads back correctly.
+                yield return null;
+                yield return null;
+                if (token.IsCancellationRequested) yield break;
+
+                float playSeconds = _runtime.ModelPresenter.GetActiveAnimationPlaySeconds();
+                if (playSeconds <= 0.01f) playSeconds = fittingAnimationFallbackSeconds;
+
+                float played = 0f;
+                while (played < playSeconds)
+                {
+                    if (token.IsCancellationRequested) yield break;
+                    played += Time.deltaTime;
+                    yield return null;
+                }
             }
         }
 

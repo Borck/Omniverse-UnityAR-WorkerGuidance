@@ -104,36 +104,50 @@ work are both zero.
 ## 4. End-to-end sequence
 
 ```
-[t=0]     Artist saves Plate_Bottom.usd on Nucleus
+[startup] watcher.py derives the watch list from assembly_definition.json:
+          the JSON itself + model_target .dat/.xml + one step_id_<M>_<N>.usd
+          per is_animation step. (watch_paths: [] in config = auto.)
+
+[t=0]     Artist saves step_id_1_2.usd on Nucleus
 
 [t=0..5]  watcher.py polls Nucleus every 5s via omni.client.stat().
-          Detects modified_time on Plate_Bottom.usd has increased,
+          Detects modified_time on step_id_1_2.usd has increased,
           accumulates URL in pending_changes set.
 
 [t=5..15] Debounce window. Other saves arriving in this window are coalesced
           into the same pending_changes set.
 
 [t=15]    Debounce expires. watcher.run_pipeline() sets the env var
-            LIVESYNC_CHANGED_URLS=omniverse://.../Plate_Bottom.usd
+            LIVESYNC_CHANGED_URLS=omniverse://.../step_id_1_2.usd
           and spawns pipeline_runner.py via Kit's Python (sys.executable).
 
-[t=15..45] pipeline_runner.py runs two stages:
+[t=15..25] pipeline_runner.py runs two stages:
 
-           Stage 1 — Kit GLB export (subprocess, ~25-30s):
-              repo.bat launch -- --no-window --exec export_glbs_from_usd.py
+           Stage 1 — Kit GLB export (subprocess, ~7s incremental / ~17s full):
+              repo.bat launch --name direkt_export.kit -- --no-window
+                --exec export_glbs_from_usd.py
               Kit boots headless, reads LIVESYNC_CHANGED_URLS, exports ONLY
-              the parts whose source URL is in the changed set. Unchanged
+              the parts whose source URL is in the changed set (matched
+              tolerantly against both %20 and literal-space forms). Unchanged
               parts are listed in the report with their existing Nucleus
-              GLB URL but not re-exported. On completion, os._exit(0) forces
+              GLB URL but not re-exported. On completion, os._exit(code) forces
               Kit to terminate so the subprocess returns.
 
            Stage 2 — nucleus_job_service.prepare_job() (in-process, ~2-3s):
               For every part in the export report, downloads the GLB from
-              Nucleus to shared/samples/assets/_raw/<job_id>/. SHA-256 hashes
-              each downloaded file. For any part whose hash differs from the
-              last manifest, copies the GLB to a new sha256_<hash>/ folder.
-              Rewrites the manifest and step-definitions.yaml. Deletes any
-              sha256_<hash>/ folders not referenced by the new manifest.
+              Nucleus to shared/samples/assets/_raw/<job_id>/. Strips unused
+              vertex attributes via glb_slim (UVs + vertex colours, ~-36%)
+              BEFORE hashing, so the version reflects the bytes actually
+              served. SHA-256 hashes each slimmed file. For any part whose
+              hash differs from the last manifest, writes the GLB to a new
+              sha256_<hash>/ folder. Rewrites the manifest and
+              step-definitions.yaml. Deletes any sha256_<hash>/ folders not
+              referenced by the new manifest.
+
+[t=25]    watcher re-derives the watch list (refresh_watch_paths) so steps
+          added to / removed from assembly_definition.json are picked up
+          without restarting the watcher. New paths have no last_seen entry,
+          so the next poll exports them automatically.
 
 [t=45]    Manifest file on disk is now current.
 

@@ -50,8 +50,8 @@ There are two config blocks at the top. Add a new one (or swap the active one) w
 
 ```python
 JOB_ID = "your-new-job-id"          # used as folder name on Nucleus + key in YAML
-NUCLEUS_BASE = "omniverse://141.43.76.21/Projects/DIREKT/<path-to-folder-with-part-USDs>"
-NUCLEUS_OUTPUT_ROOT = "omniverse://141.43.76.21/Users/shahan"
+NUCLEUS_BASE = "omniverse://XXX.XXX.XXX.XXX/Projects/DIREKT/<path-to-folder-with-part-USDs>"
+NUCLEUS_OUTPUT_ROOT = "omniverse://XXX.XXX.XXX.XXX/Users/shahan"
 ```
 
 ### 2b. PARTS list — one entry per part USD file
