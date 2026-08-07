@@ -358,6 +358,40 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     except Exception as exc:
       raise HTTPException(status_code=502, detail=f"gRPC process unreachable: {exc}") from exc
 
+  @api.post("/control/jobs/{job_id}/goto/{step_id}")
+  def goto_step(job_id: str, step_id: str) -> JSONResponse:
+    """Jump every device on this job to `step_id`. Job-scoped, not per-device --
+    that's what the gRPC ControlStep GOTO already does (broadcast_to_job)."""
+    try:
+      from app.generated import guidance_pb2
+      with _grpc_control_stub() as (channel, stub):
+        resp = stub.ControlStep(
+          guidance_pb2.ControlStepRequest(
+            job_id=job_id,
+            step_id=step_id,
+            action=guidance_pb2.CONTROL_ACTION_GOTO,
+          ),
+          timeout=2.0,
+        )
+      logger.info(
+        f"goto step requested via dashboard ok={resp.ok} job={job_id}",
+        session_id="-",
+        step_id=step_id,
+        event="http.control.goto",
+      )
+      if not resp.ok:
+        raise HTTPException(status_code=404, detail=resp.message)
+      return JSONResponse(content={
+        "ok": True,
+        "activated_step_id": resp.activated_step_id,
+        "sessions_notified": resp.sessions_notified,
+        "message": resp.message,
+      })
+    except HTTPException:
+      raise
+    except Exception as exc:
+      raise HTTPException(status_code=502, detail=f"gRPC process unreachable: {exc}") from exc
+
   @api.get("/wiki/index")
   def get_wiki_index() -> JSONResponse:
     """Graph + full content of every doc under docs/ (and openwiki/, once that

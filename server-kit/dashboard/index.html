@@ -374,6 +374,9 @@
     background: var(--surface-2); border: 1px solid var(--border-soft);
     font-size: 12.5px;
   }
+  .step-row { cursor: pointer; }
+  .step-row:hover { border-color: var(--accent); }
+  .step-row.pending { opacity: 0.6; }
   .step-row.done { opacity: 0.5; }
   .step-row.active { border-color: var(--accent); background: #10233c; }
   .step-marker { width: 16px; text-align: center; flex-shrink: 0; color: var(--text-faint); }
@@ -815,7 +818,15 @@ function fmtBytes(n) {
   return (n / 1024 / 1024).toFixed(1) + " MB";
 }
 
-// Mini Nucleus folder browser, hitting the existing /omni/folders endpoint
+function fileIcon(name) {
+  const n = (name || "").toLowerCase();
+  if (/\.usd[acz]?$/.test(n)) return "🧊";
+  if (n.endsWith(".json")) return "🧾";
+  if (n.endsWith(".glb") || n.endsWith(".gltf")) return "📦";
+  return "📄";
+}
+
+// Mini Nucleus folder browser, hitting the existing /omni/files endpoint
 // (already 15s-timeout-protected). Not part of the /status poll -- fetched
 // on load, on demand, and right after a Nucleus switch, since that's the
 // moment you actually want proof the new connection can list something.
@@ -845,7 +856,9 @@ async function loadNucleusFolders(path) {
     badgeEl.textContent = `Connecting… ${Math.round((Date.now() - started) / 1000)}s`;
   }, 1000);
   try {
-    const res = await fetch(`/omni/folders?path=${encodeURIComponent(path)}`, { cache: "no-store" });
+    // /omni/files (not /omni/folders) so .usd/.json etc. are visible too --
+    // same underlying _list call, it just doesn't drop the file entries.
+    const res = await fetch(`/omni/files?path=${encodeURIComponent(path)}`, { cache: "no-store" });
     // A newer switch started while this request was in flight -- that call now
     // owns the UI and the ticker, so this stale response must not draw anything.
     if (myReq !== foldersReqSeq) return;
@@ -853,9 +866,12 @@ async function loadNucleusFolders(path) {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.detail || ("HTTP " + res.status));
     currentFoldersPath = path;
-    const folders = body.folders || [];
+    const items = body.items || [];
+    // Folders first, then files, each alphabetical -- normal file-browser order.
+    const folders = items.filter(i => i.type === "folder").sort((a, b) => a.name.localeCompare(b.name));
+    const files = items.filter(i => i.type !== "folder").sort((a, b) => a.name.localeCompare(b.name));
     setDot("folders-dot", "ok");
-    badgeEl.textContent = `${folders.length} folder${folders.length === 1 ? "" : "s"}`;
+    badgeEl.textContent = `${folders.length} folder${folders.length === 1 ? "" : "s"} · ${files.length} file${files.length === 1 ? "" : "s"}`;
 
     listEl.innerHTML = "";
     if (path !== "/") {
@@ -867,21 +883,30 @@ async function loadNucleusFolders(path) {
       up.addEventListener("click", () => loadNucleusFolders(parent));
       listEl.appendChild(up);
     }
-    if (folders.length === 0) {
+    if (!items.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "No subfolders here.";
+      empty.textContent = "Nothing here.";
       listEl.appendChild(empty);
-    } else {
-      folders.forEach(f => {
-        const row = document.createElement("div");
-        row.className = "endpoint-row";
-        row.style.cursor = "pointer";
-        row.innerHTML = `<span class="name">📁 ${escapeHtml(f.name)}</span>`;
-        row.addEventListener("click", () => loadNucleusFolders(f.path));
-        listEl.appendChild(row);
-      });
     }
+    folders.forEach(f => {
+      const row = document.createElement("div");
+      row.className = "endpoint-row";
+      row.style.cursor = "pointer";
+      row.innerHTML = `<span class="name">📁 ${escapeHtml(f.name)}</span>`;
+      row.addEventListener("click", () => loadNucleusFolders(f.path));
+      listEl.appendChild(row);
+    });
+    files.forEach(f => {
+      const row = document.createElement("div");
+      row.className = "endpoint-row";
+      row.style.cursor = "pointer";
+      row.title = f.path;
+      row.innerHTML = `<div class="endpoint-info"><span class="name">${fileIcon(f.name)} ${escapeHtml(f.name)}</span><span class="file-meta" data-meta>${fmtBytes(f.size)}</span></div>`;
+      // Click = stat it (fresh size + modified time), same as a search result.
+      row.addEventListener("click", () => showFileDetail(f, row));
+      listEl.appendChild(row);
+    });
   } catch (err) {
     if (myReq !== foldersReqSeq) return;   // superseded; leave the newer call's UI alone
     clearInterval(foldersTicker);
@@ -1092,7 +1117,7 @@ function renderJobBlock(jobId, workers) {
       const wl = w.device_id || w.session_id;
       return `<span class="worker-pill" title="${escapeHtml(wl)}">${escapeHtml(truncateLabel(wl, 12))}</span>`;
     }).join("");
-    return `<div class="step-row ${cls}"><span class="step-marker">${s.marker}</span><span class="step-seq">${s.step.sequence_index}</span><span class="step-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="worker-pills">${pills}</span></div>`;
+    return `<div class="step-row ${cls}" data-job="${escapeHtml(jobId)}" data-step="${escapeHtml(s.step.step_id)}" title="Click to jump every worker on this job to this step"><span class="step-marker">${s.marker}</span><span class="step-seq">${s.step.sequence_index}</span><span class="step-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="worker-pills">${pills}</span></div>`;
   }).join("");
   return `<div class="job-block">${head}<div class="step-track">${rows}</div></div>`;
 }
@@ -1115,6 +1140,30 @@ function updateJobProgress(grpc) {
   jobIds.forEach(ensureSteps);
   wrap.innerHTML = jobIds.map(j => renderJobBlock(j, byJob[j])).join("");
 }
+
+// Click a step row -> push every worker on that job onto it (gRPC ControlStep
+// GOTO, which is job-scoped -- there is no per-device targeting server-side).
+// Delegated, because the track re-renders on every 4s poll.
+async function gotoStep(jobId, stepId, row) {
+  row.classList.add("pending");
+  try {
+    const res = await fetch(`/control/jobs/${encodeURIComponent(jobId)}/goto/${encodeURIComponent(stepId)}`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || ("HTTP " + res.status));
+    showToast(`Jumped to ${stepId} · ${body.sessions_notified} device${body.sessions_notified === 1 ? "" : "s"} notified`,
+      body.sessions_notified ? "ok" : "err");
+  } catch (err) {
+    showToast("Step jump failed: " + err.message, "err");
+  } finally {
+    row.classList.remove("pending");
+    tick();
+  }
+}
+
+document.getElementById("job-progress").addEventListener("click", e => {
+  const row = e.target.closest(".step-row");
+  if (row) gotoStep(row.dataset.job, row.dataset.step, row);
+});
 
 // ── #2 Activity feed ───────────────────────────────────────────────
 // No new data: diff this /status snapshot against the previous one and
@@ -1300,6 +1349,9 @@ function runSelfTest() {
   console.assert(st[1].active && !st[1].done, "B: worker present -> active");
   console.assert(st[2].active, "C: worker present -> active");
   console.assert(st[1].here.length === 1 && st[2].here.length === 1, "one worker each on B, C");
+  console.assert(fileIcon("scene.usda") === "🧊" && fileIcon("a.USDZ") === "🧊", "usd variants get the usd icon");
+  console.assert(fileIcon("manifest.json") === "🧾" && fileIcon("part.glb") === "📦", "json / glb icons");
+  console.assert(fileIcon("notes.usdmap") === "📄" && fileIcon("") === "📄", "non-matches fall back to plain file");
   console.log("dashboard self-test passed");
 }
 
