@@ -65,6 +65,8 @@ namespace Guidance.Runtime
         [SerializeField] private float fittingTextHoldSeconds = 4f;
         [Tooltip("Fitting steps: fallback animation-play duration (seconds) used when the clip length can't be read.")]
         [SerializeField] private float fittingAnimationFallbackSeconds = 12f;
+        [Tooltip("Fitting steps: seconds the finished animation stays visible at its END position before the instruction text returns.")]
+        [SerializeField] private float fittingEndHoldSeconds = 3f;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
         [SerializeField] private JobSelectorPanel jobSelectorPanel;
         [Header("Control drawer")]
@@ -1122,6 +1124,17 @@ namespace Guidance.Runtime
                 {
                     if (token.IsCancellationRequested) yield break;
                     played += Time.deltaTime;
+                    yield return null;
+                }
+
+                // ---- end-hold: keep the finished part visible at its final
+                // position (the replay loop is holding the last frame) before the
+                // instruction text returns, so the worker sees where it ends up.
+                float endHeld = 0f;
+                while (endHeld < fittingEndHoldSeconds)
+                {
+                    if (token.IsCancellationRequested) yield break;
+                    endHeld += Time.deltaTime;
                     yield return null;
                 }
             }
