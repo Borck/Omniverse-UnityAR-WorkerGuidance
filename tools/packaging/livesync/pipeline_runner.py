@@ -102,6 +102,22 @@ def _export_env(cfg: dict) -> dict[str, str]:
     }
 
 
+def _prune_old_logs(runs_dir: Path, keep: int) -> None:
+    """Delete old pipeline-*.log files, keeping only the newest `keep`.
+
+    The timestamped filenames (pipeline-YYYYMMDD-HHMMSS.log) sort
+    chronologically, so a plain name sort puts the newest last.
+    """
+    if keep <= 0:
+        return
+    logs = sorted(runs_dir.glob("pipeline-*.log"))
+    for old in logs[:-keep]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
+
 def run_subprocess_step(name: str, command: str, cwd: Path, timeout: int, log_file: Path) -> int:
     banner = f"\n=== {name} ===\n$ {command}\n"
     print(banner, flush=True)
@@ -198,6 +214,8 @@ def main() -> int:
     log_dir.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_file = log_dir / f"pipeline-{stamp}.log"
+    log_file.touch()  # create now so this run's log is counted when pruning
+    _prune_old_logs(log_dir, int(cfg.get("max_pipeline_logs", 5)))
     print(f"[pipeline_runner] Log: {log_file}", flush=True)
 
     # The watcher sets LIVESYNC_CHANGED_URLS to a pipe-separated list of Nucleus
