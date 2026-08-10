@@ -80,6 +80,10 @@ The main orchestrator. Attach to a root GameObject in your scene.
 | `reconnectMaxIntervalSeconds` | `float` | `20` | Maximum reconnect retry interval |
 | `reconnectBackoffMultiplier` | `float` | `1.8` | Exponential backoff factor |
 | `statusPanel` | `SessionStatusPanel` | — | Optional HUD panel MonoBehaviour |
+| `instructionOverlay` | `FullScreenInstructionPanel` | — | Full-screen centered instruction text. Auto-created at runtime if left empty |
+| `fittingTextHoldSeconds` | `float` | `4` | Fitting steps: seconds the big instruction text is shown before each animation play |
+| `fittingEndHoldSeconds` | `float` | `3` | Fitting steps: seconds the finished animation stays at its END position before the text returns |
+| `fittingAnimationFallbackSeconds` | `float` | `12` | Fitting steps: fallback animation-play duration when the clip length can't be read |
 | `trackingDirectionHint` | `TrackingDirectionHint` | — | Optional direction hint arrow |
 
 **Public Methods:**
@@ -110,6 +114,19 @@ Static utility called by `ModelPresenter` after each per-step GLB is loaded. Swa
 `Renderer`'s materials for a shared cyan hologram material with a double-tap heartbeat
 pulse. Toggle via `AppBootstrap.useHologramShader`.
 
+### `FullScreenInstructionPanel`
+
+Draws the current step's instruction as **large, word-wrapped, auto-sized text centered
+on the screen** — separate from the minimisable left-edge `ControlDrawer`, so the
+instruction stays readable with the drawer collapsed (the primary way workers read steps
+on the M4000). Created and wired at runtime by `AppBootstrap` (no scene wiring needed);
+it only holds text + visibility — `AppBootstrap` decides *when* it is shown (see
+[Instruction Display](#instruction-display-preparation-vs-fitting-steps) below). The font
+size is computed each frame to the largest that fits a centred region, so short and long
+instructions both fill the space. Key inspector knobs live on the component:
+`widthFraction`/`heightFraction` (the centred region), `maxFontSize`/`minFontSize`, and
+`textColor` (a warm/bright colour that reads on the additive waveguide).
+
 ---
 
 ## Runtime Asset Flow
@@ -130,6 +147,53 @@ When a `StepActivated` message is received:
 
 All downloads are **version-keyed** — if the file is already cached for the current
 version, no network request is made.
+
+---
+
+## Instruction Display: Preparation vs Fitting Steps
+
+Steps come in two kinds, and the client shows them differently. The distinction is made at
+runtime from the resolved manifest entry: **empty `glbUrl` = preparation (text only);
+present `glbUrl` = fitting (text + animation)** — see the "instruction-only" branch in
+`AppBootstrap.ResolveAndPresentStepAsset`.
+
+**Preparation steps** (e.g. *"Place 1 plate on workbench"*) have no GLB. The big
+`FullScreenInstructionPanel` text is shown and **stays on screen** until the next step.
+
+**Fitting steps** (e.g. *"Fit plate onto fixture"*) have a GLB + animation. `AppBootstrap`
+runs a repeating **text ⇄ animation** cycle (`RunFittingInstructionCycle`) until the step
+is superseded:
+
+1. **Text phase** — the model is hidden and the instruction text is shown for
+   `fittingTextHoldSeconds` (default **4 s**).
+2. **Animation phase** — the text is hidden, the model is shown, and the animation plays
+   **one full time** (the play duration is read from the clip via
+   `ModelPresenter.GetActiveAnimationPlaySeconds()`; if it can't be read,
+   `fittingAnimationFallbackSeconds`, default **12 s**, is used).
+3. **End-hold** — the finished part stays visible **at its final position** for
+   `fittingEndHoldSeconds` (default **3 s**) so the worker sees where it ends up. (This
+   works because the replay loop holds the last frame — see below.)
+4. Loop back to step 1.
+
+Model visibility during the cycle is toggled via `ModelPresenter.SetActiveModelVisible()`,
+which flips only the model root — independent of the Vuforia tracking gate on
+`AnimationRoot`, and re-enabling it restarts the animation from frame 0.
+
+### Tuning the timings
+
+| Where | Field / constant | Default | Effect |
+|---|---|---|---|
+| `AppBootstrap` (Inspector) | `fittingTextHoldSeconds` | `4 s` | How long the text shows before each play |
+| `AppBootstrap` (Inspector) | `fittingEndHoldSeconds` | `3 s` | How long the part rests at its end position before text returns |
+| `AppBootstrap` (Inspector) | `fittingAnimationFallbackSeconds` | `12 s` | Play duration used when the clip length is unknown |
+| `GltfFastModelLoader.cs` (const) | `playbackSpeed` | `0.25×` | Animation playback speed (slow, so the motion is readable) |
+| `GltfFastModelLoader.cs` (const) | `replayDelaySeconds` | `10 s` | How long a clip holds on its **last frame** before it would rewind/replay |
+
+The `AppBootstrap` values are Inspector-editable; the two `GltfFastModelLoader.cs` values
+are compile-time constants (change them there and rebuild). The play → hold-last-frame →
+rewind → replay loop itself lives in `AnimationReplayLoop.cs` (legacy `Animation`) and
+`AnimatorReplayLoop.cs` (Mecanim `Animator`); the fitting cycle above simply controls
+*when the model is visible* on top of that loop.
 
 ---
 
