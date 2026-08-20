@@ -75,17 +75,17 @@ Each entry is one step of the assembly:
 
 ```json
 {
-  "jobId": "Segment_Assembly",
+  "jobId": "example-job",
   "workflowVersion": "1.0.0",
   "steps": [
     {
       "stepId": "step-001",
-      "partId": "Plate_Bottom",
+      "partId": "Part_A",
       "assetVersion": "sha256_a1b2c3d4e5f60718",
-      "glbFile": "part_Plate_Bottom_a1b2c3d4.glb",
+      "glbFile": "part_Part_A_a1b2c3d4.glb",
       "stepJsonFile": "step-001.json",
       "targetVersion": "2026-03-10.1",
-      "targetFile": "Segment_Assembly_Fixture.dat",
+      "targetFile": "example_fixture.dat",
       "compression": "NONE"
     }
   ]
@@ -155,11 +155,11 @@ work are both zero.
            shared/samples/manifests/ every 2s. Re-reads the changed manifest,
            diffs assetVersion per stepId, builds:
               ManifestUpdated {
-                  job_id: "Segment_Assembly",
+                  job_id: "example-job",
                   new_workflow_version: "1.0.0",
                   changed_steps: { "step-001": "sha256_a1b2c3..." }
               }
-           Calls SessionChannels.broadcast_to_job("Segment_Assembly", msg)
+           Calls SessionChannels.broadcast_to_job("example-job", msg)
            which puts the message in every connected session's outbound queue.
 
 [t=47..52] Connect() generator in grpc_session_service drains the outbound

@@ -1,162 +1,228 @@
 # Adding a New Animation Job
 
-How to bring a new set of animations from Omniverse Nucleus into the AR guidance app end-to-end.
+How to bring a new set of animations from Omniverse Nucleus into the AR guidance
+app end-to-end, using the current config-driven live-sync pipeline.
+
+> **This replaces the old manual workflow.** Earlier versions of this guide told
+> you to hardcode a `PARTS` list inside `export_glbs_from_usd.py` and paste the
+> script into the USD Composer Script Editor. That is no longer how it works.
+> The exporter is now **fully driven by `assembly_definition.json` on Nucleus and
+> environment variables from `livesync.config.yaml`** — you do not edit any Python
+> to add a job.
 
 ---
 
 ## Overview
 
-The pipeline has four stages:
+The pipeline has three stages, all automatic once configured:
 
 ```
-[Omniverse USD Composer]       [FastAPI Server]              [Unity / Vuzix]
-  export_glbs_from_usd.py  →  POST /omni/jobs/{id}/prepare  →  gRPC stream
-  (runs in Script Editor)      (pulls GLBs + writes YAML)       (plays GLBs)
+[Nucleus job folder]            [Headless Kit + Server]              [Unity / Vuzix]
+  assembly_definition.json  →   pipeline_runner:                 →   gRPC stream
+  step_id_<M>_<N>.usd            1. export_glbs_from_usd.py            (plays GLBs)
+  model_target/*.dat/.xml           (reads the definition, exports
+                                     one GLB per animation step)
+                                  2. nucleus_job_service.prepare_job
+                                     (downloads, slims, hashes,
+                                      writes manifest + step YAML)
+```
+
+Nothing about the parts is hardcoded: the step list, order, and which steps are
+animated all come from `assembly_definition.json`.
+
+---
+
+## Step 1 — Lay out the job folder on Nucleus
+
+The job lives in one Nucleus folder (the "Animation Export" folder). The pipeline
+expects this structure — replace the placeholders with your own values:
+
+```
+omniverse://<NUCLEUS_HOST>/<path-to-job-folder>/        ← this is nucleus_job_root
+  ├── JSON/
+  │     └── <anything>.json          ← the assembly_definition.json (auto-discovered)
+  ├── step_id_1_2.usd                ← one animation USD per animated step
+  ├── step_id_2_1.usd                   (named step_id_<major>_<minor>.usd, NO suffix)
+  ├── ...
+  └── model_target/
+        ├── <target>.dat             ← Vuforia model target (auto-discovered)
+        └── <target>.xml
+```
+
+Rules the pipeline relies on:
+
+- **Step USD naming:** a step whose `step_id` is `"1.2"` must have its animation USD
+  at `step_id_1_2.usd` in the job-root folder. The dot becomes an underscore and
+  there is **no** `_Animation` suffix.
+- **Model target:** placed under `model_target/`. The `.dat`/`.xml` are **discovered
+  automatically** — you no longer name the target in any config. The target id is
+  derived as `<dat-stem>_model_target`.
+
+### The `assembly_definition.json`
+
+This file (authored on the Omniverse side) defines the steps. Its shape:
+
+```json
+{
+  "operations": [
+    {
+      "steps": [
+        {
+          "step_id": "1.2",
+          "is_animation": true,
+          "instruction": "Place the bottom plate",
+          "step_type": "assembly",
+          "component_type": "plate"
+        },
+        {
+          "step_id": "1.3",
+          "is_animation": false,
+          "instruction": "Verify cable clearance before continuing"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `operations[].steps[]` | All steps, in authoring order → becomes `sequence_index` (1-based) |
+| `step_id` | Stable id, e.g. `"1.2"` → source USD `step_id_1_2.usd` |
+| `is_animation` | `true` = animated part (a GLB is exported). `false` = instruction-only step (no GLB, text still shown and listed in the manifest) |
+| `instruction` | Text shown to the worker (becomes `display_name`) |
+| `step_type`, `component_type` | Optional; used only to label the exported GLB file |
+
+Instruction-only steps (`is_animation: false`) are recorded in the export report
+with no GLB, so the manifest lists **every** step and the client never fails a
+step lookup.
+
+---
+
+## Step 2 — Point `livesync.config.yaml` at the job
+
+This is the **only** file you edit to add a job. Copy the example once per host,
+then set the job fields:
+
+```powershell
+cd tools\packaging\livesync
+copy livesync.config.example.yaml livesync.config.yaml
+notepad livesync.config.yaml
+```
+
+Set at minimum:
+
+| Key | What to set |
+|-----|-------------|
+| `job_id` | The new job's identifier — becomes the manifest filename, the Nucleus output subfolder, and the gRPC routing key. Passed to the exporter as `DIREKT_JOB_ID`. |
+| `nucleus_job_root` | Full `omniverse://<NUCLEUS_HOST>/<path-to-job-folder>` from Step 1. Everything else (assembly definition, step USDs, model target) is derived from it by convention. |
+| `nucleus_export_root` | A writable Nucleus folder where the exported GLBs and `_export_report.json` land (under `<root>/<job_id>/`). |
+| `watch_paths` | Leave as **`[]`** so the watch list is auto-derived from `assembly_definition.json` and refreshed after every rebuild. |
+
+Per-host fields (`repo_root`, `kit_app_dir`, `venv_python`, `log_dir`,
+`state_file`) are set once per machine, not per job. See
+[../docs/live-sync/configuration.md](../docs/live-sync/configuration.md) for every
+field.
+
+> The old `target_version` / `target_file` keys are obsolete — the model target is
+> discovered from `{nucleus_job_root}/model_target/`.
+
+---
+
+## Step 3 — Run the pipeline
+
+Two ways, same result:
+
+**A. One-shot (recommended when first adding a job):**
+
+```powershell
+cd tools\packaging\livesync
+.\trigger_now.bat
+```
+
+This runs `pipeline_runner` once: headless Kit export → `prepare_job`.
+
+**B. Automatic (ongoing live-sync):**
+
+```powershell
+cd tools\packaging\livesync
+.\run_watcher.bat
+```
+
+The watcher polls Nucleus; when you save the assembly definition or any watched
+step USD, it debounces (~10s) and runs the same pipeline. Only the parts whose
+source URL changed are re-exported.
+
+Expected tail of a successful run:
+
+```
+=== Kit GLB export === ...
+[pipeline_runner] Kit GLB export -> exit 0
+=== nucleus_job_service.prepare_job === ...
+[NucleusJobService] Wrote manifest: ...\<job_id>.manifest.json
+[pipeline_runner] prepare_job -> ok (steps_synced=N)
 ```
 
 ---
 
-## Step 1 — Discover what USD files exist on Nucleus
-
-Open `PU_Segment_Assembly.usd` (or whatever the new assembly file is) in USD Composer, then run this in the **Script Editor** to see all composed layer paths:
-
-```python
-import omni.usd
-
-stage = omni.usd.get_context().get_stage()
-
-print("=== LAYERS ===")
-for layer in stage.GetLayerStack():
-    print(layer.identifier)
-```
-
-The output tells you:
-- The **Nucleus folder** where the individual part USD files live (becomes `NUCLEUS_BASE`)
-- The **exact USD filenames** for each part (become the `usd_basename` in `PARTS`)
-
-> Each part usually has two layers: a main animation `.usd` and a companion `-Position.usd`.
-> Only the main animation file goes into `PARTS` — the position layer is a sublayer and gets
-> baked in automatically when the script flattens the stage.
-
----
-
-## Step 2 — Configure `export_glbs_from_usd.py`
-
-Open `server-kit/app/omniverse/export_glbs_from_usd.py`.
-
-There are two config blocks at the top. Add a new one (or swap the active one) with three values:
-
-### 2a. Job ID, Nucleus paths
-
-```python
-JOB_ID = "your-new-job-id"          # used as folder name on Nucleus + key in YAML
-NUCLEUS_BASE = "omniverse://XXX.XXX.XXX.XXX/Projects/DIREKT/<path-to-folder-with-part-USDs>"
-NUCLEUS_OUTPUT_ROOT = "omniverse://XXX.XXX.XXX.XXX/Users/shahan"
-```
-
-### 2b. PARTS list — one entry per part USD file
-
-```python
-PARTS: list[PartSpec] = [
-    PartSpec("step-001", "part_snake_case", "Human Readable Name", "ExactUSDFilename_NoExtension", 1),
-    PartSpec("step-002", "part_snake_case", "Human Readable Name", "ExactUSDFilename_NoExtension", 2),
-    # ...one line per part, sequence_index matches assembly order
-]
-```
-
-| Field | What it is |
-|-------|-----------|
-| `step_id` | Stable ID used in YAML and manifests, e.g. `"step-001"` |
-| `part_id` | Snake_case name used for the exported GLB filename |
-| `display_name` | Label shown in the AR HUD |
-| `usd_basename` | Exact USD filename **without** `.usd` — must match Nucleus exactly (spaces allowed) |
-| `sequence_index` | Assembly order, 1-based |
-
-> **Single USD with multiple animations?** Check if the assembly USD actually composes from
-> separate per-part USD files (run Step 1 to check LAYERS). If yes, each part USD = one
-> `PartSpec` entry pointing to that file. If it truly is one monolithic USD, all entries share
-> the same `usd_basename` and you get N identical GLBs — less ideal but works.
-
----
-
-## Step 3 — Run the export in USD Composer Script Editor
-
-1. Copy the entire `export_glbs_from_usd.py` file
-2. Open USD Composer → **Window → Script Editor**
-3. Paste and hit **Run (Ctrl+Enter)**
-
-Watch the output panel for:
-```
-=== Exporting 6 parts for job 'your-new-job-id' ===
-[step-001] Opening omniverse://...
-[step-001] Wrote omniverse://.../part_snake_case.glb
-...
-Success: Report written to omniverse://.../your-new-job-id/_export_report.json
-```
-
-If any step fails, the error message says which USD file couldn't be opened. Fix the `usd_basename` or `NUCLEUS_BASE` and re-run.
-
----
-
-## Step 4 — Pull GLBs from Nucleus to the FastAPI server
-
-With the FastAPI server running, call:
-
-```
-POST /omni/jobs/{job_id}/prepare
-  ?nucleus_export_path=/Users/shahan/{job_id}
-  &target_version=2026-03-10.1
-  &target_file=Fixture_detectors_1.dat
-```
-
-Example for the PU Segment job:
-```
-POST /omni/jobs/pu-segment-assembly/prepare
-  ?nucleus_export_path=/Users/shahan/pu-segment-assembly
-  &target_version=2026-03-10.1
-  &target_file=Fixture_detectors_1.dat
-```
-
-This call:
-1. Reads `_export_report.json` from Nucleus
-2. Downloads each GLB to `shared/samples/assets/_raw/{job_id}/`
-3. Hashes each GLB → creates `shared/samples/assets/sha256_xxx/` versioned folders
-4. Writes `shared/samples/manifests/{job_id}.manifest.json`
-5. Adds a new block to `shared/samples/step-definitions.yaml` **without touching existing jobs**
-
----
-
-## Step 5 — Verify
-
-Check these three things:
+## Step 4 — Verify
 
 | What | Where | Expected |
 |------|-------|----------|
-| Raw GLBs | `shared/samples/assets/_raw/{job_id}/` | One `.glb` per part |
-| Manifest | `shared/samples/manifests/{job_id}.manifest.json` | Exists, has all steps |
-| YAML | `shared/samples/step-definitions.yaml` | New job block appended, other jobs untouched |
+| Manifest | `shared/samples/manifests/<job_id>.manifest.json` | Exists, lists every step |
+| Versioned assets | `shared/samples/assets/sha256_*/` | One folder per unique GLB content hash |
+| Step definitions | `shared/samples/step-definitions.yaml` | New job block appended, other jobs untouched |
+
+`prepare_job` also deletes any `sha256_<hash>/` folder no longer referenced by the
+manifest, so disk usage stays bounded — no manual cleanup.
 
 ---
 
-## Step 6 — Optional: re-package with Draco compression
+## Step 5 — The client picks it up
 
-If Draco is enabled on the server, run:
+For a device to receive this job, its `hello` must advertise it. The Unity client
+sends a `capabilities` string containing `job=<job_id>`; without it the session
+falls back to the default job. (See the Unity side's `HelloRequest` construction.)
+
+---
+
+## Optional — repackage with Draco
+
+If Draco is enabled on the server:
 
 ```
 POST /api/jobs/{job_id}/packages:build
 ```
 
-This re-packages the GLBs with compression and writes to the export asset root.
-Skip this if Draco is disabled — Unity fetches GLBs directly from the `sha256_xxx` folders via `/api/assets/`.
+Repackages the GLBs with mesh compression. Skip if Draco is disabled — Unity
+fetches the GLBs directly from the `sha256_*` folders otherwise.
 
 ---
 
-## Common Errors
+## Advanced — manual server-side prepare (no watcher)
+
+If the GLBs and `_export_report.json` already exist on Nucleus (e.g. exported by a
+previous run) and you only want the server to pull and index them, the HTTP
+endpoint still exists:
+
+```
+POST /omni/jobs/{job_id}/prepare?nucleus_export_path=<path-under-host>/<job_id>
+```
+
+This runs stage 2 only (download → slim → hash → manifest + YAML). It does **not**
+export from USD — use the pipeline (Step 3) for that.
+
+---
+
+## Common errors
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `open_stage_async returned False` | `usd_basename` or `NUCLEUS_BASE` path is wrong | Run Step 1 again, copy exact layer paths |
-| `Task exception was never retrieved` | `PARTS` list is not defined (still commented out) | Uncomment / define `PARTS` before running |
-| `Result.ERROR_NOT_FOUND` in listing | Passed a file path to `omni.client.list()` — it needs a folder | Remove the filename from the end of the path |
-| `_export_report.json` not found on server | Script Editor run failed silently | Check Script Editor output for per-step errors |
-| `demonstrator-26-02-25-img` missing from YAML after prepare | Server was running old code before the regex fix | Restart uvicorn to pick up latest `nucleus_job_service.py` |
+| `open_stage_async returned False` / `Could not download ...usd` | A step USD is missing or `nucleus_job_root` points at a file, not a folder | Confirm the `step_id_<M>_<N>.usd` exists in the job root and the path is a folder |
+| Kit export times out | Kit didn't self-exit, or first-boot extension compile is slow | Keep the `os._exit` in the exporter tail; raise `pipeline_timeout_sec` in the config |
+| `_export_report.json` not found on server | The Kit export failed silently | Read `tools/packaging/livesync/logs/runs/pipeline-<ts>.log` |
+| A step missing from the manifest after a run | Server ran stale code, or the step isn't in `assembly_definition.json` | Restart the pipeline; confirm the step exists with the right `is_animation` flag |
+| `sessions_notified=0` on update | Client didn't send `job=<job_id>` in `capabilities` | Fix the Unity `HelloRequest` |
+
+For the full runbook (host setup, smoke tests, log locations, stuck-Kit
+recovery), see [../docs/live-sync/operations.md](../docs/live-sync/operations.md).
