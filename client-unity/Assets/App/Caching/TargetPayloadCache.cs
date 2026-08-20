@@ -75,7 +75,7 @@ namespace Guidance.Runtime
             if (request.result != UnityWebRequest.Result.Success)
             {
                 _inProgress.Remove(key);
-                onError?.Invoke($"Target payload download failed: {request.error}");
+                onError?.Invoke(DescribeDownloadFailure(request, "Target payload"));
                 yield break;
             }
 
@@ -124,6 +124,29 @@ namespace Guidance.Runtime
         {
             var safeVersion = (targetVersion ?? "unknown").Replace(":", "_");
             return Path.Combine(_cacheRoot, safeVersion, fileName);
+        }
+
+        /// <summary>
+        /// Turns a UnityWebRequest failure into a human-readable reason instead of a
+        /// raw transport string (e.g. "HTTP/2 ..."). Reports only the asset type and
+        /// the failure category -- never the file name or version (kept private).
+        /// </summary>
+        private static string DescribeDownloadFailure(UnityWebRequest request, string kind)
+        {
+            switch (request.result)
+            {
+                case UnityWebRequest.Result.ProtocolError:
+                    if (request.responseCode == 404)
+                        return $"{kind} not found on server. No matching file exists in the server store.";
+                    return $"Server rejected the {kind.ToLowerInvariant()} request: HTTP {request.responseCode}.";
+                case UnityWebRequest.Result.ConnectionError:
+                    return $"Cannot reach the server to download the {kind.ToLowerInvariant()}: {request.error}. " +
+                           "Check that the server is running and reachable.";
+                case UnityWebRequest.Result.DataProcessingError:
+                    return $"Received the {kind.ToLowerInvariant()} but could not process the response: {request.error}.";
+                default:
+                    return $"{kind} download failed: {request.error}.";
+            }
         }
     }
 }

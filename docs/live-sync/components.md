@@ -123,15 +123,16 @@ polling.
 flattens the composed stage, converts to GLB via `omni.kit.asset_converter`,
 writes the GLB and a JSON report back to Nucleus.
 
-**Runtime:** Inside Kit (USD Composer's Script Editor or
-`kit.exe --exec` headless).
+**Runtime:** Inside Kit, headless (`repo.bat launch --exec` via
+`pipeline_runner`). Not run interactively.
 
-**Inputs:**
+**Inputs:** (all injected — nothing hardcoded per job)
 
-- Hardcoded `JOB_ID`, `NUCLEUS_BASE`, `NUCLEUS_OUTPUT_ROOT` constants
-  (per-job; edit when switching between jobs)
-- `PARTS: list[PartSpec]` — each entry maps a step_id and part_id to a
-  source USD filename
+- `DIREKT_JOB_ID`, `DIREKT_NUCLEUS_OUTPUT_ROOT`, `DIREKT_NUCLEUS_JOB_ROOT`
+  env vars, set by `pipeline_runner` from `livesync.config.yaml`
+- `assembly_definition.json` on Nucleus — the step list, order, and
+  `is_animation` flags (iterated as `operations[].steps[]`); replaces the
+  old `PARTS` list
 - `LIVESYNC_CHANGED_URLS` env var (optional) — pipe-separated list; if
   set, only parts whose source URL is in the set are re-exported
 
@@ -190,7 +191,7 @@ target_version, target_file) -> {"job_id", "steps_synced", "orphans_removed"}`
   rollback history, but safe because Nucleus is the source of truth.
 - The YAML rewrite uses a regex that matches the *exact* job id (with
   a lookahead for `  - jobId: ` or end-of-string) so prefix-collisions
-  like `demonstrator-26-02-25` vs `demonstrator-26-02-25-img` don't
+  like `job-a` vs `job-a-img` don't
   strip both blocks.
 - The `target_id` field is derived from `target_file` if empty:
   `Path(target_file).stem + "_model_target"`. So callers usually pass

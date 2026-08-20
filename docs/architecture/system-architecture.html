@@ -1,0 +1,577 @@
+<title>Omniverse → Unity AR Worker Guidance — System Architecture</title>
+<style>
+  :root{
+    --paper:#f3f5f6; --raised:#ffffff; --sunken:#e9edee;
+    --ink:#0f171c; --ink-soft:#33434c; --muted:#5c6b73; --faint:#8a99a1;
+    --line:#d3dbde; --line-soft:#e2e8ea;
+    --cyan:#0e9bb8; --cyan-deep:#0b7f97; --cyan-wash:#e2f2f5;
+    --amber:#b26a1f; --amber-wash:#f5ebdd;
+    --good:#2f8a5b;
+    --shadow:0 1px 2px rgba(15,23,28,.06),0 8px 24px rgba(15,23,28,.05);
+    --radius:10px;
+    --sans:"Inter var",Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --measure:68ch;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --paper:#0c1216; --raised:#121b21; --sunken:#0a0f13;
+      --ink:#e7edf0; --ink-soft:#b8c4cb; --muted:#8a99a1; --faint:#61707a;
+      --line:#233038; --line-soft:#1a242b;
+      --cyan:#3cc4dd; --cyan-deep:#5fd0e5; --cyan-wash:#0f2b33;
+      --amber:#d79a4f; --amber-wash:#2c2213;
+      --good:#5cc48c;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0c1216; --raised:#121b21; --sunken:#0a0f13;
+    --ink:#e7edf0; --ink-soft:#b8c4cb; --muted:#8a99a1; --faint:#61707a;
+    --line:#233038; --line-soft:#1a242b;
+    --cyan:#3cc4dd; --cyan-deep:#5fd0e5; --cyan-wash:#0f2b33;
+    --amber:#d79a4f; --amber-wash:#2c2213;
+    --good:#5cc48c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:16.5px; line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+
+  /* ---- top bar ---- */
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter:saturate(1.4) blur(10px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .top .wrap{display:flex; align-items:center; gap:16px; height:56px}
+  .brand{font-family:var(--mono); font-size:12.5px; letter-spacing:.02em; color:var(--muted); display:flex; align-items:center; gap:9px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 4px var(--cyan-wash)}
+  .top nav{margin-left:auto; display:flex; gap:20px; align-items:center}
+  .top nav a{font-family:var(--mono); font-size:12px; color:var(--muted); text-decoration:none; letter-spacing:.02em}
+  .top nav a:hover{color:var(--ink)}
+  .toggle{
+    font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    background:var(--sunken); border:1px solid var(--line); border-radius:999px;
+    padding:5px 11px; cursor:pointer; letter-spacing:.03em;
+  }
+  .toggle:hover{color:var(--ink); border-color:var(--cyan)}
+  @media (max-width:720px){ .top nav a{display:none} }
+
+  /* ---- hero ---- */
+  .hero{padding:74px 0 40px; border-bottom:1px solid var(--line-soft)}
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--cyan-deep); margin:0 0 18px}
+  h1{font-size:clamp(30px,5vw,50px); line-height:1.06; letter-spacing:-.02em; font-weight:660; margin:0; text-wrap:balance; max-width:16ch}
+  .lede{margin:22px 0 0; max-width:var(--measure); font-size:18.5px; color:var(--ink-soft); text-wrap:pretty}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:26px}
+  .tag{font-family:var(--mono); font-size:11.5px; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:4px 9px; background:var(--raised)}
+  .tag b{color:var(--ink); font-weight:600}
+
+  /* thesis card */
+  .thesis{
+    margin:34px 0 4px; padding:26px 28px; border-radius:var(--radius);
+    background:var(--raised); border:1px solid var(--line);
+    border-left:3px solid var(--cyan); box-shadow:var(--shadow);
+    position:relative;
+  }
+  .thesis .lbl{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan-deep); margin:0 0 10px}
+  .thesis p{margin:0; font-size:18px; line-height:1.55; color:var(--ink)}
+  .thesis em{font-style:italic; color:var(--ink)}
+
+  /* ---- sections ---- */
+  section{padding:56px 0; border-bottom:1px solid var(--line-soft)}
+  .kicker{font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; display:flex; align-items:center; gap:10px}
+  .kicker .num{color:var(--cyan-deep)}
+  h2{font-size:clamp(22px,3vw,29px); letter-spacing:-.015em; font-weight:640; margin:0 0 8px; text-wrap:balance}
+  h3{font-size:18px; letter-spacing:-.01em; font-weight:620; margin:34px 0 10px}
+  p{max-width:var(--measure)}
+  p,li{color:var(--ink-soft)}
+  strong{color:var(--ink); font-weight:620}
+  a{color:var(--cyan-deep); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:2px}
+  code{font-family:var(--mono); font-size:.86em; background:var(--sunken); padding:1.5px 5px; border-radius:5px; color:var(--ink); border:1px solid var(--line-soft)}
+  .lead{font-size:17.5px; color:var(--ink-soft)}
+
+  /* ---- the bespoke two-plane figure ---- */
+  .planes{
+    margin:30px 0 6px; display:grid; grid-template-columns:1fr; gap:0;
+    border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--raised); box-shadow:var(--shadow);
+  }
+  .plane-row{display:grid; grid-template-columns:1fr auto 1fr; align-items:stretch}
+  @media (max-width:760px){ .plane-row{grid-template-columns:1fr} }
+  .plane{padding:22px 22px}
+  .plane.ctrl{border-right:1px dashed var(--line)}
+  @media (max-width:760px){ .plane.ctrl{border-right:none; border-bottom:1px dashed var(--line)} }
+  .plane .cap{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; display:flex; align-items:center; gap:8px; margin:0 0 4px}
+  .plane.ctrl .cap{color:var(--cyan-deep)}
+  .plane.data .cap{color:var(--amber)}
+  .swatch{width:10px;height:10px;border-radius:3px}
+  .plane.ctrl .swatch{background:var(--cyan)}
+  .plane.data .swatch{background:var(--amber)}
+  .plane h4{margin:2px 0 12px; font-size:17px; font-weight:640; letter-spacing:-.01em; color:var(--ink)}
+  .plane ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:9px}
+  .plane li{display:flex; gap:10px; font-size:14px; line-height:1.45; align-items:flex-start}
+  .plane li::before{content:"▸"; font-family:var(--mono); font-size:11px; margin-top:2px}
+  .plane.ctrl li::before{color:var(--cyan)}
+  .plane.data li::before{color:var(--amber)}
+  .plane li b{color:var(--ink); font-weight:600}
+  .plane .chan{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--line-soft)}
+
+  .seam{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:14px 20px; background:linear-gradient(180deg,var(--cyan-wash),var(--amber-wash));
+    min-width:180px;
+  }
+  @media (max-width:760px){ .seam{padding:20px; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line)} }
+  .seam .seam-lbl{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); text-align:center; margin-bottom:8px}
+  .hashchip{
+    font-family:var(--mono); font-size:12px; color:var(--ink); background:var(--raised);
+    border:1px solid var(--line); border-radius:8px; padding:9px 12px; text-align:center;
+    box-shadow:var(--shadow); line-height:1.35;
+  }
+  .hashchip b{color:var(--cyan-deep)}
+  .seam .seam-note{font-size:11px; color:var(--muted); text-align:center; margin-top:9px; max-width:20ch; line-height:1.4}
+
+  /* principle grid */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:26px 0 4px}
+  .card{background:var(--raised); border:1px solid var(--line); border-radius:var(--radius); padding:18px 18px 16px; box-shadow:var(--shadow)}
+  .card .n{font-family:var(--mono); font-size:11px; color:var(--cyan-deep); letter-spacing:.08em}
+  .card h4{margin:8px 0 6px; font-size:15.5px; font-weight:620; color:var(--ink); letter-spacing:-.01em}
+  .card p{margin:0; font-size:13.5px; line-height:1.5; color:var(--muted); max-width:none}
+  .card p code{font-size:.82em}
+
+  /* mermaid figure */
+  figure.diagram{margin:26px 0 6px; padding:20px; background:var(--raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow-x:auto}
+  figure.diagram pre.mermaid{margin:0; text-align:center; min-width:520px}
+  figcaption{font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--line-soft); letter-spacing:.02em}
+  figcaption b{color:var(--ink-soft); font-weight:600}
+
+  /* tables */
+  .tablewrap{overflow-x:auto; margin:24px 0 6px; border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; min-width:560px; background:var(--raised); font-size:14px}
+  th,td{text-align:left; padding:11px 15px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  thead th{font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:var(--sunken); position:sticky; top:0}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:.82em; white-space:nowrap}
+  td b{color:var(--ink); font-weight:600}
+  .role{font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; white-space:nowrap}
+  .role.ctrl{color:var(--cyan-deep); background:var(--cyan-wash)}
+  .role.data{color:var(--amber); background:var(--amber-wash)}
+  .role.src{color:var(--good); background:color-mix(in srgb,var(--good) 14%, transparent)}
+  .role.res{color:var(--muted); background:var(--sunken)}
+
+  /* invariant list */
+  .inv{display:flex; flex-direction:column; gap:2px; margin:24px 0 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:var(--shadow)}
+  .inv-row{display:grid; grid-template-columns:150px 1fr; gap:0; background:var(--raised)}
+  @media (max-width:640px){ .inv-row{grid-template-columns:1fr} }
+  .inv-row + .inv-row{border-top:1px solid var(--line-soft)}
+  .inv-k{padding:15px 18px; font-weight:620; color:var(--ink); font-size:14.5px; background:var(--sunken); border-right:1px solid var(--line-soft)}
+  @media (max-width:640px){ .inv-k{border-right:none; border-bottom:1px solid var(--line-soft); padding-bottom:8px} }
+  .inv-v{padding:15px 18px; font-size:14px; color:var(--ink-soft)}
+  .inv-v code{font-size:.82em}
+
+  ul.clean{padding-left:1.1em; max-width:var(--measure)}
+  ul.clean li{margin:6px 0}
+
+  footer{padding:40px 0 64px}
+  footer p{font-family:var(--mono); font-size:12px; color:var(--muted); max-width:none}
+  .foot-links{display:flex; flex-wrap:wrap; gap:18px; margin-top:12px}
+  .foot-links a{font-family:var(--mono); font-size:12px}
+
+  @media (prefers-reduced-motion:no-preference){
+    .reveal{opacity:0; transform:translateY(10px); transition:opacity .6s ease, transform .6s ease}
+    .reveal.in{opacity:1; transform:none}
+  }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand"><span class="dot"></span>DIREKT · Worker Guidance</span>
+    <nav>
+      <a href="#loop">Digital Twin</a>
+      <a href="#context">Context</a>
+      <a href="#components">Components</a>
+      <a href="#contracts">Contracts</a>
+      <a href="#transfer">Data transfer</a>
+      <a href="#properties">Invariants</a>
+      <button class="toggle" id="themeToggle" type="button">◐ theme</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <p class="eyebrow">System Architecture — Omniverse → Unity AR</p>
+    <h1>A Digital Twin for step-driven assembly guidance</h1>
+    <p class="lede">A layered OpenUSD scene on Omniverse Nucleus is the single source of truth. A Python server derives per-step delivery artifacts and serves them to a content-free Unity 6 runtime on Vuzix smart glasses — over one small control channel and one immutable, content-addressed data channel.</p>
+    <div class="meta">
+      <span class="tag"><b>Source</b> Omniverse / Nucleus (OpenUSD)</span>
+      <span class="tag"><b>Server</b> FastAPI + gRPC + Kit</span>
+      <span class="tag"><b>Client</b> Unity 6 · Vuzix M4000</span>
+      <span class="tag"><b>gRPC</b> :50051</span>
+      <span class="tag"><b>HTTP</b> :8080</span>
+    </div>
+
+    <div class="thesis">
+      <p class="lbl">Central thesis</p>
+      <p>A change to the authoritative USD scene propagates <em>deterministically and automatically</em> to the AR consumer — <em>“saving in Omniverse updates the worker’s view within ~60&nbsp;s”</em> — while the consumer stays a stateless, content-free renderer whose only inputs are an immutable asset stream and a small deterministic control channel.</p>
+    </div>
+  </div>
+
+  <!-- ============ TWO PLANES ============ -->
+  <section id="planes">
+    <p class="kicker"><span class="num">01</span> Architectural style</p>
+    <h2>Two channels with different physics</h2>
+    <p class="lead">The primary architectural decision is a <strong>control / data-plane split</strong>. The control channel stays small and analysable — a state machine over a handful of message types. Large binary payloads travel a separate channel built for throughput and caching. The two planes meet at exactly one point: an immutable content hash.</p>
+
+    <div class="planes reveal">
+      <div class="plane-row">
+        <div class="plane ctrl">
+          <p class="cap"><span class="swatch"></span>Control plane</p>
+          <h4>Session &amp; step orchestration</h4>
+          <ul>
+            <li><b>Carries</b> session lifecycle, step activation, confirmations, live-sync notifications</li>
+            <li><b>Transport</b> gRPC bidirectional stream (HTTP/2); REST bridge fallback</li>
+            <li><b>Shape</b> small, frequent, ordered per session</li>
+            <li><b>Semantics</b> deterministic · idempotent</li>
+          </ul>
+          <p class="chan">GuidanceSessionService · GuidanceControlService</p>
+        </div>
+        <div class="seam">
+          <p class="seam-lbl">planes meet at</p>
+          <div class="hashchip">asset_version =<br><b>sha256(content)</b>[:16]</div>
+          <p class="seam-note">control names a version · data serves it · client caches by it</p>
+        </div>
+        <div class="plane data">
+          <p class="cap"><span class="swatch"></span>Data plane</p>
+          <h4>Asset delivery</h4>
+          <ul>
+            <li><b>Carries</b> GLB geometry + animation, Vuforia Model Target databases</li>
+            <li><b>Transport</b> gRPC server-streaming (chunked) + HTTP file serving</li>
+            <li><b>Shape</b> large, occasional</li>
+            <li><b>Semantics</b> immutable · content-addressed · cacheable</li>
+          </ul>
+          <p class="chan">AssetTransferService · /api/assets · /api/targets</p>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:18px; font-size:13.5px; color:var(--muted)">Identical content ⇒ identical version ⇒ no re-transfer and no re-render. The system is self-deduplicating: a save that produces byte-identical geometry is correctly silent.</p>
+  </section>
+
+  <!-- ============ PRINCIPLES ============ -->
+  <section id="principles">
+    <p class="kicker"><span class="num">02</span> Design principles</p>
+    <h2>Six commitments, each enforced in code</h2>
+    <div class="grid">
+      <div class="card reveal"><p class="n">P1</p><h4>Single source of truth</h4><p>Omniverse / Nucleus owns geometry, animation, and layer semantics. The server <em>derives</em>; it never authors. The client renders; it never stores.</p></div>
+      <div class="card reveal"><p class="n">P2</p><h4>Zero embedded assembly data</h4><p>No <code>.glb</code>, <code>.dat</code>, <code>.xml</code>, or manifest ships in the app. A Unity build gate (<code>NoEmbeddedAssemblyDataCheck.cs</code>) fails the build if any is found.</p></div>
+      <div class="card reveal"><p class="n">P3</p><h4>Determinism</h4><p>Same USD inputs ⇒ same <code>ResolvedStep</code> and same <code>cache_key</code> every run. Steps totally ordered by <code>(sequence, step_id)</code>.</p></div>
+      <div class="card reveal"><p class="n">P4</p><h4>Immutability &amp; content addressing</h4><p>Versions are SHA-256 of the <em>bytes actually served</em> — hashed after mesh slimming, so the version reflects the delivered payload.</p></div>
+      <div class="card reveal"><p class="n">P5</p><h4>Idempotency</h4><p>Duplicate <code>StepCompleted</code> / heartbeat messages are absorbed by a dedup set. Reconnect restores the last job and step, never resets.</p></div>
+      <div class="card reveal"><p class="n">P6</p><h4>One active model</h4><p>Exactly one GLB instance under one root transform at any instant; presenting a new step disposes the previous one. Bounds memory and heat on the wearable.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ DIGITAL TWIN LOOP ============ -->
+  <section id="loop">
+    <p class="kicker"><span class="num">03</span> The Digital Twin loop</p>
+    <h2>Two halves joined by one shared file</h2>
+    <p class="lead">The system splits into an <strong>Omniverse half</strong> that derives delivery artifacts from USD and a <strong>delivery half</strong> that pushes change to the device. They are joined by a single contract boundary: <code>shared/samples/manifests/&lt;job_id&gt;.manifest.json</code>. The whole loop pivots on that file.</p>
+
+    <figure class="diagram reveal">
+      <pre class="mermaid">
+flowchart TD
+    A["Artist saves step_id_M_N.usd on Nucleus"] --> B["watcher.py polls Nucleus every 5s<br/>omni.client.stat · debounce 10s"]
+    B --> C["pipeline_runner.py — one rebuild"]
+    C --> D["Stage 1: headless Kit export<br/>only changed parts (LIVESYNC_CHANGED_URLS)"]
+    C --> E["Stage 2: prepare_job()"]
+    D --> F["download GLB → glb_slim (−36%)<br/>→ SHA-256 → sha256_hash/ folder"]
+    E --> F
+    F --> G["rewrite manifest.json + step-definitions.yaml<br/>delete orphaned sha256_ folders"]
+    G --> H["manifest.json — contract boundary"]
+    H --> I["manifest_watcher (daemon in gRPC server)<br/>polls every 2s · diffs assetVersion"]
+    I --> J["session_channels.broadcast_to_job(ManifestUpdated)<br/>enqueue on each subscribed session"]
+    J --> K["Connect() drains queue on next round-trip (≤5s)"]
+    K --> L["Unity: changed==current → hot-swap under live Vuforia anchor<br/>else → invalidate cached version"]
+      </pre>
+      <figcaption><b>End-to-end latency ~55–60s</b> for a single-part edit — dominated by Kit boot (~9s) and the 10s debounce. The Unity hot-swap itself is ~5s.</figcaption>
+    </figure>
+
+    <div class="grid">
+      <div class="card"><p class="n">Why watcher lives outside Kit</p><p>The sync loop runs whether or not an interactive Kit session is open — the artist controls Kit independently.</p></div>
+      <div class="card"><p class="n">Why incremental rebuild</p><p>Single-part edits showed ~80% of rebuild time re-doing unchanged parts. Changed URLs are filtered via an env var.</p></div>
+      <div class="card"><p class="n">Why slim-before-hash</p><p>Stripping unused vertex attributes before hashing makes <code>asset_version</code> reflect the exact bytes served.</p></div>
+      <div class="card"><p class="n">Why content hashing</p><p>Automatic dedup: identical bytes ⇒ unchanged manifest ⇒ no broadcast ⇒ no client work. Self-correcting.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ CONTEXT ============ -->
+  <section id="context">
+    <p class="kicker"><span class="num">04</span> System context</p>
+    <h2>Actors, boundaries, and transports</h2>
+    <figure class="diagram reveal">
+      <pre class="mermaid">
+flowchart LR
+    subgraph AUTH["Authoring — source of truth"]
+      ART["Design engineer<br/>Omniverse Composer"]
+      NUC["Nucleus<br/>layered USD + Model Target"]
+    end
+    subgraph SRV["Server-Kit — host Host A"]
+      PIPE["Live-Sync pipeline"]
+      CTRL["Control plane<br/>gRPC session + control"]
+      DATA["Data plane<br/>asset stream + HTTP API"]
+      STORE["Versioned asset store<br/>+ manifest + step YAML"]
+    end
+    UNITY["Unity 6 client<br/>on Vuzix M4000"]
+    ART -->|saves USD| NUC
+    NUC -->|omni.client| PIPE
+    PIPE --> STORE
+    STORE --> DATA
+    STORE -.->|manifest diff| CTRL
+    CTRL <-->|gRPC stream :50051| UNITY
+    DATA -->|"GLB/target bytes:<br/>gRPC chunks :50051<br/>(or HTTP files :8080)"| UNITY
+      </pre>
+      <figcaption>Both halves currently run co-located on host <b>Host A</b>, sharing the manifest via local disk. The design permits splitting onto separate hosts with <b>no code change</b> — only Nucleus reachability and a shared manifest location are required.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ DOMAIN ============ -->
+  <section id="domain">
+    <p class="kicker"><span class="num">05</span> Domain model</p>
+    <h2>Layered USD and the BTU handover</h2>
+    <p class="lead">Each assembly <strong>part</strong> is a <strong>layer pair</strong>: an <em>animation layer</em> (the part moving from a start offset into place) and a <em>target-position layer</em> (the part statically at its final pose). Ordered bottom-to-top, even indices are animation layers, odd indices are end-position layers.</p>
+    <p>Runtime progression follows a <strong>layer-muteness handover</strong> modelled on the <code>btu.switch_step_layers_ui</code> convention. On completion of step&nbsp;<em>N</em>, the visible set is exactly:</p>
+    <figure class="diagram">
+      <pre class="mermaid">
+flowchart LR
+    subgraph completed["completed steps 1..N — fixed at final pose"]
+      T1["target_layer(1)"] --- T2["target_layer(2)"] --- TN["target_layer(N)"]
+    end
+    NEXT["animation_layer(N+1)<br/>— now animating into place"]
+    completed --> NEXT
+    MUTED["everything else — muted"]
+      </pre>
+      <figcaption><code>visible(N) = { target_layer(k) : 1 ≤ k ≤ N } ∪ { animation_layer(N+1) }</code> — one active animation at a time; placed parts stay fixed. Resolved by <b>LayerStackResolver</b> into an immutable <code>ResolvedStep</code> carrying a deterministic <code>cache_key</code>.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ COMPONENTS ============ -->
+  <section id="components">
+    <p class="kicker"><span class="num">06</span> Component reference</p>
+    <h2>Server-Kit — Python</h2>
+    <p class="lead">Composition root <code>server_kit_main.py :: create_app()</code> wires every service from <code>AppConfig.from_env()</code>. Roles are colour-coded by plane.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Role</th><th>Component</th><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td><span class="role src">source</span></td><td><b>nucleus_job_service</b></td><td><code>omniverse/nucleus_job_service.py</code></td><td>Download GLBs + Model Target from Nucleus, slim, hash, write manifest + YAML</td></tr>
+          <tr><td><span class="role src">source</span></td><td><b>export_glbs_from_usd</b></td><td><code>omniverse/export_glbs_from_usd.py</code></td><td>Headless Kit GLB export of changed parts</td></tr>
+          <tr><td><span class="role res">resolve</span></td><td><b>LayerStackResolver</b></td><td><code>layer_stack_resolver.py</code></td><td>BTU layer-pair muteness → deterministic <code>ResolvedStep</code> + cache key</td></tr>
+          <tr><td><span class="role res">resolve</span></td><td><b>StepDefinitionRepository</b></td><td><code>step_definition_repository.py</code></td><td>Reads <code>step-definitions.yaml</code></td></tr>
+          <tr><td><span class="role ctrl">control</span></td><td><b>GuidanceSessionService</b></td><td><code>grpc_session_service.py</code></td><td>Duplex <code>Connect</code>: hello → step-activated; heartbeat; step-completed → next; user_action</td></tr>
+          <tr><td><span class="role ctrl">control</span></td><td><b>GuidanceControlService</b></td><td><code>grpc_control_service.py</code></td><td>External <code>ControlStep</code> (GOTO/NEXT/PREV) — dashboard/MES drives a device</td></tr>
+          <tr><td><span class="role ctrl">control</span></td><td><b>SessionManager / SessionChannels</b></td><td><code>guidance_server.py</code>, <code>session_channels.py</code></td><td>Session register/resume/persist; per-session outbound push queues</td></tr>
+          <tr><td><span class="role ctrl">control</span></td><td><b>manifest_watcher</b></td><td><code>manifest_watcher.py</code></td><td>Daemon thread: diff manifest, broadcast <code>ManifestUpdated</code></td></tr>
+          <tr><td><span class="role data">data</span></td><td><b>AssetTransferService</b></td><td><code>grpc_asset_service.py</code></td><td><code>StreamStepAsset</code>: chunked GLB / Vuforia target streaming</td></tr>
+          <tr><td><span class="role data">data</span></td><td><b>HTTP file API + ManifestService</b></td><td><code>server_kit_main.py</code>, <code>manifest_service.py</code></td><td><code>/api/jobs/{id}/manifest</code>, <code>/api/assets</code>, <code>/api/targets</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-top:44px">Unity 6 client — C#</h2>
+    <p class="lead"><code>AppRuntimeContext</code> is the composition root; <code>AppBootstrap</code> drives the resolve → present loop.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Role</th><th>Component</th><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td><span class="role res">orchestr.</span></td><td><b>AppBootstrap</b></td><td><code>Runtime/AppBootstrap.cs</code></td><td>Session lifecycle; resolve → present loop</td></tr>
+          <tr><td><span class="role res">orchestr.</span></td><td><b>StepCoordinator</b></td><td><code>StateMachine/StepCoordinator.cs</code></td><td>Client step machine (Idle → Tracking → Confirmed)</td></tr>
+          <tr><td><span class="role ctrl">control</span></td><td><b>GrpcSessionTransport</b></td><td><code>Networking/GrpcSessionTransport.cs</code></td><td>Native gRPC duplex stream (default); HTTP bridge fallback</td></tr>
+          <tr><td><span class="role data">data</span></td><td><b>GrpcAssetTransferClient</b></td><td><code>Networking/GrpcAssetTransferClient.cs</code></td><td>Streams GLB / target via <code>AssetTransferService</code></td></tr>
+          <tr><td><span class="role data">data</span></td><td><b>AssetCache / TargetPayloadCache</b></td><td><code>Caching/</code></td><td>Immutable-by-version disk caches under <code>persistentDataPath</code></td></tr>
+          <tr><td><span class="role res">present</span></td><td><b>ModelPresenter + GltfFastModelLoader</b></td><td><code>Gltf/</code></td><td>One active GLB via glTFast; primitive fallback</td></tr>
+          <tr><td><span class="role res">tracking</span></td><td><b>TargetManager + VuforiaModelTargetLoader</b></td><td><code>Vuforia/</code></td><td>Model Target activation + smoothed pose alignment</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:16px; font-size:13.5px; color:var(--muted)"><b>Android transport note.</b> On Vuzix M4000 (ARM64, IL2CPP), pure-managed <code>Grpc.Net.Client</code> runs over <code>YetAnotherHttpHandler</code> (Rust HTTP/2), since Unity’s Mono runtime does not expose <code>SocketsHttpHandler</code>. The deprecated <code>Grpc.Core</code> C-core is not used.</p>
+  </section>
+
+  <!-- ============ CONTRACTS ============ -->
+  <section id="contracts">
+    <p class="kicker"><span class="num">07</span> Interface contracts</p>
+    <h2>The proto — one closed message alphabet</h2>
+    <p class="lead">Canonical contract: <code>proto/guidance.proto</code> (<code>package guidance.v1</code>). Four services; the control plane speaks a <code>oneof</code> envelope so new message types are a compatible change.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Service</th><th>Method</th><th>Kind</th></tr></thead>
+        <tbody>
+          <tr><td><b>GuidanceSessionService</b></td><td><code>Connect(stream ClientMessage) → stream ServerMessage</code></td><td>duplex stream</td></tr>
+          <tr><td><b>AssetQueryService</b></td><td><code>GetManifest(ManifestRequest) → AssetManifest</code></td><td>unary</td></tr>
+          <tr><td><b>AssetTransferService</b></td><td><code>StreamStepAsset(...) → stream StepAssetChunk</code></td><td>server stream</td></tr>
+          <tr><td><b>GuidanceControlService</b></td><td><code>ControlStep(ControlStepRequest) → ControlStepResponse</code></td><td>unary</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:18px"><strong>Envelope oneofs</strong> — the control-plane alphabet:</p>
+    <ul class="clean">
+      <li><code>ClientMessage</code> → <code>hello | heartbeat | tracking_state | user_action | step_completed | fault</code></li>
+      <li><code>ServerMessage</code> → <code>hello_response | assign_job | step_activated | cancel_step | ping | fault | manifest_updated</code></li>
+    </ul>
+
+    <h3>Step-activation sequence (happy path)</h3>
+    <figure class="diagram reveal">
+      <pre class="mermaid">
+sequenceDiagram
+    participant U as Unity client
+    participant C as gRPC Session :50051
+    participant M as Manifest / HTTP :8080
+    participant A as Asset stream (gRPC)
+    participant V as Vuforia
+    U->>C: Connect + Hello{device_id, "job=…"}
+    C-->>U: HelloResponse{session_id}
+    C-->>U: StepActivated{asset_version, target_version, …}
+    U->>M: GET /api/jobs/{job}/manifest
+    M-->>U: manifest{ glbUrl, targetUrl per version }
+    U->>A: StreamStepAsset(GLB) → AssetCache
+    U->>A: StreamStepAsset(TARGET) → TargetPayloadCache
+    U->>U: ModelPresenter.Present (one active model)
+    U->>V: ActivateTarget(target_version)
+    V-->>U: TRACKED → align part to pose
+    Note over U: worker confirms
+    U->>C: StepCompleted{job, step, ts}
+    C-->>U: StepActivated{next step} — idempotent on duplicate
+      </pre>
+      <figcaption>The control plane <b>names</b> a version; the data plane <b>serves</b> it; the client <b>caches</b> by it. Live-sync reuses the same <code>SessionChannels</code> push substrate to deliver <code>ManifestUpdated</code> on the existing stream.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ DATA TRANSFER ============ -->
+  <section id="transfer">
+    <p class="kicker"><span class="num">08</span> Data transfer</p>
+    <h2>Who moves what — HTTP vs gRPC</h2>
+    <p class="lead"><strong>FastAPI is not a third transport — FastAPI <em>is</em> HTTP.</strong> It is a web framework running under uvicorn, so "served by FastAPI" means "served over HTTP." The system therefore has exactly <strong>two transports</strong>, running as two <strong>separate server processes</strong> on two ports. gRPC does not run through FastAPI.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Transport</th><th>Spoken by</th><th>Port</th><th>Started by</th></tr></thead>
+        <tbody>
+          <tr><td><span class="role ctrl">HTTP</span></td><td><b>FastAPI / uvicorn</b></td><td><code>8080</code></td><td><code>uvicorn server_kit_main:app --port 8080</code></td></tr>
+          <tr><td><span class="role data">gRPC / HTTP-2</span></td><td><b>standalone gRPC server</b></td><td><code>50051</code></td><td><code>python grpc_server_main.py</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The per-payload mapping</h3>
+    <p>The heavy binary payloads are moved by <strong>gRPC</strong>, not FastAPI. FastAPI's job in the runtime path is to serve the small <strong>manifest</strong> — the lookup table mapping each <code>asset_version</code> to a concrete file name. The control channel <em>names</em> a version, the manifest <em>resolves</em> it to a file, gRPC <em>streams</em> the bytes.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>What moves</th><th>Transport</th><th>Port</th><th>Server</th><th>Client</th></tr></thead>
+        <tbody>
+          <tr><td><b>Which version to load</b> <span style="color:var(--muted)">(StepActivated)</span></td><td><span class="role ctrl">gRPC</span></td><td><code>50051</code></td><td><code>GuidanceSessionService</code></td><td><code>GrpcSessionTransport</code></td></tr>
+          <tr><td><b>Manifest</b> <span style="color:var(--muted)">(small JSON)</span></td><td><span class="role data">HTTP</span></td><td><code>8080</code></td><td><code>GET /api/jobs/{id}/manifest</code></td><td><code>StepAssetManifestClient</code></td></tr>
+          <tr><td><b>GLB bytes</b> <span style="color:var(--muted)">(geometry + animation)</span></td><td><span class="role ctrl">gRPC</span></td><td><code>50051</code></td><td><code>AssetTransferService</code></td><td><code>GrpcAssetTransferClient</code></td></tr>
+          <tr><td><b>Vuforia target bytes</b> <span style="color:var(--muted)">(.dat/.xml)</span></td><td><span class="role ctrl">gRPC</span></td><td><code>50051</code></td><td><code>AssetTransferService</code></td><td><code>GrpcAssetTransferClient</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>How gRPC streams a file — 64&nbsp;KB chunks</h3>
+    <p>gRPC does not send a file as one blob. <code>StreamStepAsset</code> is a <strong>server-streaming</strong> RPC: the server opens the file and yields it as an ordered sequence of <code>StepAssetChunk</code> messages of <strong>64&nbsp;KB</strong> each. A 2&nbsp;MB GLB becomes ~32 chunks; the client reassembles them by <code>chunk_index</code> until <code>is_last</code>, then writes the file into its version-keyed cache.</p>
+    <pre style="font-family:var(--mono); font-size:12.5px; line-height:1.6; background:var(--sunken); border:1px solid var(--line); border-radius:10px; padding:16px 18px; overflow-x:auto; color:var(--ink); margin:18px 0 6px">
+<span style="color:var(--muted)"># grpc_asset_service.py — the core streaming loop (chunk_size = 64 * 1024)</span>
+with stream_path.open(<span style="color:var(--cyan-deep)">"rb"</span>) as handle:
+    chunk_index = <span style="color:var(--amber)">0</span>
+    while <span style="color:var(--amber)">True</span>:
+        data = handle.read(self._chunk_size)      <span style="color:var(--muted)"># 64 KB</span>
+        if not data: break
+        is_last = handle.tell() &gt;= total_size
+        yield guidance_pb2.<b>StepAssetChunk</b>(
+            asset_version=asset_version,           <span style="color:var(--muted)"># which version these bytes are</span>
+            chunk_index=chunk_index,               <span style="color:var(--muted)"># ordering key</span>
+            data=data,                             <span style="color:var(--muted)"># the raw bytes</span>
+            is_last=is_last,                       <span style="color:var(--muted)"># end-of-stream marker</span>
+        )
+        chunk_index += <span style="color:var(--amber)">1</span></pre>
+
+    <h3>Full transfer sequence for one step</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Transport</th><th>Direction</th><th>Message</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><span class="role ctrl">gRPC :50051</span></td><td>Server → Unity</td><td><code>StepActivated</code> — "load version <code>sha256_a1b2c3</code>"</td></tr>
+          <tr><td>2</td><td><span class="role data">HTTP :8080</span></td><td>Unity ⇄ Server</td><td><code>GET /manifest</code> → lookup table (version → file), <b>no heavy bytes</b></td></tr>
+          <tr><td>3</td><td><span class="role ctrl">gRPC :50051</span></td><td>Server → Unity</td><td><code>StreamStepAsset(GLB)</code> → <code>StepAssetChunk × N</code> → <b>AssetCache</b></td></tr>
+          <tr><td>4</td><td><span class="role ctrl">gRPC :50051</span></td><td>Server → Unity</td><td><code>StreamStepAsset(TARGET)</code> → <code>StepAssetChunk × N</code> → <b>TargetPayloadCache</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid" style="margin-top:22px">
+      <div class="card"><p class="n">HTTP alternative</p><p>FastAPI also serves <code>/api/assets/{ver}/{file}</code> and <code>/api/targets/{ver}/{file}</code> as immutable <code>FileResponse</code>s — the manifest URLs point here. Bytes <em>can</em> travel over HTTP; the current runtime path uses gRPC streaming, with HTTP as the fallback route.</p></div>
+      <div class="card"><p class="n">Why the split</p><p>Small decision-carrying data (control, manifest) fit request/response. Large payloads use gRPC server-streaming in 64&nbsp;KB chunks, so the device never buffers a whole file, transfer is backpressured over HTTP/2, and it reuses the session's open connection.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ PROPERTIES ============ -->
+  <section id="properties">
+    <p class="kicker"><span class="num">09</span> Non-functional properties</p>
+    <h2>Invariants and how they are achieved</h2>
+    <div class="inv reveal">
+      <div class="inv-row"><div class="inv-k">Determinism</div><div class="inv-v">Total step ordering; canonical-JSON SHA-256 <code>cache_key</code> over all resolver inputs — <code>layer_stack_resolver.py</code></div></div>
+      <div class="inv-row"><div class="inv-k">Idempotency</div><div class="inv-v">Dedup sets keyed by <code>(job, step, ts)</code>; register-or-resume sessions — <code>grpc_session_service.py</code></div></div>
+      <div class="inv-row"><div class="inv-k">Immutability</div><div class="inv-v">Content-addressed <code>asset_version</code>; <code>Cache-Control: immutable</code> on <code>/api/assets</code> and <code>/api/targets</code></div></div>
+      <div class="inv-row"><div class="inv-k">Bounded device</div><div class="inv-v">One active model; dispose-before-present; one active target — bounds memory and thermals on the wearable</div></div>
+      <div class="inv-row"><div class="inv-k">Resilience</div><div class="inv-v">Periodic heartbeat + reconnect; frozen-step with cached asset during network loss; session resume</div></div>
+      <div class="inv-row"><div class="inv-k">Bandwidth economy</div><div class="inv-v">Slim-before-hash; content dedup; optional Draco; incremental rebuild of only changed parts</div></div>
+      <div class="inv-row"><div class="inv-k">Observability</div><div class="inv-v">Structured JSON logs with fixed fields <code>timestamp · level · event · session_id · step_id · correlation_id</code></div></div>
+      <div class="inv-row"><div class="inv-k">No embedded data</div><div class="inv-v">Editor build gate rejects any embedded assembly file — <code>NoEmbeddedAssemblyDataCheck.cs</code></div></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Grounded in the repository: proto/guidance.proto · server_kit_main.py · grpc_session_service.py · layer_stack_resolver.py · docs/live-sync/</p>
+    <div class="foot-links">
+      <a href="#planes">↑ Two planes</a>
+      <a href="#loop">Digital Twin loop</a>
+      <a href="#contracts">Contracts</a>
+    </div>
+    <p style="margin-top:20px; color:var(--faint)">Companion to <code>docs/architecture/system-architecture-scientific.md</code>. Where documents disagree, the code is authoritative.</p>
+  </footer>
+
+</div>
+
+<script>
+  // --- theme toggle: cycles system → light → dark ---
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('themeToggle');
+    function label(){
+      var t=root.getAttribute('data-theme');
+      btn.textContent = t==='dark' ? '◑ dark' : t==='light' ? '◐ light' : '◐ auto';
+    }
+    btn.addEventListener('click',function(){
+      var t=root.getAttribute('data-theme');
+      if(!t){ root.setAttribute('data-theme','light'); }
+      else if(t==='light'){ root.setAttribute('data-theme','dark'); }
+      else { root.removeAttribute('data-theme'); }
+      label();
+      if(window.mermaid){ renderMermaid(); }
+    });
+    label();
+  })();
+
+  // --- scroll reveal ---
+  (function(){
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    },{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  })();
+</script>

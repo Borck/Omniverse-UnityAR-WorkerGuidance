@@ -115,56 +115,39 @@ same.
 
 ---
 
-## 2. `server-kit/app/omniverse/export_glbs_from_usd.py` — module constants
+## 2. `server-kit/app/omniverse/export_glbs_from_usd.py` — runtime inputs
 
-Edited per job. These cannot live in the YAML because the script is
-executed by Kit (not by `pipeline_runner.py` directly), so it must be
-self-contained for the Kit Python environment.
+**No per-job editing.** The exporter is driven entirely by
+`assembly_definition.json` on Nucleus plus environment variables that
+`pipeline_runner` sets from `livesync.config.yaml` (section 1). Nothing about the
+job or its parts is hardcoded in the script.
 
-### Job identifier
+### Environment variables (set by `pipeline_runner`, not by hand)
 
-```python
-JOB_ID = "Segment_Assembly"
-```
+| Variable | Derived from (config key) | Purpose |
+|---|---|---|
+| `DIREKT_JOB_ID` | `job_id` | Job id; also the Nucleus output subfolder and manifest filename stem |
+| `DIREKT_NUCLEUS_OUTPUT_ROOT` | `nucleus_export_root` (+ host) | Where GLBs and `_export_report.json` are written: `<root>/<job_id>/` |
+| `DIREKT_NUCLEUS_JOB_ROOT` | `nucleus_job_root` | Job folder; the assembly definition, step USDs, and model target are all derived from it |
+| `DIREKT_ASSEMBLY_DEFINITION_URL` | `assembly_definition_url` (optional) | Overrides discovery of `{job_root}/JSON/*.json` |
+| `DIREKT_ANIMATION_SOURCE_DIR` | `animation_source_dir` (optional) | Overrides the default step-USD location (`{job_root}`) |
+| `LIVESYNC_CHANGED_URLS` | `watcher.py` | Pipe-separated changed URLs; empty = full rebuild |
 
-Must match `job_id` in `livesync.config.yaml`. Becomes the output folder
-name on Nucleus, the export report payload, and the manifest filename
-on disk.
+### The parts come from `assembly_definition.json`
 
-### Nucleus paths
+The exporter iterates `operations[].steps[]` in authoring order. For each step it
+reads:
 
-```python
-NUCLEUS_BASE = "omniverse://XXX.XXX.XXX.XXX/Users/abdul/Animation Chesco"
-NUCLEUS_OUTPUT_ROOT = "omniverse://XXX.XXX.XXX.XXX/Users/abdul"
-```
+- `step_id` (e.g. `"1.2"`) → source USD `step_id_1_2.usd` (dot→underscore, **no**
+  `_Animation` suffix)
+- `is_animation` — `true` exports a GLB; `false` is an instruction-only step
+  (recorded in the report with no GLB so the manifest still lists it)
+- `instruction` — the worker-facing label (`display_name`)
+- `step_type` / `component_type` — optional; used only to label the exported GLB file
 
-- `NUCLEUS_BASE` is the folder containing the per-part animation USDs.
-  Each part's source URL is `f"{NUCLEUS_BASE}/{usd_basename}.usd"`.
-  This must be a folder URL, *never* a `.usd` file URL.
-- `NUCLEUS_OUTPUT_ROOT` is the folder under which a `<JOB_ID>/`
-  subfolder will be created on Nucleus and populated with the
-  generated GLBs and `_export_report.json`. Must be a folder the
-  Kit-running user has write permission to.
-
-### Parts list
-
-```python
-PARTS: list[PartSpec] = [
-    PartSpec("step-001", "Plate_Bottom",     "Place bottom plate",       "Plate_Bottom",      1),
-    PartSpec("step-002", "Core&Coils",       "Place Cores & Coils",      "Core&Coils",        2),
-    ...
-]
-```
-
-Each `PartSpec` carries:
-
-- `step_id` — stable identifier used in manifests and on the wire
-- `part_id` — short filesystem-safe name; becomes the GLB filename
-- `display_name` — human-readable label surfaced to the worker
-- `usd_basename` — filename (without `.usd`) of the source on Nucleus.
-  May contain spaces or special characters; the script URL-encodes
-  spaces with `%20`.
-- `sequence_index` — assembly order (1-based)
+There is **no `PARTS`/`PartSpec` list and no `JOB_ID`/`NUCLEUS_BASE` constant** in
+the script anymore — those were removed when the exporter became
+definition-driven.
 
 ### Converter settings
 
@@ -193,13 +176,13 @@ inconsistency.
 ## 3. `server-kit/app/core/config.py` — server-side constants
 
 ```python
-SERVER = "omniverse://XXX.XXX.XXX.XXX"
+SERVER = "omniverse://<NUCLEUS_HOST>"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ```
 
 - `SERVER` is the Nucleus host prefix that `nucleus_job_service` prepends
   to every path it reads from Nucleus. Must match the host portion of
-  `NUCLEUS_BASE` / `NUCLEUS_OUTPUT_ROOT` above.
+  `nucleus_job_root` / `nucleus_export_root` in `livesync.config.yaml`.
 - `REPO_ROOT` is auto-derived from the script's location and rarely
   needs editing.
 
@@ -235,11 +218,11 @@ shared/samples/targets/<target_version>/<target_file_xml> # the .xml (same stem)
 ```
 
 For example with `target_version: 2026-03-10.1` and `target_file:
-Segment_Assembly_Fixture.dat`:
+<target>.dat`:
 
 ```
-shared/samples/targets/2026-03-10.1/Segment_Assembly_Fixture.dat
-shared/samples/targets/2026-03-10.1/Segment_Assembly_Fixture.xml
+shared/samples/targets/2026-03-10.1/<target>.dat
+shared/samples/targets/2026-03-10.1/<target>.xml
 ```
 
 These files are produced offline in the Vuforia Target Manager. The

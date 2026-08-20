@@ -70,15 +70,23 @@ The old `target_version` / `target_file` keys are obsolete — the Vuforia model
 target is discovered from `{nucleus_job_root}/model_target/`. See
 [configuration.md](configuration.md) section 1 for every field.
 
-### 1.5 Configure the export script (per job)
+### 1.5 Configure the job (no script editing)
 
-Open `server-kit/app/omniverse/export_glbs_from_usd.py` and verify:
+The exporter is **definition-driven** — you do not edit
+`export_glbs_from_usd.py` to add or change a job. All per-job values come from
+`livesync.config.yaml` and the job's `assembly_definition.json` on Nucleus.
 
-- `JOB_ID` matches the `job_id` in `livesync.config.yaml`
-- `NUCLEUS_BASE` is the folder containing the per-part USDs
-- `NUCLEUS_OUTPUT_ROOT` is a writable Nucleus folder
-- `PARTS` lists every part with its `step_id`, `part_id`, `display_name`,
-  `usd_basename`, `sequence_index`
+In `livesync.config.yaml` verify:
+
+- `job_id` — the job identifier (manifest stem, Nucleus output subfolder, gRPC key)
+- `nucleus_job_root` — the job folder on Nucleus; the assembly definition
+  (`{job_root}/JSON/*.json`), the step USDs (`step_id_<M>_<N>.usd`), and the model
+  target (`{job_root}/model_target/`) are all derived from it
+- `nucleus_export_root` — a writable Nucleus folder for the exported GLBs
+
+The step list, order, and which steps are animated (`is_animation`) live in
+`assembly_definition.json`, not in any Python file. See
+[configuration.md](configuration.md) section 2.
 
 ### 1.6 Place Vuforia target files
 
@@ -133,11 +141,11 @@ Expected output ends with:
 ```
 === Summary ===
 exported=N  skipped=0  failed=0
-OK   step-001  Plate_Bottom
+OK   step-001  <part>
 ...
 ```
 
-…and a Nucleus listing of `NUCLEUS_OUTPUT_ROOT/<JOB_ID>/` should show
+…and a Nucleus listing of `<nucleus_export_root>/<job_id>/` should show
 one `.glb` per part plus `_export_report.json`.
 
 Failure: see section 4 for common Kit / Nucleus errors.
@@ -156,7 +164,7 @@ Expected output:
 === Kit GLB export === ...
 [pipeline_runner] Kit GLB export -> exit 0 in ~30s
 === nucleus_job_service.prepare_job === ...
-[NucleusJobService] Wrote manifest: ...\Segment_Assembly.manifest.json
+[NucleusJobService] Wrote manifest: ...\<job_id>.manifest.json
 [pipeline_runner] nucleus_job_service.prepare_job -> ok in Ns (steps_synced=N)
 ```
 
@@ -330,10 +338,11 @@ full URL).
 
 ### `Could not download local file 'omniverse://.../<file>.usd/<other>.usd'`
 
-The configured `NUCLEUS_BASE` is being treated as a USD file (with `.usd`
-extension) and the part URL is built underneath it as if it were a
-folder. `NUCLEUS_BASE` must be the *folder* containing the per-part
-USDs, never a USD file URL.
+The resolved animation-source directory (`nucleus_job_root` /
+`animation_source_dir`) is being treated as a USD file (with `.usd`
+extension) and the step URL is built underneath it as if it were a
+folder. It must be the *folder* containing the `step_id_<M>_<N>.usd`
+files, never a USD file URL.
 
 ### Manifest changes but `manifest_updated` is not logged
 
