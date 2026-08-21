@@ -29,7 +29,7 @@ namespace Guidance.Runtime
         [SerializeField] private int defaultHttpPort = 8080;
         [SerializeField] private int discoveryPort = 45454;
         [SerializeField] private float discoveryTimeoutSeconds = 3f;
-        [Tooltip("Nucleus selected by default on first launch. \"a\" = first server (BTU), \"b\" = second (Chesco). Persists per device once changed.")]
+        [Tooltip("Nucleus selected by default on first launch. \"a\" = first configured server, \"b\" = second. Persists per device once changed.")]
         [SerializeField] private string defaultNucleusKey = "a";
         [Tooltip("Vuforia QR scanner. If empty, one is found/added at runtime.")]
         [SerializeField] private QrEndpointScanner qrScanner;

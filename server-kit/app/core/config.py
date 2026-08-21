@@ -36,9 +36,10 @@ load_dotenv_file()
 # Keys of the Nucleus servers we read from the environment, in display order.
 NUCLEUS_KEYS = ("a", "b")
 
-# Legacy single-server default, used only when no OMNI_*_SERVER is configured
-# in the environment (keeps older setups working without a .env).
-_LEGACY_DEFAULT_SERVER = "omniverse://141.43.76.21"
+# Neutral fallback used only when no OMNI_*_SERVER (and no OMNI_SERVER) is
+# configured in the environment. Real hosts must be supplied via .env /
+# environment variables — never hardcode a real Nucleus host here.
+_LEGACY_DEFAULT_SERVER = "omniverse://localhost"
 
 
 @dataclass(frozen=True)

@@ -56,7 +56,7 @@ def format_command(template: str, cfg: dict) -> str:
 
 
 def _nucleus_host(cfg: dict) -> str:
-    """Nucleus host prefix (e.g. omniverse://141.43.76.21).
+    """Nucleus host prefix (e.g. omniverse://<nucleus-host>).
 
     From the explicit `nucleus_host` key if set, otherwise parsed from
     `nucleus_job_root`. No path is hardcoded here.

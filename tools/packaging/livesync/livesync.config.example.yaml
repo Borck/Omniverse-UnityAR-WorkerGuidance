@@ -16,10 +16,10 @@ job_id: "Segment_Assembly"
 #   {nucleus_job_root}/JSON/*.json                  -> assembly definition (drives the steps)
 #   {nucleus_job_root}/model_target/  (.dat + .xml) -> Vuforia Model Target (discovered, copied as-is)
 # Leave empty for now if the JOB folder isn't finalized; fill before a run.
-nucleus_job_root: ""   # e.g. "omniverse://141.43.76.21/Projects/DIREKT/Project Assembly/Source/Animation Export"
+nucleus_job_root: ""   # e.g. "omniverse://<nucleus-host>/Projects/<...>/Animation Export"
 
 # Nucleus host prefix for the output root below. Rarely needs changing.
-nucleus_host: "omniverse://141.43.76.21"
+nucleus_host: "omniverse://<nucleus-host>"
 
 # Optional explicit overrides. Leave empty to use the derived paths above.
 assembly_definition_url: ""   # full URL to assembly_definition.json (else discovered in {job_root}/JSON)

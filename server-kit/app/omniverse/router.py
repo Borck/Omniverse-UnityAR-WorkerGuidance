@@ -121,7 +121,7 @@ def download(remote_path: str, local_path: str):
     """
     Download a file from Nucleus to the local machine.
     local_path can be a directory (filename is taken from remote_path) or a full file path.
-    Example: remote_path=/Projects/scene.usd  local_path=C:/Users/shahan/Downloads/
+    Example: remote_path=/Projects/scene.usd  local_path=C:/Users/<username>/Downloads/
     """
     # If local_path is a directory, append the filename from remote_path
     filename = remote_path.rstrip("/").split("/")[-1]

@@ -41,8 +41,8 @@ This pulls the `omni.client` module along with its native DLL, bundled inside th
 
 | Location | Path |
 |----------|------|
-| **Remote (Nucleus)** | `/Users/shahan/demonstrator-26-02-25` |
-| **Local (server-kit)** | `C:/Users/shahan/VsCodeProjects/Omniverse-UnityAR-WorkerGuidance/server-kit/app/unity/assets/` |
+| **Remote (Nucleus)** | `/Users/<username>/<job-id>` |
+| **Local (server-kit)** | `C:/Users/<username>/.../Omniverse-UnityAR-WorkerGuidance/server-kit/app/unity/assets/` |
 
 ---
 
@@ -83,6 +83,6 @@ This only needs to be done once per machine. After this, Unity/Vuzix clients con
 
 - [ ] Virtual environment created and activated
 - [ ] `fastapi`, `uvicorn`, `omniverseclient` installed
-- [ ] Nucleus remote path accessible (`/Users/shahan/demonstrator-26-02-25`)
+- [ ] Nucleus remote path accessible (`/Users/<username>/<job-id>`)
 - [ ] `netstat` shows port 50051 listening on `0.0.0.0`
 - [ ] Firewall rule created for port 50051

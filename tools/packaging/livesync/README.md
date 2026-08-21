@@ -73,7 +73,7 @@ download GLBs and call `nucleus_job_service.prepare_job()` directly.
    ```
 
    If this exits cleanly and produces GLBs + `_export_report.json` on
-   Nucleus (at `omniverse://<host>/Users/shahan/<job_id>/`), paste the
+   Nucleus (at `omniverse://<host>/Users/<username>/<job_id>/`), paste the
    working command into `kit_export_command` in the config.
 
    If the flag syntax differs in your template, this is the ONE line to adjust.
