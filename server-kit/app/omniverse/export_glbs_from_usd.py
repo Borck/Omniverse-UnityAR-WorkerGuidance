@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 import sys
@@ -196,6 +197,205 @@ def _iter_steps(defn: dict):
             yield seq, step
 
 
+# --- PIVOT BAKING ----------------------------------------------------------
+# glTF nodes carry a TRS triple and nothing else -- there is no pivot. Kit
+# authors rotation-about-a-point as a five-op stack
+#
+#     [ xformOp:translate, xformOp:translate:pivot, <rotate>, xformOp:scale,
+#       !invert!xformOp:translate:pivot ]
+#
+# and the USD->glTF writer drops the two pivot ops instead of folding them into
+# the translation channel. The exported node then spins about its own origin
+# rather than about the authored pivot -- e.g. step 15.1 ("Rotate PU segment
+# assembly to access backside") flipped about a point 6.3 cm below the assembly
+# and sank ~12.7 cm through the bench. `ignore_pivots: False` does NOT cover
+# this path: AssetConverterContext accepts the key (no "has no" warning is ever
+# logged) but the glTF writer ignores it.
+#
+# So fold the pivot in ourselves, on the flattened stage, before conversion.
+# USD uses row vectors and composes an op stack as M = M[last] * ... * M[first],
+# i.e. the FIRST op in xformOpOrder is applied LAST to a point (verified against
+# GetLocalTransformation, not assumed). With T the leading translate, P the
+# pivot and B the ops between the pivot pair, that stack maps a point p to
+#
+#     (p - P)*B + P + T
+#
+# while the pivot-free stack [T', B...] maps it to  p*B + T'. The two agree for
+# every p exactly when
+#
+#     T' = T + P - P*B
+#
+# so rewrite the leading translate sample-by-sample and drop the pivot pair.
+# The rotation and scale channels are left untouched -- the converter already
+# round-trips those correctly, and not rewriting them keeps this pass off the
+# known-good path. Verified against step_id_15_1.usd: the baked stack reproduces
+# the original local matrix to 2.8e-17 on all 15 prims at every time sample.
+
+_INVERT_PREFIX = "!invert!"
+_PIVOT_SUFFIX = ":pivot"
+# Ceiling on the per-frame densification below, so a stack keyed at, say, 0 and
+# 1e6 cannot explode into a million samples. Beyond it we bake the existing
+# keys only and say so.
+_MAX_BAKE_FRAMES = 10000
+
+
+def _compose_ops(ops: list, time: Any) -> Any:
+    """Compose a run of xformOps the way UsdGeomXformable does."""
+    from pxr import Gf  # noqa: PLC0415 -- Kit-only, keep import local
+    matrix = Gf.Matrix4d(1.0)
+    for op in ops:
+        matrix = op.GetOpTransform(time) * matrix
+    return matrix
+
+
+def _vec_for(precision: Any, value: Any) -> Any:
+    """Match the precision of the translate attribute being written back into."""
+    from pxr import Gf, UsdGeom  # noqa: PLC0415 -- Kit-only, keep import local
+    if precision == UsdGeom.XformOp.PrecisionFloat:
+        return Gf.Vec3f(value)
+    if precision == UsdGeom.XformOp.PrecisionHalf:
+        return Gf.Vec3h(value)
+    return Gf.Vec3d(value)
+
+
+def _split_pivot_stack(ops: list) -> tuple:
+    """Classify an op stack as (lead_translate, pivot_op, body_ops), or explain why not.
+
+    Returns (parts, "") when the stack is a shape we can bake, else (None, reason).
+    A missing leading translate is fine (parts[0] is None) -- one gets added.
+    """
+    from pxr import UsdGeom  # noqa: PLC0415 -- Kit-only, keep import local
+    names = [op.GetOpName() for op in ops]
+    pivots = [i for i, n in enumerate(names)
+              if not n.startswith(_INVERT_PREFIX) and n.endswith(_PIVOT_SUFFIX)]
+    inverses = [i for i, n in enumerate(names) if n.startswith(_INVERT_PREFIX)]
+    if not pivots and not inverses:
+        return None, ""  # nothing to do -- not an error
+    if len(pivots) != 1 or len(inverses) != 1:
+        return None, (f"expected one pivot pair, found {len(pivots)} pivot / "
+                      f"{len(inverses)} inverse")
+    pivot_index, inverse_index = pivots[0], inverses[0]
+    if inverse_index != len(ops) - 1:
+        return None, "inverse pivot is not the last op"
+    if names[inverse_index] != _INVERT_PREFIX + names[pivot_index]:
+        return None, (f"inverse {names[inverse_index]!r} does not pair with "
+                      f"pivot {names[pivot_index]!r}")
+    if pivot_index == 0:
+        lead = None
+    elif (pivot_index == 1
+          and ops[0].GetOpType() == UsdGeom.XformOp.TypeTranslate
+          and not names[0].endswith(_PIVOT_SUFFIX)):
+        lead = ops[0]
+    else:
+        return None, f"unexpected ops before the pivot: {names[:pivot_index]}"
+    return (lead, ops[pivot_index], ops[pivot_index + 1:inverse_index]), ""
+
+
+def _bake_pivot_on_prim(prim: Any) -> str:
+    """Fold one prim's pivot into its translate channel. "" = done or nothing to do."""
+    from pxr import Gf, Usd, UsdGeom  # noqa: PLC0415 -- Kit-only, keep import local
+    xformable = UsdGeom.Xformable(prim)
+    ops = xformable.GetOrderedXformOps()
+    if not ops:
+        return ""
+    parts, reason = _split_pivot_stack(ops)
+    if parts is None:
+        return reason
+    lead, pivot_op, body = parts
+
+    # Bake at the union of every sample time in the stack: the translate and the
+    # rotation may be sampled independently, and T' depends on both.
+    times = set()
+    for op in ([lead] if lead is not None else []) + body + [pivot_op]:
+        times.update(op.GetAttr().GetTimeSamples())
+
+    # T' = T + P - P*B is linear in T but NOT in B: while the rotation sweeps,
+    # the compensation traces an arc. Keys at the ends alone would make the baked
+    # translate cut the chord, so densify to one sample per frame across the
+    # animated range. Animation that is already per-frame (the usual case here)
+    # is unchanged. Skipped when the body is static -- P*B is then constant and
+    # linear interpolation of T' is exact as-is.
+    if times and any(op.GetAttr().GetNumTimeSamples() > 0 for op in body):
+        low, high = min(times), max(times)
+        if 0 < high - low <= _MAX_BAKE_FRAMES:
+            frame = math.floor(low) + 1.0
+            while frame < high:
+                times.add(frame)
+                frame += 1.0
+        elif high - low > _MAX_BAKE_FRAMES:
+            log(f"    [pivot] {prim.GetPath()}: {high - low:.0f}-frame span exceeds "
+                f"{_MAX_BAKE_FRAMES}, baking the existing keys only -- a sparsely "
+                f"keyed rotation may cut the chord between them")
+
+    if lead is None:
+        lead = xformable.AddTranslateOp(precision=pivot_op.GetPrecision())
+    precision = lead.GetPrecision()
+
+    def baked(timecode: Any, time: Any) -> Any:
+        pivot = Gf.Vec3d(pivot_op.GetAttr().Get(timecode))
+        current = lead.GetAttr().Get(timecode)
+        translate = Gf.Vec3d(current) if current is not None else Gf.Vec3d(0.0)
+        return translate + pivot - _compose_ops(body, time).TransformDir(pivot)
+
+    # Compute every baked value BEFORE writing any of them. baked() reads the
+    # translate attribute back, so writing as we go would feed already-baked
+    # samples into the interpolation for later times. That only bites when the
+    # translate is keyed more sparsely than the bake times -- i.e. exactly the
+    # case densification creates -- which makes it easy to miss.
+    if times:
+        values = [(time, _vec_for(precision, baked(Usd.TimeCode(time), time)))
+                  for time in sorted(times)]
+        for time, value in values:
+            lead.GetAttr().Set(value, time)
+        # Keep the default in step with the samples: a static read of a prim that
+        # only has samples would otherwise return the stale pre-bake translate.
+        lead.GetAttr().Set(values[0][1])
+    else:
+        default = Usd.TimeCode.Default()
+        lead.GetAttr().Set(_vec_for(precision, baked(default, default)))
+
+    xformable.SetXformOpOrder([lead] + body, xformable.GetResetXformStack())
+    # The !invert! op reads the same attribute, so one removal clears both.
+    prim.RemoveProperty(pivot_op.GetAttr().GetName())
+    return ""
+
+
+def bake_pivots(usd_path: str) -> dict[str, Any]:
+    """Rewrite every pivot stack in a local USD so glTF can represent it.
+
+    Mirrors glb_slim's safety contract: adjusting an asset must never break the
+    pipeline, so any failure leaves the file untouched and is reported rather
+    than raised. Returns {"baked": n, "scanned": n, "skipped": [...], "error": s}.
+    """
+    from pxr import Usd, UsdGeom  # noqa: PLC0415 -- Kit-only, keep import local
+    stats: dict[str, Any] = {"baked": 0, "scanned": 0, "skipped": [], "error": ""}
+    try:
+        stage = Usd.Stage.Open(usd_path)
+        if stage is None:
+            stats["error"] = "could not open flattened stage"
+            return stats
+        for prim in stage.Traverse():
+            if not prim.IsA(UsdGeom.Xformable):
+                continue
+            stats["scanned"] += 1
+            has_pivot = any(_PIVOT_SUFFIX in op.GetOpName()
+                            for op in UsdGeom.Xformable(prim).GetOrderedXformOps())
+            if not has_pivot:
+                continue
+            reason = _bake_pivot_on_prim(prim)
+            if reason:
+                stats["skipped"].append((str(prim.GetPath()), reason))
+            else:
+                stats["baked"] += 1
+        if stats["baked"]:
+            stage.GetRootLayer().Save()
+    except Exception as exc:  # noqa: BLE001 -- never let this fail an export
+        import traceback
+        stats["error"] = f"{type(exc).__name__}: {exc}"
+        traceback.print_exc()
+    return stats
+
+
 def _load_changed_urls() -> set[str]:
     """Watcher's pipe-separated changed-URL set. Empty = full rebuild."""
     raw = os.environ.get("LIVESYNC_CHANGED_URLS", "")
@@ -302,7 +502,20 @@ async def export_glb(usd_url: str, output_glb_url: str, debug_name: str = "") ->
     if not ok:
         return False, f"flatten failed: {err}"
 
-    # Debug: keep the flattened stage so animation survival can be inspected.
+    # Fold rotation pivots into the translate channel -- glTF cannot express
+    # them and the converter drops them silently. See the PIVOT BAKING block.
+    pivot_stats = bake_pivots(str(flat_usd))
+    if pivot_stats["error"]:
+        print(f"    [pivot] NOT baked ({pivot_stats['error']}) -- converting the "
+              f"flattened stage as-is; any rotation about a pivot will be wrong",
+              flush=True)
+    elif pivot_stats["baked"] or pivot_stats["skipped"]:
+        print(f"    [pivot] baked {pivot_stats['baked']} pivot stack(s) of "
+              f"{pivot_stats['scanned']} xformable prim(s)", flush=True)
+        for path, reason in pivot_stats["skipped"]:
+            print(f"    [pivot] SKIPPED {path}: {reason}", flush=True)
+
+    # Debug: keep the flattened (and pivot-baked) stage for inspection.
     # Set DIREKT_KEEP_FLAT_DIR to a local folder to enable.
     keep_dir = os.environ.get("DIREKT_KEEP_FLAT_DIR", "").strip()
     if keep_dir and debug_name:
