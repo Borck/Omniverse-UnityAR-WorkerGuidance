@@ -15,6 +15,11 @@ class StepAssetEntry:
     target_version: str
     target_file: str
     compression: str
+    # From assembly_definition.json, via the export report. step_type is
+    # "preparation" / "fitting" / "screwing"; target_torque_nm is None on every
+    # step that has no torque, which is NOT the same as 0.0.
+    step_type: str = ""
+    target_torque_nm: float | None = None
 
 
 @dataclass(frozen=True)
@@ -43,6 +48,8 @@ class ManifestService:
                 target_version=item["targetVersion"],
                 target_file=item["targetFile"],
                 compression=item.get("compression", "NONE"),
+                step_type=item.get("stepType", ""),
+                target_torque_nm=item.get("targetTorqueNm"),
             )
             for item in payload["steps"]
         ]

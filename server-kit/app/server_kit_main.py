@@ -590,6 +590,12 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
           "targetVersion": step.target_version,
           "targetUrl": f"/api/targets/{step.target_version}/{step.target_file}" if step.target_version and step.target_file else "",
           "compression": step.compression,
+          "stepType": step.step_type,
+          # 0.0 means "no torque on this step". Absent would be truer, but the
+          # Unity client parses this with JsonUtility, which cannot represent an
+          # absent float and would turn null into 0.0 anyway -- so say 0.0 and
+          # let stepType be the thing that decides whether a torque is expected.
+          "targetTorqueNm": step.target_torque_nm if step.target_torque_nm is not None else 0.0,
         }
         for step in manifest.steps
       ],
