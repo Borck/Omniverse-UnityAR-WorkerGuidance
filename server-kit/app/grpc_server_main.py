@@ -5,6 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "generated"))
 
 try:
     from .config import AppConfig
+    from .discovery_beacon import start_beacon_from_config
     from .draco_codec import DracoCodec
     from .draco_codec import DracoCodecConfig
     from .grpc_asset_service import AssetTransferService
@@ -16,6 +17,7 @@ try:
     from .step_definition_repository import StepDefinitionRepository
 except ImportError:
     from config import AppConfig
+    from discovery_beacon import start_beacon_from_config
     from draco_codec import DracoCodec
     from draco_codec import DracoCodecConfig
     from grpc_asset_service import AssetTransferService
@@ -70,6 +72,7 @@ def run_combined_grpc_server(config: AppConfig) -> None:
     server.add_insecure_port(f"{config.grpc_host}:{config.grpc_port}")
     server.start()
     logger.info("grpc service started", session_id="-", step_id="-", event="grpc.start")
+    start_beacon_from_config(config, logger=logger)
     server.wait_for_termination()
 
 

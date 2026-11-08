@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import os
+import socket
 from pathlib import Path
 
 
@@ -29,6 +30,10 @@ class AppConfig:
     draco_encoder_command_template: str = ""
     draco_toolchain: str = "gltf-transform"
     stage_uri: str = ""
+    discovery_enabled: bool = True
+    discovery_port: int = 45454
+    discovery_interval_seconds: float = 2.0
+    service_tag: str = ""
 
 
     @classmethod
@@ -70,4 +75,8 @@ class AppConfig:
             draco_encoder_command_template=os.getenv("GUIDANCE_DRACO_ENCODER_CMD", ""),
             draco_toolchain=os.getenv("GUIDANCE_DRACO_TOOLCHAIN", "gltf-transform"),
             stage_uri=os.getenv("GUIDANCE_STAGE_URI", ""),
+            discovery_enabled=os.getenv("GUIDANCE_DISCOVERY_ENABLED", "true").lower() == "true",
+            discovery_port=int(os.getenv("GUIDANCE_DISCOVERY_PORT", "45454")),
+            discovery_interval_seconds=float(os.getenv("GUIDANCE_DISCOVERY_INTERVAL", "2.0")),
+            service_tag=os.getenv("GUIDANCE_SERVICE_TAG", socket.gethostname()),
         )

@@ -14,13 +14,15 @@ namespace Guidance.Runtime
     /// </summary>
     public sealed class AppBootstrap : MonoBehaviour
     {
-        [SerializeField] private bool useNativeGrpcTransport = true;
+        // useNativeGrpcTransport removed — gRPC is the only active transport.
         [SerializeField] private string grpcTarget = "172.20.10.2:50051";
-        [SerializeField] private string httpBridgeBaseUrl = "172.20.10.2:8080";
+        [SerializeField] private string httpBridgeBaseUrl = "172.20.10.2:8080"; // used only for HTTP asset/manifest fetching
         [SerializeField] private string desiredJobId = "demonstrator-26-02-25";
         [SerializeField] private bool enableRuntimeAssetPipeline = true;
         [SerializeField] private bool useHologramShader = true;
         [SerializeField] private GameObject fixtureOverlayPrefab;
+        [Tooltip("Initial visibility of the fixture overlay. The HUD checkbox toggles it at runtime.")]
+        [SerializeField] private bool showFixtureOverlay = true;
         [SerializeField] private VuforiaTrackingBridge vuforiaTrackingBridge;
         [SerializeField] private bool autoConfirmStepAfterAssetReady = false;
         [SerializeField] private float autoConfirmDelaySeconds = 0.5f;
@@ -29,8 +31,24 @@ namespace Guidance.Runtime
         [SerializeField] private float reconnectMaxIntervalSeconds = 20f;
         [SerializeField] private float reconnectBackoffMultiplier = 1.8f;
 
+        [Header("Server endpoint")]
+        [Tooltip("Shown at startup so the operator can type the server IP or auto-discover. Saved IP overrides Inspector defaults above.")]
+        [SerializeField] private ServerConfigPanel serverConfigPanel;
+        [Tooltip("If true, skip the config panel and try one UDP discovery attempt at startup. Only works on flat LANs without NAT.")]
+        [SerializeField] private bool enableAutoDiscovery = false;
+        [SerializeField] private int discoveryPort = 45454;
+        [Tooltip("If set, only beacons whose 'tag' matches this string are accepted. Leave empty to accept any.")]
+        [SerializeField] private string serviceTagFilter = "";
+        [SerializeField] private float discoveryTimeoutSeconds = 3f;
+
         [SerializeField] private SessionStatusPanel statusPanel;
         [SerializeField] private TrackingDirectionHint trackingDirectionHint;
+        [SerializeField] private Transform imageTargetAnchor;
+        [SerializeField] private JobSelectorPanel jobSelectorPanel;
+#if VUFORIA_ENGINE
+        [SerializeField] private Vuforia.ObserverBehaviour imageTargetObserver;
+        private Vuforia.ObserverBehaviour _modelTargetObserver;
+#endif
 
         private AppRuntimeContext _runtime;
         private StepActivationDto _lastActivation;
@@ -48,32 +66,157 @@ namespace Guidance.Runtime
         private bool _vuforiaTargetLoaded;
         private Transform _activeObserverTransform;
         private readonly List<StepActivationDto> _stepHistory = new List<StepActivationDto>();
+        private FixtureOverlay _activeFixtureOverlay;
 
         private void Awake()
         {
             System.AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+            if (vuforiaTrackingBridge == null)
+                vuforiaTrackingBridge = FindFirstObjectByType<VuforiaTrackingBridge>();
+
+#if VUFORIA_ENGINE
+            // Resolve while imageTargetAnchor is still active — GetComponentInParent
+            // returns null on inactive objects, so this must run before Start() hides it.
+            if (imageTargetAnchor != null && imageTargetObserver == null)
+                imageTargetObserver = imageTargetAnchor.GetComponentInParent<Vuforia.ObserverBehaviour>();
+
+#endif
+        }
+
+        private void Start()
+        {
+            if (imageTargetAnchor != null)
+                imageTargetAnchor.gameObject.SetActive(false);
+
+            HologramApplier.Enabled = useHologramShader;
+
+            StartCoroutine(StartupFlow());
+        }
+
+        private IEnumerator StartupFlow()
+        {
+            ApplySavedEndpointPrefs();
+
+            if (enableAutoDiscovery)
+            {
+                statusPanel?.SetWarning($"Searching for server (UDP {discoveryPort})...");
+
+                var cts = new CancellationTokenSource();
+                var task = DiscoveryClient.DiscoverAsync(discoveryPort, serviceTagFilter, discoveryTimeoutSeconds, cts.Token);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if (task.Status == TaskStatus.RanToCompletion && task.Result != null)
+                {
+                    var result = task.Result;
+                    SaveAndApplyEndpoint(result.Host, result.GrpcPort, result.HttpPort);
+                    Debug.Log($"[AppBootstrap] Discovered server '{result.Tag}' at {result.Host}");
+                    statusPanel?.SetWarning($"Server gefunden: {result.Host}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[AppBootstrap] No discovery beacon received within {discoveryTimeoutSeconds:F1}s.");
+                    statusPanel?.SetWarning("Kein Beacon — Server-IP eingeben.");
+                }
+            }
+
+            if (serverConfigPanel != null)
+            {
+                ParseGrpcTarget(grpcTarget, out var prefHost, out var prefGrpc);
+                ParseHttpBase(httpBridgeBaseUrl, out _, out var prefHttp);
+                serverConfigPanel.Show(this, prefHost, prefGrpc, prefHttp);
+                yield break;
+            }
+
+            ShowJobSelectorOrInitialize();
+        }
+
+        public void OnServerConfigConfirmed(string host, int grpcPort, int httpPort)
+        {
+            SaveAndApplyEndpoint(host, grpcPort, httpPort);
+            ShowJobSelectorOrInitialize();
+        }
+
+        private void ShowJobSelectorOrInitialize()
+        {
+            if (jobSelectorPanel != null)
+                jobSelectorPanel.Show(this);
+            else
+                InitializeWithJob(desiredJobId);
+        }
+
+        private void ApplySavedEndpointPrefs()
+        {
+            var savedHost = PlayerPrefs.GetString(ServerConfigPanel.PrefHost, "");
+            if (string.IsNullOrEmpty(savedHost)) return;
+
+            var savedGrpc = PlayerPrefs.GetInt(ServerConfigPanel.PrefGrpcPort, 50051);
+            var savedHttp = PlayerPrefs.GetInt(ServerConfigPanel.PrefHttpPort, 8080);
+            grpcTarget = $"{savedHost}:{savedGrpc}";
+            httpBridgeBaseUrl = $"http://{savedHost}:{savedHttp}";
+            Debug.Log($"[AppBootstrap] Using saved server endpoint {grpcTarget}");
+        }
+
+        private void SaveAndApplyEndpoint(string host, int grpcPort, int httpPort)
+        {
+            grpcTarget = $"{host}:{grpcPort}";
+            httpBridgeBaseUrl = $"http://{host}:{httpPort}";
+            PlayerPrefs.SetString(ServerConfigPanel.PrefHost, host);
+            PlayerPrefs.SetInt(ServerConfigPanel.PrefGrpcPort, grpcPort);
+            PlayerPrefs.SetInt(ServerConfigPanel.PrefHttpPort, httpPort);
+            PlayerPrefs.Save();
+        }
+
+        private static void ParseGrpcTarget(string value, out string host, out int port)
+        {
+            host = value ?? "";
+            port = 50051;
+            if (string.IsNullOrEmpty(value)) return;
+            var colon = value.LastIndexOf(':');
+            if (colon > 0 && int.TryParse(value.Substring(colon + 1), out var parsed))
+            {
+                host = value.Substring(0, colon);
+                port = parsed;
+            }
+        }
+
+        private static void ParseHttpBase(string value, out string host, out int port)
+        {
+            host = "";
+            port = 8080;
+            if (string.IsNullOrEmpty(value)) return;
+            var stripped = value;
+            if (stripped.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) stripped = stripped.Substring(7);
+            else if (stripped.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) stripped = stripped.Substring(8);
+            var slash = stripped.IndexOf('/');
+            if (slash >= 0) stripped = stripped.Substring(0, slash);
+            var colon = stripped.LastIndexOf(':');
+            if (colon > 0 && int.TryParse(stripped.Substring(colon + 1), out var parsed))
+            {
+                host = stripped.Substring(0, colon);
+                port = parsed;
+            }
+            else
+            {
+                host = stripped;
+            }
+        }
+
+        public void InitializeWithJob(string jobId)
+        {
+            desiredJobId = jobId;
             _runtime = AppRuntimeContext.CreateDefault(
-                useNativeGrpcTransport: useNativeGrpcTransport,
                 grpcTarget: grpcTarget,
                 httpBridgeBaseUrl: httpBridgeBaseUrl,
                 supportsDraco: true,
-                desiredJobId: desiredJobId
+                desiredJobId: jobId
             );
-
-            if (vuforiaTrackingBridge == null)
-            {
-                vuforiaTrackingBridge = FindFirstObjectByType<VuforiaTrackingBridge>();
-            }
 
             _runtime.StepCoordinator.StateChanged += OnStepStateChanged;
             _runtime.SessionClient.StepActivated += OnSessionStepActivated;
             _runtime.SessionClient.ConnectionStateChanged += OnSessionConnectionStateChanged;
             _runtime.SessionClient.WorkflowCompleted += OnSessionWorkflowCompleted;
-        }
 
-        private void Start()
-        {
-            HologramApplier.Enabled = useHologramShader;
             _runtime.SessionClient.Initialize();
             _runtime.StepCoordinator.Initialize();
             _runtime.SessionClient.Connect();
@@ -88,7 +231,7 @@ namespace Guidance.Runtime
                 statusPanel.SetActiveStep("-", "-");
                 statusPanel.SetInstruction("-");
                 statusPanel.SetWarning(string.Empty);
-                statusPanel.SetTransportMode(useNativeGrpcTransport ? "gRPC :50051" : "HTTP Bridge :8080");
+                statusPanel.SetTransportMode("gRPC :50051");
             }
         }
 
@@ -191,6 +334,64 @@ namespace Guidance.Runtime
             }
         }
 
+        public void ReturnToJobSelector()
+        {
+            if (jobSelectorPanel == null) return;
+
+            _loadCancellation?.Cancel();
+            _loadCancellation?.Dispose();
+            _loadCancellation = null;
+
+            if (_runtime != null)
+            {
+                _runtime.ModelPresenter.ClearActiveModel();
+                _runtime.TargetManager.DeactivateTarget();
+                _runtime.SessionClient.Disconnect();
+            }
+
+#if VUFORIA_ENGINE
+            if (imageTargetObserver != null)
+                imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
+
+            if (_modelTargetObserver != null)
+            {
+                _modelTargetObserver.OnTargetStatusChanged -= OnModelTargetStatusChanged;
+                if (vuforiaTrackingBridge != null)
+                    vuforiaTrackingBridge.AssignObserver(null);
+                UnityEngine.Object.Destroy(_modelTargetObserver.gameObject);
+                _modelTargetObserver = null;
+            }
+#endif
+
+            _lastActivation = null;
+            _stepHistory.Clear();
+            _activeFixtureOverlay = null;
+            _vuforiaTargetLoaded = false;
+            _isFrozenStepMode = false;
+            _pendingCompletionJobId = string.Empty;
+            _pendingCompletionStepId = string.Empty;
+            _lastModelPath = string.Empty;
+            _lastTargetPayloadPath = string.Empty;
+            _lastTargetVersion = string.Empty;
+            _activeObserverTransform = null;
+            _runtime = null;
+
+            if (imageTargetAnchor != null)
+                imageTargetAnchor.gameObject.SetActive(false);
+
+            if (statusPanel != null)
+            {
+                statusPanel.SetConnectionState(SessionConnectionState.Disconnected);
+                statusPanel.SetStepState(StepCoordinatorState.Idle);
+                statusPanel.SetActiveStep("-", "-");
+                statusPanel.SetInstruction("-");
+                statusPanel.SetWarning(string.Empty);
+                statusPanel.ClearImageTargetFound();
+            }
+
+            jobSelectorPanel.Show(this);
+        }
+
         public void ConfirmActiveStep()
         {
             if (_lastActivation == null) return;
@@ -259,6 +460,26 @@ namespace Guidance.Runtime
             }
 
             StartCoroutine(ResolveAndPresentStepAsset(previousActivation));
+        }
+
+        public void SetFixtureOverlayVisible(bool visible)
+        {
+            showFixtureOverlay = visible;
+            if (_activeFixtureOverlay != null)
+                _activeFixtureOverlay.OverlayEnabled = visible;
+        }
+
+        private void OnGUI()
+        {
+            const float w = 220f;
+            const float h = 32f;
+            var rect = new Rect(Screen.width - w - 16f, 16f, w, h);
+
+            GUILayout.BeginArea(rect, GUI.skin.box);
+            var newValue = GUILayout.Toggle(showFixtureOverlay, " Show Fixture Overlay");
+            if (newValue != showFixtureOverlay)
+                SetFixtureOverlayVisible(newValue);
+            GUILayout.EndArea();
         }
 
         public void ShowHelp()
@@ -388,14 +609,35 @@ namespace Guidance.Runtime
                         {
                             vuforiaTrackingBridge.AssignObserver(observer);
                         }
-                        _activeObserverTransform = observer != null ? observer.transform : null;
+                        // Single identity-transform child of the observer. Used only so we can
+                        // SetActive() it for the tracking gate without disabling the observer
+                        // GameObject itself (which would stop Vuforia from updating its pose).
+                        _activeObserverTransform = observer != null ? GetOrCreateAnimationRoot(observer.transform) : null;
                         _vuforiaTargetLoaded = true;
+#if VUFORIA_ENGINE
+                        _modelTargetObserver = observer;
+                        if (observer != null)
+                        {
+                            // Hide animations until the physical fixture is actually tracked.
+                            // Vuforia keeps the observer transform active even when no pose is
+                            // available, so without this gate the GLB renders at last-known /
+                            // origin pose.
+                            if (_activeObserverTransform != null)
+                                _activeObserverTransform.gameObject.SetActive(false);
+
+                            observer.OnTargetStatusChanged -= OnModelTargetStatusChanged;
+                            observer.OnTargetStatusChanged += OnModelTargetStatusChanged;
+                            OnModelTargetStatusChanged(observer, observer.TargetStatus);
+                        }
+#endif
                         statusPanel?.SetTargetStatus(observer != null ? "ACTIVE in Vuforia (from FastAPI)" : "ERROR: Vuforia returned null observer");
 
                         if (observer != null && fixtureOverlayPrefab != null)
                         {
                             var overlay = observer.gameObject.AddComponent<FixtureOverlay>();
-                            overlay.Initialize(fixtureOverlayPrefab, observer);
+                            overlay.Initialize(fixtureOverlayPrefab, observer, _activeObserverTransform);
+                            overlay.OverlayEnabled = showFixtureOverlay;
+                            _activeFixtureOverlay = overlay;
                         }
                     },
                     onError: err => vuforiaError = err
@@ -413,6 +655,34 @@ namespace Guidance.Runtime
                     yield break;
                 }
             }
+            else if (string.Equals(activation.AnchorType, "image-target", StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(activation.AnchorType, "ImageTarget", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeObserverTransform = imageTargetAnchor;
+#if VUFORIA_ENGINE
+                if (imageTargetObserver != null)
+                {
+                    // Subscribe directly from AppBootstrap — VuforiaTrackingBridge is bypassed
+                    // for image targets because its isActiveAndEnabled check can fail when the
+                    // anchor is inactive.
+                    imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
+                    imageTargetObserver.OnTargetStatusChanged += OnImageTargetStatusChanged;
+
+                    var s = imageTargetObserver.TargetStatus.Status;
+                    var alreadyTracked = s == Vuforia.Status.TRACKED
+                                      || s == Vuforia.Status.LIMITED;
+                    if (imageTargetAnchor != null)
+                        imageTargetAnchor.gameObject.SetActive(alreadyTracked);
+                    statusPanel?.SetImageTargetFound(alreadyTracked);
+                    Debug.Log($"[AppBootstrap] Subscribed to image target: {imageTargetObserver.name}, alreadyTracked={alreadyTracked}");
+                }
+                else
+                {
+                    Debug.LogWarning("[AppBootstrap] imageTargetObserver is null — check that imageTargetAnchor is a child of the ImageTarget GameObject.");
+                }
+#endif
+                Debug.Log($"[AppBootstrap] Image target anchor assigned for step {activation.StepId}");
+            }
             // ====================================================================
 
             _loadCancellation?.Cancel();
@@ -420,7 +690,9 @@ namespace Guidance.Runtime
             _loadCancellation = new CancellationTokenSource();
             var loadToken = _loadCancellation.Token;
 
-            Task loadTask = _runtime.ModelPresenter.PresentModelAsync(modelPath, activation, loadToken, _activeObserverTransform);
+            var observerTransform = _activeObserverTransform != null && _activeObserverTransform.gameObject != null
+                ? _activeObserverTransform : null;
+            Task loadTask = _runtime.ModelPresenter.PresentModelAsync(modelPath, activation, loadToken, observerTransform);
             yield return new WaitUntil(() => loadTask.IsCompleted);
 
             if (loadTask.IsFaulted)
@@ -469,6 +741,13 @@ namespace Guidance.Runtime
         public void OnTargetTrackingUpdated(Vector3 observedPosition, Quaternion observedRotation, bool trackingAcquired)
         {
             _runtime.TargetManager.UpdateTrackingPose(observedPosition, observedRotation, trackingAcquired);
+
+            if (imageTargetAnchor != null && IsImageTargetStep(_lastActivation))
+            {
+                imageTargetAnchor.gameObject.SetActive(trackingAcquired);
+                statusPanel?.SetImageTargetFound(trackingAcquired);
+            }
+
             if (trackingAcquired)
             {
                 _runtime.StepCoordinator.BeginTracking();
@@ -476,6 +755,68 @@ namespace Guidance.Runtime
             }
             _runtime.StepCoordinator.NotifyTrackingLost();
         }
+
+#if VUFORIA_ENGINE
+        private void OnModelTargetStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
+        {
+            if (_activeObserverTransform == null) return;
+            var tracked = status.Status == Vuforia.Status.TRACKED
+                       || status.Status == Vuforia.Status.EXTENDED_TRACKED;
+            if (_activeObserverTransform.gameObject.activeSelf != tracked)
+                _activeObserverTransform.gameObject.SetActive(tracked);
+            statusPanel?.SetImageTargetFound(tracked);
+        }
+
+        private void OnImageTargetStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
+        {
+            if (!IsImageTargetStep(_lastActivation)) return;
+
+            var tracked = status.Status == Vuforia.Status.TRACKED
+                       || status.Status == Vuforia.Status.LIMITED;
+
+            if (imageTargetAnchor != null)
+                imageTargetAnchor.gameObject.SetActive(tracked);
+            statusPanel?.SetImageTargetFound(tracked);
+            Debug.Log($"[AppBootstrap] Image target tracking: {(tracked ? "FOUND" : "LOST")}");
+
+            _runtime.TargetManager.UpdateTrackingPose(behaviour.transform.position, behaviour.transform.rotation, tracked);
+
+            if (tracked) _runtime.StepCoordinator.BeginTracking();
+            else _runtime.StepCoordinator.NotifyTrackingLost();
+        }
+#endif
+
+        /// <summary>
+        /// Identity-transform child of the Vuforia model-target observer. Both the
+        /// fixture overlay and the per-step animations parent here. Exists only so
+        /// the tracking gate can toggle visibility (SetActive) without disabling the
+        /// observer GameObject itself (which would stop Vuforia from updating pose).
+        /// No translation, rotation, or scale is applied — the source data is
+        /// expected to be already aligned with the physical fixture.
+        /// </summary>
+        private Transform GetOrCreateAnimationRoot(Transform observerRoot)
+        {
+            if (observerRoot == null) return null;
+
+            const string anchorName = "AnimationRoot";
+            var existing = observerRoot.Find(anchorName);
+            if (existing == null)
+            {
+                var go = new GameObject(anchorName);
+                existing = go.transform;
+                existing.SetParent(observerRoot, false);
+            }
+
+            existing.localPosition = Vector3.zero;
+            existing.localRotation = Quaternion.identity;
+            existing.localScale = Vector3.one;
+            return existing;
+        }
+
+        private static bool IsImageTargetStep(StepActivationDto activation) =>
+            activation != null &&
+            (string.Equals(activation.AnchorType, "image-target", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(activation.AnchorType, "ImageTarget", StringComparison.OrdinalIgnoreCase));
 
         private void UpdateTrackingHint()
         {
@@ -528,6 +869,12 @@ namespace Guidance.Runtime
         private void OnDestroy()
         {
             Debug.Log("[AppBootstrap] Shutting down session safely...");
+#if VUFORIA_ENGINE
+            if (imageTargetObserver != null)
+                imageTargetObserver.OnTargetStatusChanged -= OnImageTargetStatusChanged;
+            if (_modelTargetObserver != null)
+                _modelTargetObserver.OnTargetStatusChanged -= OnModelTargetStatusChanged;
+#endif
             if (_runtime != null && _runtime.SessionClient != null)
             {
                 try

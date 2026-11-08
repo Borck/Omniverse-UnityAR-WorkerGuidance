@@ -74,9 +74,12 @@ namespace Guidance.Runtime
                 return;
             }
 
+            // Log status + StatusInfo so we can diagnose drift (WRONG_SCALE = model target
+            // database scale doesn't match the physical object's real-world size).
+            Debug.Log($"[VuforiaTrackingBridge] Status={status.Status} StatusInfo={status.StatusInfo} target={behaviour?.TargetName}");
+
             var trackingAcquired =
                 status.Status == Status.TRACKED
-                || status.Status == Status.EXTENDED_TRACKED
                 || status.Status == Status.LIMITED;
 
             var poseTransform = behaviour != null ? behaviour.transform : transform;
